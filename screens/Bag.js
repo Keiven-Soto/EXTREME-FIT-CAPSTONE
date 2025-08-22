@@ -1,8 +1,17 @@
 import React, { useState, useMemo } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView, Alert } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { PayPal } from 'react-native-paypal';
 import Colors from '../colors';
+
+// Only import PayPal on native platforms
+let PayPal = null;
+if (Platform.OS !== 'web') {
+  try {
+    PayPal = require('react-native-paypal').PayPal;
+  } catch (error) {
+    console.log('PayPal not available on this platform');
+  }
+}
 
 export default function BagScreen() {
   const SHIPPING_COST = 15.00;
@@ -30,11 +39,38 @@ export default function BagScreen() {
   };
 
   const handlePayPalPayment = () => {
+    if (Platform.OS === 'web') {
+      // For web platform, show a demo success message
+      Alert.alert(
+        'Demo Mode',
+        'PayPal payment simulation completed successfully!\n\nNote: PayPal integration works on mobile devices. This is a demo for web.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Clear cart after successful payment
+              setCartItems([]);
+            }
+          }
+        ]
+      );
+      return;
+    }
+
+    if (!PayPal) {
+      Alert.alert(
+        'PayPal Unavailable',
+        'PayPal payment is not available on this platform.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     const paymentData = {
       amount: total.toFixed(2),
       currency: 'USD',
       description: `Extreme Fit - ${totalItems} items`,
-      clientId: 'AX5LCRqe63mpn5Iuk5dD6Z6E32Qn6skf2MdRRGmtDDPQwvKMdx76rqjSbYgISFz8L5fuR_sFGHmFy7fh', // Replace with your actual PayPal client ID
+      clientId: 'AX5LCRqe63mpn5Iuk5dD6Z6E32Qn6skf2MdRRGmtDDPQwvKMdx76rqjSbYgISFz8L5fuR_sFGHmFy7fh',
       environment: 'sandbox' // Use 'production' for live payments
     };
 
@@ -266,11 +302,11 @@ const styles = StyleSheet.create({
     color: Colors.mainColor,
   },
   checkoutButton: {
-    backgroundColor: Colors.mainColor,
+    backgroundColor: Colors.checkoutButton,
     marginHorizontal: 20,
     marginBottom: 20,
     padding: 18,
-    borderRadius: 12,
+    borderRadius: 100,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',

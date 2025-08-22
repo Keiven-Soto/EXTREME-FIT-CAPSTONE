@@ -35,6 +35,7 @@ export default function Navbar() {
         },
         tabBarActiveTintColor: Colors.mainColor,
         tabBarInactiveTintColor: Colors.grayIcon,
+        tabBarShowLabel: false, // ← Esto debería ocultar todos los labels
         tabBarStyle: {
           backgroundColor: Colors.whiteBackground,
           borderTopWidth: 1,
@@ -43,10 +44,7 @@ export default function Navbar() {
           paddingBottom: 25,
           paddingTop: 10,
         },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '500',
-        },
+        tabBarLabelStyle: { display: 'none' }, // removes names in the navbar
         headerShown: false,
       })}
     >

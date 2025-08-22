@@ -1,4 +1,4 @@
-export const Colors = {
+const Colors = {
   // Brand colors
   mainColor: '#000000', // Changed from red (#e94560) to black
   
@@ -8,7 +8,7 @@ export const Colors = {
   whiteText: '#ffffff',
   
   // Background colors
-  lightBackground: '#f8f9fa',
+  lightBackground: '#f8f4ee',
   whiteBackground: '#ffffff',
   
   // Border colors
@@ -20,6 +20,9 @@ export const Colors = {
   
   // Utility colors
   shadowColor: '#000',
+
+  //Checkout button
+  checkoutButton: '#443a35',
 };
 
 export default Colors;
