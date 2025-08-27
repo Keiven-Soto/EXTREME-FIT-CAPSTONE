@@ -1,174 +1,169 @@
-# ExtremeFit Database Setup
+# ExtremeFit Database Setup - Para el Equipo
 
-Walk through set up for a PostgreSQL database using Docker and connecting it to DataGrip for database management.
+## 🚀 Configuración Completa para Desarrolladores
 
-## Prerequisites
-
-* Docker installed on your machine
-* DataGrip IDE (or any PostgreSQL client)
-
-## Database Setup with Docker
-
-### 1. Check for Port Conflicts
-
-First, verify that port 5432 isn't already in use:
+### 1. **Configurar PostgreSQL con Docker**
 
 ```bash
-# Check what's using port 5432
-lsof -i :5432
+# Crear y ejecutar el container de PostgreSQL
+docker run --name extremefit_container \
+  -e POSTGRES_PASSWORD=your_password \
+  -d -p 5433:5432 \
+  -v postgres_data:/var/lib/postgresql/data \
+  postgres
 
-# Check for existing PostgreSQL processes
-ps aux | grep postgres
-```
-
-If you have a local PostgreSQL installation running, you can either stop it or use a different port for Docker (recommended).
-
-### 2. Create and Run PostgreSQL Container
-
-Run the following command to create and start your PostgreSQL container:
-
-```bash
-docker run --name extremefit_container -e POSTGRES_PASSWORD=extremefit123 -d -p 5433:5432 -v postgres_data:/var/lib/postgresql/data postgres
-```
-
-**Command breakdown:**
-
-* `--name extremefit_container`: Names the container
-* `-e POSTGRES_PASSWORD=extremefit123`: Sets the postgres user password as an environmental variable
-* `-d`: Runs in detached mode (background)
-* `-p 5433:5432`: Maps host port 5433 to container port 5432
-* `-v postgres_data:/var/lib/postgresql/data`: Creates a persistent volume for data
-* `postgres`: Uses the official PostgreSQL Docker image
-
-### 3. Verify Container is Running
-
-```bash
-# Check running containers
+# Verificar que esté corriendo
 docker ps
-
-# View container logs
-docker logs extremefit_container
 ```
 
-### 4. Create Development Database
-
-Connect to the PostgreSQL instance and create your development database:
+### 2. **Crear la base de datos de desarrollo**
 
 ```bash
-# Access PostgreSQL command line
+# Conectar al container
 docker exec -it extremefit_container psql -U postgres
 
-# Create development database
+# Crear la base de datos
 CREATE DATABASE extremefit_dev;
 
-# Create test database (optional)
-CREATE DATABASE extremefit_test;
-
-# Exit PostgreSQL
+# Salir
 \q
 ```
 
-## DataGrip Setup
+### 3. **Ejecutar el schema de la base de datos**
 
-### 1. Create New Data Source
+**Opción A - Con DataGrip:**
+1. Conectar DataGrip a:
+   - Host: `localhost`
+   - Port: `5433`
+   - Database: `extremefit_dev`
+   - User: `postgres`
+   - Password: `your_password`
 
-1. Open DataGrip
-2. Click the `+` button or go to `File` → `New` → `Data Source` → `PostgreSQL`
+2. Ejecutar el archivo `database/schema.sql`
 
-### 2. Configure Connection
-
-Enter the following connection details:
-
-* **Name:** `extremefit_dev@localhost` (or customize as needed)
-* **Host:** `localhost`
-* **Port:** `5433`
-* **Database:** `extremefit_dev`
-* **User:** `postgres`
-* **Password:** `extremefit123`
-
-### 3. Test Connection
-
-1. Click "Test Connection"
-2. Download PostgreSQL drivers if prompted
-3. Verify the connection is successful
-
-### 4. Additional Connections (Optional)
-
-You can create separate connections for different environments:
-
-* **Development:** Database `extremefit_dev`
-* **Testing:** Database `extremefit_test`
-* **Production:** (Use separate server/credentials)
-
-## Database Connection Details
-
-For your application configuration, use these connection parameters:
-
-```
-Host: localhost
-Port: 5433
-Database: extremefit_dev
-Username: postgres
-Password: extremefit123
+**Opción B - Con comando:**
+```bash
+# Si tienes psql instalado localmente
+psql -h localhost -p 5433 -U postgres -d extremefit_dev -f database/schema.sql
 ```
 
-
-
-## Environment Variables (Recommended)
-
-For your application, use environment variables:
+### 4. **Configurar el backend**
 
 ```bash
-DB_HOST=localhost
-DB_PORT=5433
-DB_NAME=extremefit_dev
-DB_USER=postgres
-DB_PASSWORD=extremefit123
+# Instalar dependencias
+cd server
+npm install express pg dotenv cors
+npm install -D nodemon
+
+# Crear archivo .env basado en .env.example
+cp .env.example .env
+
+# Editar .env con tus credenciales:
+# NODE_ENV=development
+# PORT=5001
+# DB_HOST=localhost
+# DB_PORT=5433
+# DB_NAME=extremefit_dev
+# DB_USER=postgres
+# DB_PASSWORD=your_password
 ```
 
-
-## Useful Docker Commands
+### 5. **Iniciar el servidor**
 
 ```bash
-# Start the container
+# Modo desarrollo (con auto-restart)
+npm run dev
+
+# O modo normal
+npm start
+```
+
+### 6. **Probar que todo funciona**
+
+**Pruebas básicas:**
+- ✅ `http://localhost:5001/` → "ExtremeFit API is running!"
+- ✅ `http://localhost:5001/api/test-db` → Conexión a DB exitosa
+- ✅ `http://localhost:5001/api/items` → Array vacío `[]`
+
+**Crear usuario de prueba:**
+```bash
+curl -X POST http://localhost:5001/api/items \
+  -H "Content-Type: application/json" \
+  -d '{
+    "first_name": "Test",
+    "last_name": "User",
+    "email": "test@extremefit.com",
+    "password_hash": "testpassword",
+    "phone": "787-555-0000"
+  }'
+```
+
+### 7. **Estructura de la base de datos**
+
+**Tablas creadas:**
+- `users` - Usuarios/clientes
+- `categories` - Categorías de productos  
+- `products` - Catálogo de productos
+- `cart` - Carrito de compras
+- `wishlist` - Lista de deseos
+- `orders` - Órdenes de compra
+- `order_items` - Items de cada orden
+- `addresses` - Direcciones de envío
+- `payment_methods` - Métodos de pago
+
+**Conexión de desarrollo:**
+- Host: `localhost:5433`
+- Database: `extremefit_dev`  
+- User: `postgres`
+- Password: `your_password`
+
+### 8. **Comandos útiles de Docker**
+
+```bash
+# Ver containers corriendo
+docker ps
+
+# Iniciar container (si está parado)
 docker start extremefit_container
 
-# Stop the container
+# Parar container
 docker stop extremefit_container
 
-# View container logs
+# Ver logs del container
 docker logs extremefit_container
 
-# Access PostgreSQL command line
-docker exec -it extremefit_container psql -U postgres
-
-# Remove container (when stopped)
-docker rm extremefit_container
-
-# Remove container and volume (WARNING: deletes all data)
-docker rm extremefit_container
-docker volume rm postgres_data
+# Conectar a PostgreSQL desde terminal
+docker exec -it extremefit_container psql -U postgres -d extremefit_dev
 ```
 
-## Troubleshooting:
+### 9. **API Endpoints disponibles**
 
-### Port Already in Use Error
+**Usuarios (para pruebas):**
+- `GET /api/items` - Obtener todos los usuarios
+- `GET /api/items/:id` - Obtener usuario por ID
+- `POST /api/items` - Crear nuevo usuario
+- `PUT /api/items/:id` - Actualizar usuario
+- `DELETE /api/items/:id` - Eliminar usuario
 
-If you get a "port already in use" error:
+**Utilidades:**
+- `GET /` - Status de la API
+- `GET /api/test-db` - Probar conexión a BD
 
-1. Use a different port: `-p 5434:5432`
-2. Or stop existing PostgreSQL service: `brew services stop postgresql`
+### 10. **Troubleshooting común**
 
-### Container Name Conflict
+**Error: "Port 5432 already in use"**
+- Usar puerto diferente: `-p 5434:5432` en lugar de `-p 5433:5432`
 
-If container name already exists:
-
+**Error: "Container name already exists"**
 ```bash
 docker rm extremefit_container
 ```
 
-### Connection Issues
+**Error: "Cannot connect to database"**
+- Verificar que el container esté corriendo: `docker ps`
+- Verificar credenciales en `.env`
 
-* Verify container is running: `docker ps`
-* Check logs: `docker logs extremefit_container`
-* Ensure correct port (5433) in DataGrip settings
+**Error: "Module not found"**
+```bash
+npm install
+```
