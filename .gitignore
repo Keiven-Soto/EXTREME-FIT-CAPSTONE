@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+
+# Node modules
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Misc
+.env
+.env.*
+*.local
+*.log

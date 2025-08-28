@@ -1,75 +1,210 @@
-// handlers.js
+// handlers.js - Updated to use PostgreSQL instead of in-memory array
 
-// In-memory array to store items
-let items = [];
+const db = require('../config/database');
 
-// GET all items
-const getItems = (req, res) => {
-  res.json(items);
-};
-
-// Get By ID
-const getItemById = (req, res) => {
-  const { id } = req.params;
-  const item = items.find(i => i.id === parseInt(id));
-
-  if (!item) {
-    return res.status(404).json({ error: 'Item not found' });
+// GET all users
+const getItems = async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT 
+        user_id, 
+        first_name, 
+        last_name, 
+        email, 
+        phone, 
+        created_at, 
+        updated_at 
+      FROM users 
+      ORDER BY user_id DESC
+    `);
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ error: error.message });
   }
-
-  res.json(item);
 };
 
+// GET user by ID
+const getItemById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Validate ID is a number
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
 
-// POST a new item
-const postItem = (req, res) => {
-  // Safely destructure from req.body
-  const { name, description } = req.body || {};
-
-  // Validation
-  if (!name) {
-    return res.status(400).json({ error: 'Name is required' });
+    const result = await db.query(`
+      SELECT 
+        user_id, 
+        first_name, 
+        last_name, 
+        email, 
+        phone, 
+        created_at, 
+        updated_at 
+      FROM users 
+      WHERE user_id = $1
+    `, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({ error: error.message });
   }
-
-  // Create new item
-  const newItem = {
-    id: items.length + 1, // simple incremental ID
-    name,
-    description: description || ''
-  };
-
-  items.push(newItem);
-
-  res.status(201).json(newItem);
 };
 
-// UPDATE an item by ID
-const updateItem = (req, res) => {
-  const { id } = req.params;
-  const { name, description } = req.body || {};
+// POST create new user
+const postItem = async (req, res) => {
+  try {
+    const { first_name, last_name, email, password_hash, phone } = req.body || {};
 
-  const item = items.find(i => i.id === parseInt(id));
-  if (!item) {
-    return res.status(404).json({ error: 'Item not found' });
+    // Validation
+    if (!first_name || !last_name || !email) {
+      return res.status(400).json({ 
+        error: 'First name, last name, and email are required' 
+      });
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ 
+        error: 'Please provide a valid email address' 
+      });
+    }
+
+    const result = await db.query(`
+      INSERT INTO users (first_name, last_name, email, password_hash, phone) 
+      VALUES ($1, $2, $3, $4, $5) 
+      RETURNING user_id, first_name, last_name, email, phone, created_at
+    `, [first_name, last_name, email, password_hash || 'temp_hash', phone]);
+
+    res.status(201).json({
+      message: 'User created successfully',
+      user: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error creating user:', error);
+    
+    // Handle unique constraint violation (duplicate email)
+    if (error.code === '23505') {
+      return res.status(400).json({ 
+        error: 'Email already exists. Please use a different email address.' 
+      });
+    }
+    
+    res.status(500).json({ error: error.message });
   }
-
-  if (name) item.name = name;
-  if (description) item.description = description;
-
-  res.json(item);
 };
 
-// DELETE an item by ID
-const deleteItem = (req, res) => {
-  const { id } = req.params;
-  const index = items.findIndex(i => i.id === parseInt(id));
+// UPDATE user by ID  
+const updateItem = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { first_name, last_name, phone } = req.body || {};
 
-  if (index === -1) {
-    return res.status(404).json({ error: 'Item not found' });
+    // Validate ID is a number
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+
+    // Check if user exists
+    const checkUser = await db.query('SELECT user_id FROM users WHERE user_id = $1', [id]);
+    if (checkUser.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Build dynamic update query
+    let updateFields = [];
+    let values = [];
+    let paramCount = 1;
+
+    if (first_name !== undefined) {
+      updateFields.push(`first_name = $${paramCount}`);
+      values.push(first_name);
+      paramCount++;
+    }
+    
+    if (last_name !== undefined) {
+      updateFields.push(`last_name = $${paramCount}`);
+      values.push(last_name);
+      paramCount++;
+    }
+    
+    if (phone !== undefined) {
+      updateFields.push(`phone = $${paramCount}`);
+      values.push(phone);
+      paramCount++;
+    }
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    // Add user_id to values array
+    values.push(id);
+    
+    const query = `
+      UPDATE users 
+      SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP 
+      WHERE user_id = $${paramCount} 
+      RETURNING user_id, first_name, last_name, email, phone, updated_at
+    `;
+
+    const result = await db.query(query, values);
+
+    res.json({
+      message: 'User updated successfully',
+      user: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ error: error.message });
   }
-
-  const deletedItem = items.splice(index, 1);
-  res.json(deletedItem[0]);
 };
 
-module.exports = { getItems,getItemById, postItem, updateItem, deleteItem };
+// DELETE user by ID
+const deleteItem = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Validate ID is a number
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+    
+    const result = await db.query(`
+      DELETE FROM users 
+      WHERE user_id = $1 
+      RETURNING user_id, first_name, last_name, email
+    `, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ 
+      message: 'User deleted successfully', 
+      user: result.rows[0] 
+    });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    
+    // Handle foreign key constraint violations
+    if (error.code === '23503') {
+      return res.status(400).json({ 
+        error: 'Cannot delete user. User has associated records (orders, cart items, etc.)' 
+      });
+    }
+    
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = { getItems, getItemById, postItem, updateItem, deleteItem };
