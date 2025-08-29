@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, Image, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, TextInput, Image, TouchableOpacity, SafeAreaView, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import Colors from '../colors';
-// Puedes cambiar el nombre del archivo si quieres otra imagen
 import logo from '../assets/Extreme_fit_new_logo-10.png';
+
+const API_BASE_URL = 'http://192.168.0.15:5001';
 
 export default function CreateAccountPage({ navigation }) {
   const [name, setName] = useState('');
@@ -10,48 +11,115 @@ export default function CreateAccountPage({ navigation }) {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleCreateAccount = async () => {
-    // Validaciones básicas
+    // Basic validations
     if (!name || !email || !phone || !password || !confirmPassword) {
-      alert('Por favor completa todos los campos.');
+      Alert.alert('Error', 'Please fill in all fields.');
       return;
     }
-    // Validar email simple
+
+    // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      alert('Por favor ingresa un email válido.');
+      Alert.alert('Error', 'Please enter a valid email address.');
       return;
     }
-    // Validar contraseñas
+
+    // Password validation
     if (password !== confirmPassword) {
-      alert('Las contraseñas no coinciden.');
+      Alert.alert('Error', 'Passwords do not match.');
       return;
     }
-    // Separar nombre completo en first_name y last_name (simple split)
+
+    if (password.length < 8) {
+      Alert.alert('Error', 'Password must be at least 6 characters long.');
+      return;
+    }
+
+    // Split name into first_name and last_name
     const [first_name = '', ...rest] = name.trim().split(' ');
     const last_name = rest.join(' ');
+
+    if (!first_name) {
+      Alert.alert('Error', 'Please enter both first and last name.');
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      const response = await fetch('http://localhost:5001/api/items', {
+      const response = await fetch(`${API_BASE_URL}/api/items`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({
           first_name,
-          last_name,
+          last_name: last_name || '',
           email,
           password_hash: password,
           phone,
         }),
       });
+
       const data = await response.json();
+      
       if (response.ok) {
-        alert('Cuenta creada con éxito');
-        navigation && navigation.navigate('Main');
+        Alert.alert(
+          'Success!', 
+          `Account created successfully for ${data.user.first_name}!`,
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Clear form
+                setName('');
+                setEmail('');
+                setPhone('');
+                setPassword('');
+                setConfirmPassword('');
+                // Navigate to main app
+                navigation && navigation.navigate('Main');
+              }
+            }
+          ]
+        );
       } else {
-        alert(data.message || 'Error al crear la cuenta');
+        Alert.alert('Registration Failed', data.error || 'Error creating account');
       }
     } catch (error) {
-      alert('Error de red o servidor');
+      console.error('Network error:', error);
+      Alert.alert(
+        'Network Error', 
+        'Cannot connect to server. Make sure:\n' +
+        '• Your backend server is running\n' +
+        '• You are connected to the same WiFi\n' +
+        '• The IP address in the code is correct'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Function to test API connection
+  const testConnection = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/api/test-db`);
+      const data = await response.json();
+      
+      if (response.ok) {
+        Alert.alert('Connection Test', `Connected to ${data.database} successfully!`);
+      } else {
+        Alert.alert('Connection Failed', data.message || 'Cannot connect to database');
+      }
+    } catch (error) {
+      Alert.alert('Connection Failed', 'Cannot reach server. Check your IP address and make sure backend is running.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -59,13 +127,22 @@ export default function CreateAccountPage({ navigation }) {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Image source={logo} style={styles.centerImage} resizeMode='contain' />
+        
         <Text style={styles.title}>Create Account</Text>
+        
+        {/* Test Connection Button */}
+        <TouchableOpacity style={styles.testButton} onPress={testConnection}>
+          <Text style={styles.testButtonText}>Test API Connection</Text>
+        </TouchableOpacity>
+
         <TextInput
           style={styles.input}
-          placeholder="Name"
+          placeholder="Full Name"
           value={name}
           onChangeText={setName}
+          editable={!loading}
         />
+        
         <TextInput
           style={styles.input}
           placeholder="Email"
@@ -73,31 +150,48 @@ export default function CreateAccountPage({ navigation }) {
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
+          editable={!loading}
         />
+        
         <TextInput
           style={styles.input}
           placeholder="Phone Number"
           value={phone}
           onChangeText={setPhone}
           keyboardType="phone-pad"
+          editable={!loading}
         />
+        
         <TextInput
           style={styles.input}
           placeholder="Password"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          editable={!loading}
         />
+        
         <TextInput
           style={styles.input}
           placeholder="Confirm Password"
           value={confirmPassword}
           onChangeText={setConfirmPassword}
           secureTextEntry
+          editable={!loading}
         />
-        <TouchableOpacity style={styles.button} onPress={handleCreateAccount}>
-          <Text style={styles.buttonText}>Create Account</Text>
+        
+        <TouchableOpacity 
+          style={[styles.button, loading && styles.buttonDisabled]} 
+          onPress={handleCreateAccount}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color={Colors.whiteText} />
+          ) : (
+            <Text style={styles.buttonText}>Create Account</Text>
+          )}
         </TouchableOpacity>
+        
         <TouchableOpacity onPress={() => navigation && navigation.goBack()}>
           <Text style={styles.linkText}>Back to Welcome</Text>
         </TouchableOpacity>
@@ -126,6 +220,20 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     width: '100%',
   },
+  testButton: {
+    backgroundColor: Colors.lightBackground,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: Colors.mainColor,
+  },
+  testButtonText: {
+    color: Colors.mainColor,
+    fontSize: 12,
+    fontWeight: '600',
+  },
   input: {
     width: '90%',
     maxWidth: 350,
@@ -147,6 +255,11 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 20,
     alignSelf: 'center',
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  buttonDisabled: {
+    backgroundColor: Colors.mutedText,
   },
   buttonText: {
     color: Colors.whiteText,

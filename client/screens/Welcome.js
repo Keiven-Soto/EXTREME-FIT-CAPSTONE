@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'black',
   },
   createAccountButton: {
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.whiteBackground,
     paddingVertical: 15,
     paddingHorizontal: 30,
     borderWidth: 6,
