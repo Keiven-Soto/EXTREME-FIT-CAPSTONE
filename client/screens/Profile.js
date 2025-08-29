@@ -1,16 +1,18 @@
 import React from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../colors';
 
 export default function ProfileScreen() {
+  // Usa el icono local como foto de perfil
+  const profilePic = require('../assets/Extreme_fit_new_logo-01.png');
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={styles.profileImageContainer}>
             <View style={styles.profileImage}>
-              <Text style={styles.profileImageText}>👤</Text>
+              <Image source={profilePic} style={styles.profileImagePic} />
             </View>
           </View>
           <Text style={styles.userName}>John Smith</Text>
@@ -123,10 +125,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.mainColor,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden', // Ensures the image stays within the circle
   },
-  profileImageText: {
-    fontSize: 32,
-    color: Colors.whiteText,
+  profileImagePic: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
   },
   userName: {
     fontSize: 24,
