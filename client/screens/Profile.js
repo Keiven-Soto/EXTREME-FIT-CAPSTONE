@@ -1,11 +1,17 @@
 import React from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView, Image } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../colors';
 
-export default function ProfileScreen() {
+export default function ProfileScreen({navigation}) {
   // Usa el icono local como foto de perfil
   const profilePic = require('../assets/Extreme_fit_new_logo-01.png');
+
+  const gotoEditProfileSection= () => {
+    // Navegar a la sección de edición de perfil
+    navigation && navigation.navigate('EditProfile');
+  };
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -20,7 +26,7 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.menuSection}>
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} onPress={gotoEditProfileSection}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="person-outline" size={24} color={Colors.mutedText} />
               <Text style={styles.menuItemText}>Edit Profile</Text>

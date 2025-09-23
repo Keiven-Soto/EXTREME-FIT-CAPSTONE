@@ -201,6 +201,37 @@ export const ApiService = {
       });
     },
   },
+
+  // Addresses Management
+  addresses: {
+    // Obtener todas las direcciones de un usuario
+    getByUser: async (userId) => {
+      return await apiRequest(`/api/addresses/user/${userId}`);
+    },
+
+    // Crear una nueva dirección
+    create: async (userId, addressData) => {
+      return await apiRequest(`/api/addresses/user/${userId}`, {
+        method: 'POST',
+        body: addressData,
+      });
+    },
+
+    // Actualizar una dirección existente
+    update: async (addressId, addressData) => {
+      return await apiRequest(`/api/addresses/${addressId}`, {
+        method: 'PUT',
+        body: addressData,
+      });
+    },
+
+    // Eliminar una dirección
+    delete: async (addressId) => {
+      return await apiRequest(`/api/addresses/${addressId}`, {
+        method: 'DELETE',
+      });
+    },
+  },
 };
 
 // Export base URL for direct access if needed
