@@ -14,7 +14,7 @@ import {
   TextInput,
 } from "react-native";
 
-// Dynamic adjusment to device screen width
+// dynamic adjustment to device screen width
 const { width } = Dimensions.get("window");
 
 export default function HomeScreen() {
@@ -30,58 +30,82 @@ export default function HomeScreen() {
   };
 
   const categories = [
-    { id: "1", name: "Men" },
-    { id: "2", name: "Women" },
-  ];
-
-  const features = [
     {
       id: "1",
-      title: "T-Shirts",
-      image: require("../assets/splash-icon.png"),
+      title: "Men",
+      features: [
+        {
+          id: "1",
+          name: "T-Shirts",
+          image: require("../assets/splash-icon.png"),
+        },
+        {
+          id: "2",
+          name: "Sweatshirts",
+          image: require("../assets/splash-icon.png"),
+        },
+        {
+          id: "3",
+          name: "Sweatpants",
+          image: require("../assets/splash-icon.png"),
+        },
+        {
+          id: "4",
+          name: "Activewear",
+          image: require("../assets/splash-icon.png"),
+        },
+        {
+          id: "5",
+          name: "Equipment",
+          image: require("../assets/splash-icon.png"),
+        },
+        {
+          id: "6",
+          name: "Footwear",
+          image: require("../assets/splash-icon.png"),
+        },
+      ],
     },
     {
       id: "2",
-      title: "Sweatshirts",
-      image: require("../assets/splash-icon.png"),
-    },
-    {
-      id: "3",
-      title: "Pants",
-      image: require("../assets/splash-icon.png"),
-    },
-    {
-      id: "4",
-      title: "Footwear",
-      image: require("../assets/splash-icon.png"),
-    },
-    {
-      id: "5",
-      title: "Equipment",
-      image: require("../assets/splash-icon.png"),
-    },
-    {
-      id: "6",
-      title: "Activewear",
-      image: require("../assets/splash-icon.png"),
+      title: "Women",
+      features: [
+        {
+          id: "1",
+          name: "Dresses",
+          image: require("../assets/splash-icon.png"),
+        },
+        {
+          id: "2",
+          name: "Shirts",
+          image: require("../assets/splash-icon.png"),
+        },
+        {
+          id: "3",
+          name: "Leggings",
+          image: require("../assets/splash-icon.png"),
+        },
+        {
+          id: "4",
+          name: "Footwear",
+          image: require("../assets/splash-icon.png"),
+        },
+        {
+          id: "5",
+          name: "Equipment",
+          image: require("../assets/splash-icon.png"),
+        },
+        {
+          id: "6",
+          name: "Activewear",
+          image: require("../assets/splash-icon.png"),
+        },
+      ],
     },
   ];
 
-  function FeatureCard({ title, image, onPress }) {
-    return (
-      <TouchableOpacity style={styles.card} onPress={onPress}>
-        <Image source={image} style={styles.cardImage} />
-        <View style={styles.cardContent}>
-          <Text style={styles.cardTitle}>{title}</Text>
-          <Ionicons name="chevron-forward" style={styles.cardIcon} />
-        </View>
-      </TouchableOpacity>
-    );
-  }
-
   return (
     <View style={styles.screenContainer}>
-
       {/* Logo */}
       <Image
         source={require("../assets/Extreme_fit_new_logo-10.png")}
@@ -119,7 +143,7 @@ export default function HomeScreen() {
                     isActive && styles.activeCategoryText,
                   ]}
                 >
-                  {item.name}
+                  {item.title}
                 </Text>
               </Pressable>
             );
@@ -160,7 +184,7 @@ export default function HomeScreen() {
 
       {/* Feature Grid */}
       <FlatList
-        data={features}
+        data={categories.find((c) => c.id === selected)?.features || []}
         keyExtractor={(item) => item.id}
         numColumns={2}
         columnWrapperStyle={{
@@ -169,13 +193,15 @@ export default function HomeScreen() {
         }}
         showsVerticalScrollIndicator={true}
         renderItem={({ item }) => (
-          <FeatureCard
-            title={item.title}
-            subtitle={item.subtitle}
-            image={item.image}
-            onPress={() => {}}
-          />
+          <TouchableOpacity style={styles.featureCard}>
+            <Image source={item.image} style={styles.featureImage} />
+            <View style={styles.featureContent}>
+              <Text style={styles.featureName}>{item.name}</Text>
+              <Ionicons name="chevron-forward" style={styles.featureIcon} />
+            </View>
+          </TouchableOpacity>
         )}
+        contentContainerStyle={{ paddingBottom: 40 }}
       />
     </View>
   );
@@ -188,10 +214,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.lightBackground,
   },
+
   categoriesContainer: {
     marginBottom: 20,
     alignItems: "center",
   },
+
   category: {
     paddingVertical: 10,
     paddingHorizontal: 16,
@@ -199,25 +227,76 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.lightBackground,
     marginRight: 8,
   },
+
   activeCategory: {
     backgroundColor: "#000",
   },
+
   pressedCategory: {
     opacity: 0.7,
     transform: [{ scale: 0.96 }],
   },
+
   categoryText: {
     fontSize: 16,
     color: "#333",
   },
+
   activeCategoryText: {
     color: "#fff",
     fontWeight: "600",
   },
+
+  catalogContainer: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+
+  featureCard: {
+    width: CARD_WIDTH,
+    height: 200,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+    marginBottom: 16,
+    overflow: "hidden",
+  },
+
+  featureImage: {
+    width: "100%",
+    height: 150,
+    resizeMode: "cover",
+  },
+
+  featureContent: {
+    width: "100%",
+    padding: 8,
+    paddingTop: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  featureName: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#222",
+  },
+
+  featureIcon: {
+    fontSize: 20,
+    color: "#888",
+  },
+
   searchContainer: {
     paddingHorizontal: 20,
     marginBottom: 20,
   },
+
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -231,47 +310,14 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
+
   searchIcon: {
     marginRight: 10,
   },
+
   searchInput: {
     flex: 1,
     fontSize: 16,
     color: Colors.darkText,
-  },
-  card: {
-    width: CARD_WIDTH,
-    height: 200,
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-    marginBottom: 16,
-    overflow: "hidden",
-  },
-  cardImage: {
-    width: "100%",
-    height: 150,
-    resizeMode: "cover",
-  },
-  cardContent: {
-    width: "100%",
-    padding: 8,
-    paddingTop: 16,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#222",
-  },
-  cardIcon: {
-    fontSize: 20,
-    color: "#888",
   },
 });
