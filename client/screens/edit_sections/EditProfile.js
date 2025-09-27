@@ -49,10 +49,59 @@ const gotoEditAddressSection = (address) => {
     navigation && navigation.navigate('EditAddress');
   };
   const onEditAddress = (addr) => {};
-  const onSetDefault = (addr) => {};
+const onSetDefault = async (addr) => {
+  if (!addr?.address_id) return;
+  try {
+      // Construye el payload completo de la dirección
+      const payload = {
+        street_address: addr.street_address,
+        city: addr.city,
+        state: addr.state,
+        postal_code: addr.postal_code,
+        country: addr.country,
+        address_type: addr.address_type,
+        is_default: true
+      };
+    const result = await ApiService.addresses.update(addr.address_id, payload);
+    console.log('Set default response:', result);
+    await sleep(500);
+    if (result.success) {
+      const updated = await ApiService.addresses.getByUser(userId);
+      setAddresses(updated.success ? updated.data : []);
+    } else {
+      console.log('Error setting default address:', result.message || result);
+    }
+  } catch (err) {
+    console.log('Default address error:', err);
+  }
+  // setLoading(false);
+};
+
+
   const goBack = () => {
     navigation && navigation.goBack();
   }
+
+  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+  const onDeleteAddress = async (addr) => {
+    if (!addr?.address_id) return;
+    try {
+      setLoading(true);
+      const result = await ApiService.addresses.delete(addr.address_id);
+      await sleep(500);
+      if (result.success) {
+        // Refresca la lista de direcciones
+        const updated = await ApiService.addresses.getByUser(userId);
+        setAddresses(updated.success ? updated.data : []);
+      } else {
+        // Maneja error si lo deseas
+        console.log('Error deleting address:', result.message || result);
+      }
+    } catch (err) {
+      console.log('Delete address error:', err);
+    }
+    setLoading(false);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -119,7 +168,9 @@ const gotoEditAddressSection = (address) => {
                 <View style={styles.addressActions}>
                   <TouchableOpacity style={styles.iconBtn} onPress={() => gotoEditAddressSection(addr)}>
                     <Text>Edit</Text>
-                    {/* <Ionicons name="pencil" size={18} color={Colors.mutedText} /> */}
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.trashBtn} onPress={() => onDeleteAddress(addr)}>
+                    <Ionicons name="trash" size={20} color={Colors.darkText } />
                   </TouchableOpacity>
                   {!addr.is_default ? (
                     <TouchableOpacity onPress={() => onSetDefault(addr)}>
@@ -268,6 +319,10 @@ const styles = StyleSheet.create({
   },
   iconBtn: {
     padding: 6,
+  },
+  trashBtn: {
+    padding: 6,
+    marginLeft: 4,
   },
   setDefaultText: {
     fontSize: 13,

@@ -34,6 +34,18 @@ router.put('/:addressId', async (req, res) => {
   try {
     const { addressId } = req.params;
     const { street_address, city, state, postal_code, country, is_default, address_type } = req.body;
+
+    // Si se va a marcar como default, primero desmarcar todas las del usuario
+    if (is_default) {
+      // Obtener el user_id de la dirección actual
+      const userRes = await db.query('SELECT user_id FROM addresses WHERE address_id = $1', [addressId]);
+      const userId = userRes.rows[0]?.user_id;
+      if (userId) {
+        await db.query('UPDATE addresses SET is_default = false WHERE user_id = $1', [userId]);
+      }
+    }
+
+    // Actualizar la dirección seleccionada
     const result = await db.query(
       `UPDATE addresses SET street_address=$1, city=$2, state=$3, postal_code=$4, country=$5, is_default=$6, address_type=$7
        WHERE address_id=$8 RETURNING *`,
