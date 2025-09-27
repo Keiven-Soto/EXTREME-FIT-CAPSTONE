@@ -34,21 +34,7 @@ export default function ProfileScreen({navigation}) {
             <Ionicons name="chevron-forward" size={20} color={Colors.mutedText} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="location-outline" size={24} color={Colors.mutedText} />
-              <Text style={styles.menuItemText}>Addresses</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={Colors.mutedText} />
-          </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="card-outline" size={24} color={Colors.mutedText} />
-              <Text style={styles.menuItemText}>Payment Methods</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={Colors.mutedText} />
-          </TouchableOpacity>
 
           <TouchableOpacity style={styles.menuItem}>
             <View style={styles.menuItemLeft}>
@@ -80,14 +66,6 @@ export default function ProfileScreen({navigation}) {
             <View style={styles.menuItemLeft}>
               <Ionicons name="document-text-outline" size={24} color={Colors.mutedText} />
               <Text style={styles.menuItemText}>Terms & Conditions</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={Colors.mutedText} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="shield-checkmark-outline" size={24} color={Colors.mutedText} />
-              <Text style={styles.menuItemText}>Privacy</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={Colors.mutedText} />
           </TouchableOpacity>

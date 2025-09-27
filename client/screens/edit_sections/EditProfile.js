@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 import ApiService from '../../services/api';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,10 +8,9 @@ import Colors from '../../colors';
 
 export default function EditProfileSection({navigation}) {
 
-  const gotoEditAddressSection= () => {
-  // Navegar a la sección de edición de dirección
-    navigation && navigation.navigate('EditAddress');
-  };
+const gotoEditAddressSection = (address) => {
+  navigation && navigation.navigate('EditAddress', { address });
+};
 
   // Simulación: obtén el userId real de tu auth/contexto
   const userId = '1'; // <-- reemplaza por el id real
@@ -22,6 +22,7 @@ export default function EditProfileSection({navigation}) {
   // Estado para direcciones y loading
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const isFocused = useIsFocused();
 
   useEffect(() => {
     const fetchAddresses = async () => {
@@ -35,19 +36,36 @@ export default function EditProfileSection({navigation}) {
       }
       setLoading(false);
     };
-    fetchAddresses();
-  }, [userId]);
+    if (isFocused) {
+      fetchAddresses();
+    }
+  }, [userId, isFocused]);
 
   // Handlers (conéctalos a navegación o modales)
   const onEditContact = () => {};
   const onResetPassword = () => {};
-  const onAddAddress = () => {};
+  const onAddAddress = () => {
+    // Navega a EditAddress, para crear uno nuevo
+    navigation && navigation.navigate('EditAddress');
+  };
   const onEditAddress = (addr) => {};
   const onSetDefault = (addr) => {};
+  const goBack = () => {
+    navigation && navigation.goBack();
+  }
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Static Header con arrow back alineado a la izquierda */}
+      <View style={styles.staticHeader}>
+        <TouchableOpacity style={styles.headerBackBtn} onPress={goBack}>
+          <Ionicons name="arrow-back" size={24} color={Colors.mainColor} />
+        </TouchableOpacity>
+        <Text style={styles.staticHeaderTitle}>Edit Profile</Text>
+      </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }}>
+
+        
         {/* CONTACT DETAILS */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>CONTACT DETAILS</Text>
@@ -99,7 +117,7 @@ export default function EditProfileSection({navigation}) {
                 <Text style={styles.addressLine}>{addr.city}{addr.state ? `, ${addr.state}` : ''} {addr.postal_code}</Text>
                 <Text style={styles.addressLine}>{addr.country}</Text>
                 <View style={styles.addressActions}>
-                  <TouchableOpacity style={styles.iconBtn} onPress={gotoEditAddressSection}>
+                  <TouchableOpacity style={styles.iconBtn} onPress={() => gotoEditAddressSection(addr)}>
                     <Text>Edit</Text>
                     {/* <Ionicons name="pencil" size={18} color={Colors.mutedText} /> */}
                   </TouchableOpacity>
@@ -118,10 +136,7 @@ export default function EditProfileSection({navigation}) {
         <View style={styles.footer}>
           <Text style={styles.footerText}>Extreme Fit v1.0.0</Text>
         </View>
-        <TouchableOpacity style={styles.goBackBtn} onPress={() => navigation && navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={Colors.mainColor} />
-          <Text style={styles.goBackText}>Back</Text>
-        </TouchableOpacity>
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -130,6 +145,22 @@ export default function EditProfileSection({navigation}) {
 const CARD_RADIUS = 12;
 
 const styles = StyleSheet.create({
+  staticHeader: {
+    width: '100%',
+    paddingTop: 18,
+    paddingBottom: 12,
+    backgroundColor: Colors.whiteBackground,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.grayBorder,
+    zIndex: 10,
+  },
+  staticHeaderTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: Colors.mainColor,
+    letterSpacing: 0.5,
+  },
   container: {
     flex: 1,
     backgroundColor: Colors.lightBackground,
@@ -251,19 +282,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.mutedText,
   },
-    goBackBtn: {
+  headerBackBtn: {
+    position: 'absolute',
+    left: 12,
+    top: 18,
+    padding: 4,
+    zIndex: 20,
+  },
+  staticHeader: {
+    width: '100%',
+    paddingTop: 18,
+    paddingBottom: 12,
+    backgroundColor: Colors.lightBackground,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightBackground,
+    zIndex: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    justifyContent: 'center',
   },
-  goBackText: {
+  staticHeaderTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
     color: Colors.mainColor,
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 6,
-    alignItems: 'center',
-    alignSelf: 'center',
+    letterSpacing: 0.5,
+    textAlign: 'center',
+    flex: 1,
   },
 });
