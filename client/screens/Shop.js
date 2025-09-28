@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, 
   Text, 
@@ -6,21 +6,95 @@ import {
   TextInput, 
   TouchableOpacity,
   ScrollView,
-  SafeAreaView 
+  Image,
+  ActivityIndicator,
+  Alert
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import ApiService from '../services/api';
+import { getCloudinaryImageUrl } from '../utils/cloudinary';
 import Colors from '../colors';
+import { format } from '@cloudinary/url-gen/actions/delivery';
 
 export default function ShopScreen() {
   const [searchText, setSearchText] = useState('');
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleSearch = () => {
-    console.log('Buscando:', searchText);
-    // Aquí implementarías la lógica de búsqueda
+  // Load products when component mounts
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  const loadProducts = async () => {
+    try {
+      setLoading(true);
+      const result = await ApiService.products.getAll();
+      
+      if (result.success) {
+        setProducts(result.data);
+      } else {
+        Alert.alert('Error', 'Failed to load products');
+      }
+    } catch (error) {
+      console.error('Error loading products:', error);
+      Alert.alert('Error', 'Failed to connect to server');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const clearSearch = () => {
     setSearchText('');
+    loadProducts();
+  };
+
+  const renderProduct = (product) => {
+    // Get image source
+    const getImageSource = () => {
+      if (product.cloudinary_public_id) {
+        const imageUrl = getCloudinaryImageUrl(product.cloudinary_public_id, { 
+          format:'auto'
+        });
+        return { uri: imageUrl };
+      }
+      return null;
+    };
+
+    const imageSource = getImageSource();
+
+  return (
+    <TouchableOpacity key={product.product_id} style={styles.productCard}>
+      {imageSource ? (
+        <Image
+          source={imageSource}
+          style={styles.productImage}
+          onError={() => console.log('Image failed to load for product:', product.name)}
+        />
+      ) : (
+        <View style={styles.productImagePlaceholder}>
+          <Text style={styles.placeholderText}>No Image</Text>
+        </View>
+      )}
+
+      {/* Wrap text in a container */}
+      <View style={styles.productInfo}>
+        <Text style={styles.productName} numberOfLines={2}>
+          {product.name}
+        </Text>
+        <Text style={styles.productPrice}>
+          ${parseFloat(product.price).toFixed(2)}
+        </Text>
+        {product.gender && (
+          <Text style={styles.productGender}>
+            {product.gender}
+          </Text>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+
   };
 
   return (
@@ -42,57 +116,32 @@ export default function ShopScreen() {
               placeholderTextColor={Colors.grayIcon}
               value={searchText}
               onChangeText={setSearchText}
-              onSubmitEditing={handleSearch}
             />
             {searchText.length > 0 && (
               <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
                 <Ionicons name="close-circle" size={20} color={Colors.grayIcon} />
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={styles.filterIconButton} onPress={handleSearch}>
-              <Ionicons name="options" size={20} color={Colors.mainColor} />
-            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Categories */}
-        <View style={styles.categoriesContainer}>
-          <Text style={styles.sectionTitle}>Categories</Text>
-          <View style={styles.categoriesGrid}>
-            {['Activewear', 'Footwear', 'Accessories', 'Equipment'].map((category, index) => (
-              <TouchableOpacity key={index} style={styles.categoryCard}>
-                <Text style={styles.categoryText}>{category}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Popular Products */}
+        {/* Products */}
         <View style={styles.productsContainer}>
-          <Text style={styles.sectionTitle}>Popular Products</Text>
-          <View style={styles.productsGrid}>
-            {[1, 2, 3, 4].map((item) => (
-              <TouchableOpacity key={item} style={styles.productCard}>
-                <View style={styles.productImage}>
-                  <Text style={styles.productImageText}>📦</Text>
-                </View>
-                <Text style={styles.productName}>Product {item}</Text>
-                <Text style={styles.productPrice}>$29.99</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <Text style={styles.sectionTitle}>Products</Text>
+          
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={Colors.mainColor} />
+              <Text style={styles.loadingText}>Loading products...</Text>
+            </View>
+          ) : products.length > 0 ? (
+            <View style={styles.productsGrid}>
+              {products.map(renderProduct)}
+            </View>
+          ) : (
+            <Text style={styles.noResults}>No products available</Text>
+          )}
         </View>
-
-        {searchText.length > 0 && (
-          <View style={styles.searchResults}>
-            <Text style={styles.sectionTitle}>
-              Results for "{searchText}"
-            </Text>
-            <Text style={styles.noResults}>
-              {searchText ? `Searching for products related to "${searchText}"...` : ''}
-            </Text>
-          </View>
-        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -105,7 +154,7 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 20,
-    paddingTop: 60,
+    paddingTop: 20,
   },
   headerTitle: {
     fontSize: 28,
@@ -145,11 +194,7 @@ const styles = StyleSheet.create({
   clearButton: {
     padding: 5,
   },
-  filterIconButton: {
-    padding: 5,
-    marginLeft: 5,
-  },
-  categoriesContainer: {
+  productsContainer: {
     paddingHorizontal: 20,
     marginBottom: 25,
   },
@@ -159,27 +204,6 @@ const styles = StyleSheet.create({
     color: Colors.darkText,
     marginBottom: 15,
   },
-  categoriesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  categoryCard: {
-    backgroundColor: Colors.mainColor,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 20,
-    marginBottom: 10,
-  },
-  categoryText: {
-    color: Colors.whiteText,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  productsContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 25,
-  },
   productsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -187,25 +211,38 @@ const styles = StyleSheet.create({
   },
   productCard: {
     backgroundColor: Colors.whiteBackground,
-    width: '47%',
+    width: '45%',
+    minHeight: 200,
     borderRadius: 12,
-    padding: 15,
     shadowColor: Colors.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
+    overflow: 'hidden',
+  },
+  productInfo: {
+    padding: 10,
+    flex: 1,
+    justifyContent: 'flex-end',
   },
   productImage: {
+    width: '100%',
+    height: 120,
+    resizeMode: 'cover',
+  },
+  productImagePlaceholder: {
+    width: '100%',
+    height: 120,
     backgroundColor: Colors.lightBackground,
-    height: 100,
-    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.grayBorder,
   },
-  productImageText: {
-    fontSize: 24,
+  placeholderText: {
+    color: Colors.mutedText,
+    fontSize: 12,
   },
   productName: {
     fontSize: 14,
@@ -217,15 +254,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: Colors.mainColor,
+    marginBottom: 5,
   },
-  searchResults: {
-    paddingHorizontal: 20,
-    marginBottom: 25,
+  productGender: {
+    fontSize: 12,
+    color: Colors.mutedText,
+    textTransform: 'capitalize',
   },
-  noResults: {
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
     fontSize: 16,
     color: Colors.mutedText,
+  },
+  noResults: {
     textAlign: 'center',
+    fontSize: 16,
+    color: Colors.mutedText,
     fontStyle: 'italic',
+    paddingVertical: 20,
   },
 });
