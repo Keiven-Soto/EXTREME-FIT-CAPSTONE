@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { getUsers, getUserById, postUser, updateUser, deleteUser } = require('../controllers/handlers');
+const { getUsers, getUserById, postUser, updateUser, deleteUser } = require('../controllers/users_handlers');
+const { getCategories } = require('../controllers/categories_handler');
+
 
 // Test database connection endpoint
 router.get('/test-db', async (req, res) => {
@@ -35,5 +37,8 @@ router.put('/users/:id', updateUser);
 
 // DELETE a user by ID
 router.delete('/users/:id', deleteUser);
+
+// GET all categories
+router.get('/categories', getCategories);
 
 module.exports = router;

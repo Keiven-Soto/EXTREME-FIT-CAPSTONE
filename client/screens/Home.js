@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Colors from "../colors";
 import {
@@ -6,18 +6,21 @@ import {
   Text,
   View,
   Image,
-  ScrollView,
   FlatList,
   TouchableOpacity,
   Dimensions,
   Pressable,
   TextInput,
 } from "react-native";
+import { ActivityIndicator } from "react-native";
+import { API_BASE_URL } from "../services/api";
 
 // dynamic adjustment to device screen width
 const { width } = Dimensions.get("window");
 
 export default function HomeScreen() {
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState("1");
   const [searchText, setSearchText] = useState("");
 
@@ -29,80 +32,21 @@ export default function HomeScreen() {
     setSearchText("");
   };
 
-  const categories = [
-    {
-      id: "1",
-      title: "Men",
-      features: [
-        {
-          id: "1",
-          name: "T-Shirts",
-          image: require("../assets/splash-icon.png"),
-        },
-        {
-          id: "2",
-          name: "Sweatshirts",
-          image: require("../assets/splash-icon.png"),
-        },
-        {
-          id: "3",
-          name: "Sweatpants",
-          image: require("../assets/splash-icon.png"),
-        },
-        {
-          id: "4",
-          name: "Activewear",
-          image: require("../assets/splash-icon.png"),
-        },
-        {
-          id: "5",
-          name: "Equipment",
-          image: require("../assets/splash-icon.png"),
-        },
-        {
-          id: "6",
-          name: "Footwear",
-          image: require("../assets/splash-icon.png"),
-        },
-      ],
-    },
-    {
-      id: "2",
-      title: "Women",
-      features: [
-        {
-          id: "1",
-          name: "Dresses",
-          image: require("../assets/splash-icon.png"),
-        },
-        {
-          id: "2",
-          name: "Shirts",
-          image: require("../assets/splash-icon.png"),
-        },
-        {
-          id: "3",
-          name: "Leggings",
-          image: require("../assets/splash-icon.png"),
-        },
-        {
-          id: "4",
-          name: "Footwear",
-          image: require("../assets/splash-icon.png"),
-        },
-        {
-          id: "5",
-          name: "Equipment",
-          image: require("../assets/splash-icon.png"),
-        },
-        {
-          id: "6",
-          name: "Activewear",
-          image: require("../assets/splash-icon.png"),
-        },
-      ],
-    },
-  ];
+  useEffect(() => {
+    let ignore = false;
+    fetch(`${API_BASE_URL}/api/categories`)
+      .then((res) => res.json())
+      .then((data) => {
+        setCategories(data);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error("Error fetching data:", error);
+      });
+      return () => { ignore = true; };
+  }, []);
+
+  if (loading) return <ActivityIndicator size="large" />;
 
   return (
     <View style={styles.screenContainer}>
@@ -113,7 +57,6 @@ export default function HomeScreen() {
           width: 200,
           height: 200,
           alignSelf: "center",
-          marginTop: 20,
           marginBottom: -40,
         }}
         resizeMode="contain"
@@ -123,14 +66,15 @@ export default function HomeScreen() {
       <View style={styles.categoriesContainer}>
         <FlatList
           data={categories}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.category_id}
           horizontal
           showsHorizontalScrollIndicator={false}
+          ListEmptyComponent={<Text>No categories available</Text>}
           renderItem={({ item }) => {
-            const isActive = selected === item.id;
+            const isActive = selected === item.category_id;
             return (
               <Pressable
-                onPress={() => setSelected(item.id)}
+                onPress={() => setSelected(item.category_id)}
                 style={({ pressed }) => [
                   styles.category, // Default style
                   isActive && styles.activeCategory, // Active style
@@ -143,7 +87,7 @@ export default function HomeScreen() {
                     isActive && styles.activeCategoryText,
                   ]}
                 >
-                  {item.title}
+                  {item.name}
                 </Text>
               </Pressable>
             );
@@ -182,7 +126,7 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Feature Grid */}
+      {/* Feature Grid
       <FlatList
         data={categories.find((c) => c.id === selected)?.features || []}
         keyExtractor={(item) => item.id}
@@ -202,7 +146,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         )}
         contentContainerStyle={{ paddingBottom: 40 }}
-      />
+      /> */}
     </View>
   );
 }
