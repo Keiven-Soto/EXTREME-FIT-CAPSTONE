@@ -8,7 +8,7 @@ const Colors = {
   whiteText: '#ffffff',
   
   // Background colors
-  lightBackground: '#f8f4ee',
+  lightBackground: '#EBEBEB',
   whiteBackground: '#ffffff',
   
   // Border colors
