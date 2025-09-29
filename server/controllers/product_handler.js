@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const { get } = require('../routes/products');
 
 const getProducts = async (req, res) => {
   try {
@@ -58,6 +59,22 @@ const getProductById = async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error fetching product:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getGenders = async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT DISTINCT
+        gender
+      FROM products
+    `);
+
+    res.json(result.rows);
+    console.log("Fetched data: ", result.rows);
+  } catch (error) {
+    console.error("Error fetching products:", error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -235,6 +252,7 @@ const searchProducts = async (req, res) => {
 module.exports = { 
   getProducts, 
   getProductById, 
+  getGenders,
   createProduct, 
   updateProduct, 
   deleteProduct, 

@@ -11,17 +11,18 @@ import {
   Dimensions,
   Pressable,
   TextInput,
+  Alert
 } from "react-native";
 import { ActivityIndicator } from "react-native";
-import { API_BASE_URL } from "../services/api";
+import ApiService from "../services/api";
 
 // dynamic adjustment to device screen width
 const { width } = Dimensions.get("window");
 
 export default function HomeScreen() {
-  const [categories, setCategories] = useState([]);
+  const [genders, setGenders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState("1");
+  const [selected, setSelected] = useState("Unisex");
   const [searchText, setSearchText] = useState("");
 
   const handleSearch = () => {
@@ -33,20 +34,40 @@ export default function HomeScreen() {
   };
 
   useEffect(() => {
-    let ignore = false;
-    fetch(`${API_BASE_URL}/api/categories`)
-      .then((res) => res.json())
-      .then((data) => {
-        setCategories(data);
-        setLoading(false);
-      })
-      .catch((error) => {
-        console.error("Error fetching data:", error);
-      });
-      return () => { ignore = true; };
+    loadGenders();
   }, []);
 
-  if (loading) return <ActivityIndicator size="large" />;
+  const loadGenders = async () => {
+    try {
+      setLoading(true);
+      const result = await ApiService.products.getGenders();
+      console.log("API Response:", result);
+
+      if (result.success) {
+        // Normalize the capitalization of the gender strings
+        const normalizedGenders = result.data.map((item) => ({
+          ...item,
+          gender: item.gender
+            ? item.gender.charAt(0).toUpperCase() +
+              item.gender.slice(1).toLowerCase()
+            : item.gender, // Handle null or undefined gender
+        }));
+
+        setGenders(normalizedGenders);
+
+        if (normalizedGenders.length > 0 && !selected) {
+          setSelected(normalizedGenders[0].gender); // Set the first gender as default
+        }
+      } else {
+        Alert.alert('Error', 'Failed to load genders');
+      }
+    } catch (error) {
+      console.error('Error loading genders:', error);
+      Alert.alert('Error', 'Failed to connect to server');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <View style={styles.screenContainer}>
@@ -62,19 +83,19 @@ export default function HomeScreen() {
         resizeMode="contain"
       />
 
-      {/* Categories */}
-      <View style={styles.categoriesContainer}>
+      {/* Genders */}
+      <View style={styles.gendersContainer}>
         <FlatList
-          data={categories}
-          keyExtractor={(item) => item.category_id}
+          data={genders}
+          keyExtractor={(item) => item.gender}
           horizontal
           showsHorizontalScrollIndicator={false}
-          ListEmptyComponent={<Text>No categories available</Text>}
+          ListEmptyComponent={<Text>No gender categories available</Text>}
           renderItem={({ item }) => {
-            const isActive = selected === item.category_id;
+            const isActive = selected === item.gender;
             return (
               <Pressable
-                onPress={() => setSelected(item.category_id)}
+                onPress={() => setSelected(item.gender)}
                 style={({ pressed }) => [
                   styles.category, // Default style
                   isActive && styles.activeCategory, // Active style
@@ -87,7 +108,7 @@ export default function HomeScreen() {
                     isActive && styles.activeCategoryText,
                   ]}
                 >
-                  {item.name}
+                  {item.gender}
                 </Text>
               </Pressable>
             );
@@ -159,7 +180,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.lightBackground,
   },
 
-  categoriesContainer: {
+  gendersContainer: {
     marginBottom: 20,
     alignItems: "center",
   },
