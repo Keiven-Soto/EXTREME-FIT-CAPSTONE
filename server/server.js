@@ -6,6 +6,7 @@ require('dotenv').config();
 const routes = require('./routes/routes');
 const addressRoutes = require('./routes/addresses');
 const productRoute = require('./routes/products')
+const ordersRoute = require('./routes/orders');
 
 const app = express();
 const PORT = process.env.PORT || 5001; // ← Usar variable de entorno
@@ -39,6 +40,7 @@ app.get('/api/test-db', async (req, res) => {
 app.use('/api', routes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/products', productRoute);
+app.use('/api', ordersRoute);
 
 app.listen(PORT, () => {
   console.log(`ExtremeFit API running on http://localhost:${PORT}`);
