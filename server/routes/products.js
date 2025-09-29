@@ -3,6 +3,7 @@ const router = express.Router();
 const { 
   getProducts, 
   getProductById, 
+  getGenders,
   createProduct, 
   updateProduct, 
   deleteProduct, 
@@ -12,9 +13,11 @@ const {
 
 // GET routes
 router.get('/', getProducts);
+router.get('/genders', getGenders);
 router.get('/search', searchProducts);
 router.get('/category/:category_id', getProductsByCategory);
 router.get('/:id', getProductById);
+
 
 // POST routes
 router.post('/', createProduct);
