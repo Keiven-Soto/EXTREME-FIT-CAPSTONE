@@ -21,7 +21,11 @@ import { Ionicons } from '@expo/vector-icons';
  */
 
 // ================== COMPONENTE TARJETA ==================
-function OrderCard({ order, onPress }) {
+function OrderCard({ order, onPress, navigation }) {
+
+  const gotoOrderDetailsSection = () => {
+      navigation && navigation.navigate('OrderDetails', { orderId: order.id });
+  };
   // Calcula 3 columnas iguales dentro de la tarjeta, miniaturas más pequeñas
   const SCREEN_W = Dimensions.get('window').width;
   const CARD_HPAD = 12;              // padding horizontal de .card
@@ -72,7 +76,7 @@ function OrderCard({ order, onPress }) {
       </Text>
 
       {/* Details button */}
-      <TouchableOpacity onPress={onPress} style={styles.detailsBtn}>
+      <TouchableOpacity onPress={gotoOrderDetailsSection} style={styles.detailsBtn}>
         <Text style={styles.detailsBtnText}>View Order</Text>
       </TouchableOpacity>
     </View>
@@ -159,6 +163,7 @@ export default function OrderHistoryScreen({ navigation }) {
               orders.map((order) => (
                 <OrderCard
                   key={order.order_id}
+                  navigation={navigation}
                   order={{
                     id: order.order_id,
                     status: order.order_status,
@@ -167,7 +172,6 @@ export default function OrderHistoryScreen({ navigation }) {
                     placedAt: order.created_at ? new Date(order.created_at).toLocaleDateString() : '',
                     images: order.images || [],
                   }}
-                  onPress={() => {}}
                 />
               ))
             )}
