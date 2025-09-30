@@ -5,13 +5,15 @@ const {
   getOrderById,
   createOrder,
   getOrderItems,
-  createOrderItem
+  createOrderItem,
+  getOrdersByUserId
 } = require('../controllers/orders_handler');
 
 // Orders
 router.get('/orders', getOrders);
 router.get('/orders/:id', getOrderById);
 router.post('/orders', createOrder);
+router.get('/orders/user/:user_id', getOrdersByUserId); // Get all orders by user ID
 
 // Order Items
 router.get('/orders/:id/items', getOrderItems);

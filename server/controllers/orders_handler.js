@@ -10,6 +10,17 @@ const getOrders = async (req, res) => {
   }
 };
 
+// GET all orders by user ID
+const getOrdersByUserId = async (req, res) => {
+  try {
+    const { user_id } = req.params;
+    const result = await db.query('SELECT * FROM orders WHERE user_id = $1 ORDER BY order_id DESC', [user_id]);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 // GET order by ID
 const getOrderById = async (req, res) => {
   try {
@@ -72,4 +83,5 @@ module.exports = {
   createOrder,
   getOrderItems,
   createOrderItem,
+  getOrdersByUserId,
 };

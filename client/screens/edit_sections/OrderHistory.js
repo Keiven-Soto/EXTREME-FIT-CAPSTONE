@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View,
@@ -10,47 +10,49 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-// ---- Mock data ----
-const ORDERS = [
-  {
-    id: '154039262',
-    status: 'Delivered',
-    dateLabel: 'MONDAY, MAR. 17',
-    total: 92.95,
-    placedAt: 'Mar. 9/25',
-    images: [
-      'https://picsum.photos/seed/fit1/600/800',
-      'https://picsum.photos/seed/fit2/600/800',
-    ],
-  },
-  {
-    id: '118140056',
-    status: 'EXCEPTION',
-    dateLabel: null,
-    total: 111.45,
-    placedAt: 'Jul. 30/23',
-    images: [
-      'https://picsum.photos/seed/short1/600/800',
-      'https://picsum.photos/seed/short2/600/800',
-      'https://picsum.photos/seed/short3/600/800',
-    ],
-  },
-  {
-    id: '107717863',
-    status: 'EXCEPTION',
-    dateLabel: null,
-    total: 109.22,
-    placedAt: 'Jan. 5/23',
-    images: [
-      'https://picsum.photos/seed/acc1/600/800',
-      'https://picsum.photos/seed/acc2/600/800',
-      'https://picsum.photos/seed/acc3/600/800',
-      'https://picsum.photos/seed/acc4/600/800',
-    ],
-  },
-];
+// // ---- Mock data ----
+// const ORDERS = [
+//   {
+//     id: '154039262',
+//     status: 'Delivered',
+//     dateLabel: 'MONDAY, MAR. 17',
+//     total: 92.95,
+//     placedAt: 'Mar. 9/25',
+//     images: [
+//       'https://picsum.photos/seed/fit1/600/800',
+//       'https://picsum.photos/seed/fit2/600/800',
+//     ],
+//   },
+//   {
+//     id: '118140056',
+//     status: 'EXCEPTION',
+//     dateLabel: null,
+//     total: 111.45,
+//     placedAt: 'Jul. 30/23',
+//     images: [
+//       'https://picsum.photos/seed/short1/600/800',
+//       'https://picsum.photos/seed/short2/600/800',
+//       'https://picsum.photos/seed/short3/600/800',
+//     ],
+//   },
+//   {
+//     id: '107717863',
+//     status: 'EXCEPTION',
+//     dateLabel: null,
+//     total: 109.22,
+//     placedAt: 'Jan. 5/23',
+//     images: [
+//       'https://picsum.photos/seed/acc1/600/800',
+//       'https://picsum.photos/seed/acc2/600/800',
+//       'https://picsum.photos/seed/acc3/600/800',
+//       'https://picsum.photos/seed/acc4/600/800',
+//     ],
+//   },
+// ];
 
 function OrderCard({ order, onPress }) {
+  // Asegura que order.total es un número
+  const total = typeof order.total === 'number' ? order.total : Number(order.total);
   return (
     <View style={styles.card}>
       <View style={styles.thumbRow}>
@@ -64,7 +66,7 @@ function OrderCard({ order, onPress }) {
       <Text style={styles.metaText}>
         <Text style={{ color: '#666' }}>Order </Text>
         <Text style={styles.metaLink}>#{order.id}</Text>
-        <Text> • ${order.total.toFixed(2)} • {order.placedAt}</Text>
+        <Text> • ${!isNaN(total) ? total.toFixed(2) : '0.00'} • {order.placedAt}</Text>
       </Text>
 
       <TouchableOpacity onPress={onPress} style={styles.detailsBtn}>
@@ -75,14 +77,39 @@ function OrderCard({ order, onPress }) {
 }
 
 export default function OrderHistoryScreen({ navigation }) {
-  const delivered = ORDERS.filter((o) => o.status === 'Delivered');
-  const exceptions = ORDERS.filter((o) => o.status === 'EXCEPTION');
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const userId = 1; // TODO: Reemplaza con el ID del usuario autenticado
+    const fetchOrders = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`http://localhost:5001/api/orders/user/${userId}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        setOrders(Array.isArray(data) ? data : []);
+      } catch (err) {
+        setError('Error loading orders');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrders();
+  }, []);
+
+  // Puedes filtrar por usuario si tienes el user_id
+  // const userOrders = orders.filter(o => o.user_id === currentUserId);
 
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.iconBtn} onPress={() => navigation?.goBack?.()}> 
+        <TouchableOpacity style={styles.iconBtn} onPress={() => navigation?.goBack?.()}>
           <Ionicons name="chevron-back" size={24} color="#111" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Orders</Text>
@@ -92,30 +119,32 @@ export default function OrderHistoryScreen({ navigation }) {
         </View> */}
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Delivered block */}
-        {delivered.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.orderStatus}>Delivered</Text>
-            <Text style={styles.bigTitle}>{delivered[0].dateLabel}</Text>
-            <OrderCard order={delivered[0]} onPress={() => {}} />
-          </View>
-        )}
-
-        {/* Exceptions */}
-        {exceptions.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.orderStatus}>Delivered</Text>
-            <Text style={styles.sectionTitle}>EXCEPTION</Text>
-            {exceptions.map((o) => (
-              <OrderCard key={o.id} order={o} onPress={() => {}} />)
-            )}
-          </View>
-        )}
-      </ScrollView>
+      {loading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text>Loading orders...</Text>
+        </View>
+      ) : error ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text>{error}</Text>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          {orders.length === 0 ? (
+            <Text>No orders found.</Text>
+          ) : (
+            orders.map((order) => (
+              <OrderCard key={order.order_id} order={{
+                id: order.order_id,
+                status: order.order_status,
+                dateLabel: order.created_at ? new Date(order.created_at).toDateString() : '',
+                total: order.total_amount,
+                placedAt: order.created_at ? new Date(order.created_at).toLocaleDateString() : '',
+                images: [], // Puedes hacer otra petición para obtener imágenes de los productos
+              }} onPress={() => {}} />
+            ))
+          )}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
