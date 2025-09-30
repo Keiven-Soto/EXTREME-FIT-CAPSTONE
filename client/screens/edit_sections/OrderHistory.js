@@ -7,68 +7,71 @@ import {
   StyleSheet,
   Image,
   TouchableOpacity,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-// // ---- Mock data ----
-// const ORDERS = [
-//   {
-//     id: '154039262',
-//     status: 'Delivered',
-//     dateLabel: 'MONDAY, MAR. 17',
-//     total: 92.95,
-//     placedAt: 'Mar. 9/25',
-//     images: [
-//       'https://picsum.photos/seed/fit1/600/800',
-//       'https://picsum.photos/seed/fit2/600/800',
-//     ],
-//   },
-//   {
-//     id: '118140056',
-//     status: 'EXCEPTION',
-//     dateLabel: null,
-//     total: 111.45,
-//     placedAt: 'Jul. 30/23',
-//     images: [
-//       'https://picsum.photos/seed/short1/600/800',
-//       'https://picsum.photos/seed/short2/600/800',
-//       'https://picsum.photos/seed/short3/600/800',
-//     ],
-//   },
-//   {
-//     id: '107717863',
-//     status: 'EXCEPTION',
-//     dateLabel: null,
-//     total: 109.22,
-//     placedAt: 'Jan. 5/23',
-//     images: [
-//       'https://picsum.photos/seed/acc1/600/800',
-//       'https://picsum.photos/seed/acc2/600/800',
-//       'https://picsum.photos/seed/acc3/600/800',
-//       'https://picsum.photos/seed/acc4/600/800',
-//     ],
-//   },
-// ];
+/**
+ * @file OrderHistory.js
+ * @brief Pantalla de historial de órdenes para el usuario autenticado.
+ * @module screens/edit_sections/OrderHistory
+ *
+ * Este componente obtiene las órdenes del usuario (user_id=1) desde el backend y las muestra en una lista.
+ * Cada orden se muestra con su total, fecha y un botón para ver detalles.
+ */
 
+// ================== COMPONENTE TARJETA ==================
 function OrderCard({ order, onPress }) {
-  // Asegura que order.total es un número
+  // Calcula 3 columnas iguales dentro de la tarjeta, miniaturas más pequeñas
+  const SCREEN_W = Dimensions.get('window').width;
+  const CARD_HPAD = 12;              // padding horizontal de .card
+  const COLS = 3;
+  const GAP = 8;                     // separación entre miniaturas
+
+  // Tamaño de las imágenes (ajustar aquí si se desea otro tamaño)
+  const itemW = 100;
+  const itemH = 150;
+
+  // Mostrar solo la cantidad de imágenes igual al número de productos (1, 2 o hasta 3)
+  // No rellenar con null si son menos de 3
+  const thumbs = order.images.slice(0, 3);
+
   const total = typeof order.total === 'number' ? order.total : Number(order.total);
+
+  // Contenedor principal de la tarjeta
   return (
     <View style={styles.card}>
-      <View style={styles.thumbRow}>
-        {order.images.slice(0, 3).map((uri, i) => (
-          <View key={i} style={styles.thumbWrap}>
-            <Image source={{ uri }} style={styles.thumb} resizeMode="cover" />
+      {/* Thumbnails row */}
+      <View style={[styles.thumbRow, { gap: GAP }]}> 
+        {thumbs.map((uri, i) => (
+          <View
+            key={i}
+            style={[styles.thumbWrap, { width: itemW, height: itemH }]}
+          >
+            {uri ? (
+              <Image
+                source={{ uri }}
+                style={styles.thumb}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.thumbPlaceholder}>
+                <Ionicons name="image-outline" size={20} color="#9ca3af" />
+                <Text style={styles.placeholderText}>No image</Text>
+              </View>
+            )}
           </View>
         ))}
       </View>
 
+      {/* Order info text */}
       <Text style={styles.metaText}>
         <Text style={{ color: '#666' }}>Order </Text>
         <Text style={styles.metaLink}>#{order.id}</Text>
         <Text> • ${!isNaN(total) ? total.toFixed(2) : '0.00'} • {order.placedAt}</Text>
       </Text>
 
+      {/* Details button */}
       <TouchableOpacity onPress={onPress} style={styles.detailsBtn}>
         <Text style={styles.detailsBtnText}>View Order</Text>
       </TouchableOpacity>
@@ -76,80 +79,108 @@ function OrderCard({ order, onPress }) {
   );
 }
 
+// ================== PANTALLA PRINCIPAL ==================
 export default function OrderHistoryScreen({ navigation }) {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [orders, setOrders] = useState([]); 
+  const [loading, setLoading] = useState(true); 
+  const [error, setError] = useState(null); 
 
   useEffect(() => {
-    const userId = 1; // TODO: Reemplaza con el ID del usuario autenticado
-    const fetchOrders = async () => {
+  // ADVERTENCIA: Si usas un dispositivo físico, usa tu IP local:
+    const API_URL = 'http://192.168.8.143:5001';
+  // const API_URL = 'http://localhost:5001'; // ← Cambiar si es necesario
+
+    const userId = 1; // TODO: Cambiar USER ID dinámico
+
+    const fetchOrdersWithImages = async () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`http://localhost:5001/api/orders/user/${userId}`);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        setOrders(Array.isArray(data) ? data : []);
+        // 1. Obtener las órdenes
+        const response = await fetch(`${API_URL}/api/orders/user/${userId}`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const orders = await response.json();
+
+        // 2. Obtener items + imágenes por orden
+        const ordersWithImages = await Promise.all(
+          orders.map(async (order) => {
+            const itemsRes = await fetch(`${API_URL}/api/orders/${order.order_id}/items`);
+            const orderItems = await itemsRes.json();
+
+            const images = await Promise.all(
+              orderItems.map(async (item) => {
+                const productRes = await fetch(`${API_URL}/api/products/${item.product_id}`);
+                const product = await productRes.json();
+                return product.image_url;
+              })
+            );
+
+            return { ...order, images };
+          })
+        );
+
+        setOrders(ordersWithImages);
       } catch (err) {
         setError('Error loading orders');
       } finally {
         setLoading(false);
       }
     };
-    fetchOrders();
+    fetchOrdersWithImages();
   }, []);
 
-  // Puedes filtrar por usuario si tienes el user_id
-  // const userOrders = orders.filter(o => o.user_id === currentUserId);
-
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.iconBtn} onPress={() => navigation?.goBack?.()}>
-          <Ionicons name="chevron-back" size={24} color="#111" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Orders</Text>
-        {/* <View style={styles.bagWrap}>
-          <Ionicons name="bag-outline" size={22} color="#111" />
-          <View style={styles.badge}><Text style={styles.badgeText}>7</Text></View>
-        </View> */}
-      </View>
+    <SafeAreaView style={styles.safeArea}> 
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => navigation?.goBack?.()}>
+            <Ionicons name="chevron-back" size={24} color="#111" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Orders</Text>
+        </View>
 
-      {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Text>Loading orders...</Text>
-        </View>
-      ) : error ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Text>{error}</Text>
-        </View>
-      ) : (
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          {orders.length === 0 ? (
-            <Text>No orders found.</Text>
-          ) : (
-            orders.map((order) => (
-              <OrderCard key={order.order_id} order={{
-                id: order.order_id,
-                status: order.order_status,
-                dateLabel: order.created_at ? new Date(order.created_at).toDateString() : '',
-                total: order.total_amount,
-                placedAt: order.created_at ? new Date(order.created_at).toLocaleDateString() : '',
-                images: [], // Puedes hacer otra petición para obtener imágenes de los productos
-              }} onPress={() => {}} />
-            ))
-          )}
-        </ScrollView>
-      )}
+        {loading ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <Text>Loading orders...</Text>
+          </View>
+        ) : error ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <Text>{error}</Text>
+            <Text style={{ color: 'red', fontSize: 12, marginTop: 8 }}>
+              {error === 'Error loading orders' ? '¿Estás usando localhost en un dispositivo físico? Usa la IP local de tu PC.' : ''}
+            </Text>
+          </View>
+        ) : (
+          <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+            {orders.length === 0 ? (
+              <Text>No orders found.</Text>
+            ) : (
+              orders.map((order) => (
+                <OrderCard
+                  key={order.order_id}
+                  order={{
+                    id: order.order_id,
+                    status: order.order_status,
+                    dateLabel: order.created_at ? new Date(order.created_at).toDateString() : '',
+                    total: order.total_amount,
+                    placedAt: order.created_at ? new Date(order.created_at).toLocaleDateString() : '',
+                    images: order.images || [],
+                  }}
+                  onPress={() => {}}
+                />
+              ))
+            )}
+          </ScrollView>
+        )}
+      </View>
     </SafeAreaView>
   );
 }
 
+// ================== ESTILOS ==================
 const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: '#fff' },
   container: { flex: 1, backgroundColor: '#fff' },
   header: {
     flexDirection: 'row',
@@ -161,27 +192,10 @@ const styles = StyleSheet.create({
     borderBottomColor: '#e5e7eb',
     backgroundColor: '#fff',
   },
-  headerTitle: { fontSize: 18, fontWeight: '600', color: '#111' , textAlign: 'center', flex: 1 },
+  headerTitle: { fontSize: 18, fontWeight: '600', color: '#111', textAlign: 'center', flex: 1 },
   iconBtn: { padding: 6, borderRadius: 999 },
-  bagWrap: { position: 'relative', padding: 6 },
-  badge: {
-    position: 'absolute',
-    right: 2,
-    top: 0,
-    height: 18,
-    width: 18,
-    borderRadius: 9,
-    backgroundColor: '#ef4444',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
 
   scroll: { padding: 16, paddingBottom: 96 },
-  section: { marginBottom: 28 },
-  orderStatus: { color: '#059669', fontSize: 13, fontWeight: '600', marginBottom: 4 },
-  bigTitle: { fontSize: 24, fontWeight: '800', letterSpacing: 0.3, marginBottom: 12 },
-  sectionTitle: { fontSize: 24, fontWeight: '800', marginBottom: 12 },
 
   card: {
     borderWidth: 1,
@@ -196,9 +210,23 @@ const styles = StyleSheet.create({
     elevation: 2,
     marginBottom: 16,
   },
-  thumbRow: { flexDirection: 'row', gap: 10 },
-  thumbWrap: { flex: 1, borderRadius: 12, overflow: 'hidden', backgroundColor: '#f4f4f5' },
-  thumb: { width: '100%', aspectRatio: 3/4 },
+
+  // ==== miniaturas ====
+  thumbRow: { flexDirection: 'row' },
+  thumbWrap: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#f4f4f5',
+  },
+  thumb: { width: '100%', height: '100%', borderRadius: 8 },
+  thumbPlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  placeholderText: { fontSize: 12, color: '#9ca3af' },
+
   metaText: { marginTop: 10, color: '#111', fontSize: 14 },
   metaLink: { textDecorationLine: 'underline', fontWeight: '600', color: '#111' },
   detailsBtn: {
@@ -209,33 +237,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   detailsBtnText: { fontSize: 16, fontWeight: '700', color: '#111' },
-
-  tabbar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#e5e7eb',
-    backgroundColor: '#fff',
-    paddingHorizontal: 24,
-    paddingBottom: 8,
-    paddingTop: 6,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  tab: { alignItems: 'center', gap: 2, paddingVertical: 6, width: '20%' },
-  tabLabel: { fontSize: 11, color: '#6b7280' },
-  badgeMini: {
-    position: 'absolute',
-    right: -6,
-    top: -4,
-    height: 16,
-    width: 16,
-    borderRadius: 8,
-    backgroundColor: '#ef4444',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeMiniText: { color: '#fff', fontSize: 9, fontWeight: '700' },
 });
