@@ -1,9 +1,7 @@
-// handlers.js - Updated to use PostgreSQL instead of in-memory array
-
 const db = require('../config/database');
 
 // GET all users
-const getItems = async (req, res) => {
+const getUsers = async (req, res) => {
   try {
     const result = await db.query(`
       SELECT 
@@ -26,7 +24,7 @@ const getItems = async (req, res) => {
 };
 
 // GET user by ID
-const getItemById = async (req, res) => {
+const getUserById = async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -60,7 +58,7 @@ const getItemById = async (req, res) => {
 };
 
 // POST create new user
-const postItem = async (req, res) => {
+const postUser = async (req, res) => {
   try {
     console.log('Received request body:', req.body);
     
@@ -109,7 +107,7 @@ const postItem = async (req, res) => {
 };
 
 // UPDATE user by ID  
-const updateItem = async (req, res) => {
+const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
     const { first_name, last_name, phone } = req.body || {};
@@ -175,7 +173,7 @@ const updateItem = async (req, res) => {
 };
 
 // DELETE user by ID
-const deleteItem = async (req, res) => {
+const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -212,4 +210,4 @@ const deleteItem = async (req, res) => {
   }
 };
 
-module.exports = { getItems, getItemById, postItem, updateItem, deleteItem };
+module.exports = { getUsers, getUserById, postUser, updateUser, deleteUser };
