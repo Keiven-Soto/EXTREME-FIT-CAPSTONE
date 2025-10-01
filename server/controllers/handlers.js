@@ -1,9 +1,7 @@
-// handlers.js - Updated to use PostgreSQL instead of in-memory array
-
 const db = require('../config/database');
 
 // GET all users
-const getItems = async (req, res) => {
+const getUsers = async (req, res) => {
   try {
     const result = await db.query(`
       SELECT 
@@ -26,7 +24,7 @@ const getItems = async (req, res) => {
 };
 
 // GET user by ID
-const getItemById = async (req, res) => {
+const getUserById = async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -60,20 +58,20 @@ const getItemById = async (req, res) => {
 };
 
 // POST create new user
-const postItem = async (req, res) => {
+const postUser = async (req, res) => {
   try {
+    console.log('Received request body:', req.body);
+    
     const { first_name, last_name, email, password_hash, phone } = req.body || {};
-
-    // Validation
-    if (!first_name || !last_name || !email) {
+    
+    if (!first_name?.trim() || !email?.trim()) {
       return res.status(400).json({ 
-        error: 'First name, last name, and email are required' 
+        error: 'First name and email are required' 
       });
     }
 
-    // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(email.trim())) {
       return res.status(400).json({ 
         error: 'Please provide a valid email address' 
       });
@@ -83,7 +81,13 @@ const postItem = async (req, res) => {
       INSERT INTO users (first_name, last_name, email, password_hash, phone) 
       VALUES ($1, $2, $3, $4, $5) 
       RETURNING user_id, first_name, last_name, email, phone, created_at
-    `, [first_name, last_name, email, password_hash || 'temp_hash', phone]);
+    `, [
+      first_name.trim(), 
+      (last_name || '').trim(), 
+      email.trim(), 
+      password_hash || 'temp_hash', 
+      (phone || '').trim()
+    ]);
 
     res.status(201).json({
       message: 'User created successfully',
@@ -92,7 +96,6 @@ const postItem = async (req, res) => {
   } catch (error) {
     console.error('Error creating user:', error);
     
-    // Handle unique constraint violation (duplicate email)
     if (error.code === '23505') {
       return res.status(400).json({ 
         error: 'Email already exists. Please use a different email address.' 
@@ -104,7 +107,7 @@ const postItem = async (req, res) => {
 };
 
 // UPDATE user by ID  
-const updateItem = async (req, res) => {
+const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
     const { first_name, last_name, phone } = req.body || {};
@@ -170,7 +173,7 @@ const updateItem = async (req, res) => {
 };
 
 // DELETE user by ID
-const deleteItem = async (req, res) => {
+const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -207,4 +210,4 @@ const deleteItem = async (req, res) => {
   }
 };
 
-module.exports = { getItems, getItemById, postItem, updateItem, deleteItem };
+module.exports = { getUsers, getUserById, postUser, updateUser, deleteUser };

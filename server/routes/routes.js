@@ -1,20 +1,39 @@
 const express = require('express');
 const router = express.Router();
-const { getItems,getItemById, postItem, updateItem, deleteItem } = require('../controllers/handlers');
+const { getUsers, getUserById, postUser, updateUser, deleteUser } = require('../controllers/handlers');
 
-// GET all items
-router.get('/items', getItems);
+// Test database connection endpoint
+router.get('/test-db', async (req, res) => {
+  try {
+    const db = require('../config/database');
+    const result = await db.query('SELECT NOW() as current_time, version()');
+    res.json({ 
+      status: 'Connected ✅', 
+      database: process.env.DB_NAME || 'extremefit_dev',
+      timestamp: result.rows[0].current_time,
+      version: result.rows[0].version
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      status: 'Error ❌', 
+      message: error.message 
+    });
+  }
+});
 
-// Get By ID
-router.get('/items/:id',getItemById);
+// GET all users
+router.get('/users', getUsers);
 
-// POST a new item
-router.post('/items', postItem);
+// Get user by ID
+router.get('/users/:id', getUserById);
 
-// UPDATE an item by ID
-router.put('/items/:id', updateItem);
+// POST a new user
+router.post('/users', postUser);
 
-// DELETE an item by ID
-router.delete('/items/:id', deleteItem);
+// UPDATE a user by ID
+router.put('/users/:id', updateUser);
+
+// DELETE a user by ID
+router.delete('/users/:id', deleteUser);
 
 module.exports = router;
