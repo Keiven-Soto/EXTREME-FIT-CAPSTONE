@@ -139,10 +139,10 @@ export const ApiService = {
   // Products Management (future endpoints)
   products: {
     getAll: async () => {
-      return await apiRequest('/api/products');
+      return await apiRequest("/api/products");
     },
     getGenders: async () => {
-      return await apiRequest('/api/products/genders');
+      return await apiRequest("/api/products/genders");
     },
     getById: async (productId) => {
       return await apiRequest(`/api/products/${productId}`);
@@ -245,6 +245,18 @@ export const ApiService = {
       return await apiRequest(`/api/addresses/${addressId}`, {
         method: "DELETE",
       });
+    },
+  },
+
+  // Categories Management
+  categories: {
+    // Get all categories
+    getAll: async () => {
+      return await apiRequest("/api/categories");
+    },
+
+    getByGender: async (gender) => {
+      return await apiRequest(`/api/categories/${gender}`);
     },
   },
 };

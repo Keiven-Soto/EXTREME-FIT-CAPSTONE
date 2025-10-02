@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { use, useEffect, useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Colors from "../colors";
 import {
@@ -10,38 +10,32 @@ import {
   TouchableOpacity,
   Dimensions,
   Pressable,
-  TextInput,
-  Alert
+  Alert,
 } from "react-native";
-import { ActivityIndicator } from "react-native";
 import ApiService from "../services/api";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 // dynamic adjustment to device screen width
 const { width } = Dimensions.get("window");
 
-export default function HomeScreen() {
+export default function HomeScreen({ navigation }) {
   const [genders, setGenders] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState("Unisex");
-  const [searchText, setSearchText] = useState("");
-
-  const handleSearch = () => {
-    console.log("Searching:", searchText);
-  };
-
-  const clearSearch = () => {
-    setSearchText("");
-  };
+  const [selected, setSelected] = useState("");
 
   useEffect(() => {
     loadGenders();
   }, []);
 
+  useEffect(() => {
+    if (selected) loadCategories(selected);
+  }, [selected]);
+
   const loadGenders = async () => {
     try {
       setLoading(true);
       const result = await ApiService.products.getGenders();
-      console.log("API Response:", result);
 
       if (result.success) {
         // Normalize the capitalization of the gender strings
@@ -54,20 +48,39 @@ export default function HomeScreen() {
         }));
 
         setGenders(normalizedGenders);
-
-        if (normalizedGenders.length > 0 && !selected) {
+        if (normalizedGenders.length > 0) {
           setSelected(normalizedGenders[0].gender); // Set the first gender as default
         }
       } else {
-        Alert.alert('Error', 'Failed to load genders');
+        Alert.alert("Error", "Failed to load genders");
       }
     } catch (error) {
-      console.error('Error loading genders:', error);
-      Alert.alert('Error', 'Failed to connect to server');
+      console.error("Error loading genders:", error);
+      Alert.alert("Error", "Failed to connect to server");
     } finally {
       setLoading(false);
     }
-  }
+  };
+
+  const loadCategories = async (gender) => {
+    try {
+      setLoading(true);
+      const result = await ApiService.categories.getByGender(
+        gender.toLowerCase()
+      );
+
+      if (result.success) {
+        setCategories(result.data);
+      } else {
+        Alert.alert("Error", "Failed to load categories");
+      }
+    } catch (error) {
+      console.error("Error loading categories:", error);
+      Alert.alert("Error", "Failed to connect to server");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={styles.screenContainer}>
@@ -90,7 +103,7 @@ export default function HomeScreen() {
           keyExtractor={(item) => item.gender}
           horizontal
           showsHorizontalScrollIndicator={false}
-          ListEmptyComponent={<Text>No gender categories available</Text>}
+          ListEmptyComponent={<Text>No options available</Text>}
           renderItem={({ item }) => {
             const isActive = selected === item.gender;
             return (
@@ -116,58 +129,33 @@ export default function HomeScreen() {
         />
       </View>
 
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <Ionicons
-            name="search"
-            size={20}
-            color={Colors.grayIcon}
-            style={styles.searchIcon}
-          />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search products..."
-            placeholderTextColor={Colors.grayIcon}
-            value={searchText}
-            onChangeText={setSearchText}
-            onSubmitEditing={handleSearch}
-          />
-          {searchText.length > 0 && (
-            <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
-              <Ionicons name="close-circle" size={20} color={Colors.grayIcon} />
+      {/* Categories Grid */}
+      <SafeAreaView>
+        <FlatList
+          data={categories}
+          keyExtractor={(item) => item.category_id}
+          numColumns={2}
+          ListEmptyComponent={<Text>No categories available</Text>}
+          columnWrapperStyle={{
+            justifyContent: "space-between",
+            paddingHorizontal: 16,
+          }}
+          showsVerticalScrollIndicator={true}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.categoryCard}
+              onPress={() =>
+                navigation.navigate("Shop", { category: item.category_id })
+              }
+            >
+              <View style={styles.categoryContent}>
+                <Text style={styles.categoryName}>{item.name}</Text>
+                <Ionicons name="chevron-forward" style={styles.categoryIcon} />
+              </View>
             </TouchableOpacity>
           )}
-          <TouchableOpacity
-            style={styles.filterIconButton}
-            onPress={handleSearch}
-          >
-            <Ionicons name="options" size={20} color={Colors.mainColor} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Feature Grid
-      <FlatList
-        data={categories.find((c) => c.id === selected)?.features || []}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        columnWrapperStyle={{
-          justifyContent: "space-between",
-          paddingHorizontal: 16,
-        }}
-        showsVerticalScrollIndicator={true}
-        renderItem={({ item }) => (
-          <TouchableOpacity style={styles.featureCard}>
-            <Image source={item.image} style={styles.featureImage} />
-            <View style={styles.featureContent}>
-              <Text style={styles.featureName}>{item.name}</Text>
-              <Ionicons name="chevron-forward" style={styles.featureIcon} />
-            </View>
-          </TouchableOpacity>
-        )}
-        contentContainerStyle={{ paddingBottom: 40 }}
-      /> */}
+        />
+      </SafeAreaView>
     </View>
   );
 }
@@ -217,7 +205,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
 
-  featureCard: {
+  categoryCard: {
     width: CARD_WIDTH,
     height: 200,
     backgroundColor: "#fff",
@@ -237,7 +225,7 @@ const styles = StyleSheet.create({
     resizeMode: "cover",
   },
 
-  featureContent: {
+  categoryContent: {
     width: "100%",
     padding: 8,
     paddingTop: 16,
@@ -246,43 +234,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  featureName: {
+  categoryName: {
     fontSize: 16,
     fontWeight: "700",
     color: "#222",
   },
 
-  featureIcon: {
+  categoryIcon: {
     fontSize: 20,
     color: "#888",
-  },
-
-  searchContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: Colors.whiteBackground,
-    borderRadius: 12,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    shadowColor: Colors.shadowColor,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-
-  searchIcon: {
-    marginRight: 10,
-  },
-
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: Colors.darkText,
   },
 });
