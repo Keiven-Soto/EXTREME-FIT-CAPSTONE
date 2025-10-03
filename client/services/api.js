@@ -53,7 +53,7 @@ const apiRequest = async (endpoint, options = {}) => {
     }
 
     console.log(`API Success: ${endpoint}`);
-    return { success: true, data };
+    return data;
   } catch (error) {
     console.error(`API Error for ${endpoint}:`, error.message);
     

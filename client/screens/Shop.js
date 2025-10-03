@@ -17,7 +17,7 @@ import { getCloudinaryImageUrl } from '../utils/cloudinary';
 import Colors from '../colors';
 import { format } from '@cloudinary/url-gen/actions/delivery';
 
-export default function ShopScreen() {
+export default function ShopScreen({ navigation }) {
   const [searchText, setSearchText] = useState('');
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -64,36 +64,40 @@ export default function ShopScreen() {
 
     const imageSource = getImageSource();
 
-  return (
-    <TouchableOpacity key={product.product_id} style={styles.productCard}>
-      {imageSource ? (
-        <Image
-          source={imageSource}
-          style={styles.productImage}
-          onError={() => console.log('Image failed to load for product:', product.name)}
-        />
-      ) : (
-        <View style={styles.productImagePlaceholder}>
-          <Text style={styles.placeholderText}>No Image</Text>
-        </View>
-      )}
-
-      {/* Wrap text in a container */}
-      <View style={styles.productInfo}>
-        <Text style={styles.productName} numberOfLines={2}>
-          {product.name}
-        </Text>
-        <Text style={styles.productPrice}>
-          ${parseFloat(product.price).toFixed(2)}
-        </Text>
-        {product.gender && (
-          <Text style={styles.productGender}>
-            {product.gender}
-          </Text>
+    return (
+      <TouchableOpacity 
+        key={product.product_id} 
+        style={styles.productCard}
+        onPress={() => navigation.navigate('ProductDetails', { productId: product.product_id })}
+        >
+        {imageSource ? (
+          <Image
+            source={imageSource}
+            style={styles.productImage}
+            onError={() => console.log('Image failed to load for product:', product.name)}
+          />
+        ) : (
+          <View style={styles.productImagePlaceholder}>
+            <Text style={styles.placeholderText}>No Image</Text>
+          </View>
         )}
-      </View>
-    </TouchableOpacity>
-  );
+
+        {/* Wrap text in a container */}
+        <View style={styles.productInfo}>
+          <Text style={styles.productName} numberOfLines={2}>
+            {product.name}
+          </Text>
+          <Text style={styles.productPrice}>
+            ${parseFloat(product.price).toFixed(2)}
+          </Text>
+          {product.gender && (
+            <Text style={styles.productGender}>
+              {product.gender}
+            </Text>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
 
   };
 
