@@ -1,6 +1,5 @@
 // services/api.js
 import Constants from "expo-constants";
-import { get } from "react-native/Libraries/TurboModule/TurboModuleRegistry";
 
 // API Configuration with improved network detection
 const getApiUrl = () => {
@@ -58,7 +57,7 @@ const apiRequest = async (endpoint, options = {}) => {
     }
 
     console.log(`API Success: ${endpoint}`);
-    return { success: true, data };
+    return data;
   } catch (error) {
     console.error(`API Error for ${endpoint}:`, error.message);
 
@@ -138,20 +137,29 @@ export const ApiService = {
 
   // Products Management (future endpoints)
   products: {
+    // Get all products
     getAll: async () => {
       return await apiRequest("/api/products");
     },
+
+    // Get all genders
     getGenders: async () => {
       return await apiRequest("/api/products/genders");
     },
+
+    // Get product by ID
     getById: async (productId) => {
       return await apiRequest(`/api/products/${productId}`);
     },
+
+    // Search products by query
     search: async (query) => {
       return await apiRequest(
         `/api/products/search?q=${encodeURIComponent(query)}`
       );
     },
+
+    // Get products by category
     getByCategory: async (category) => {
       return await apiRequest(`/api/products/category/${category}`);
     },
@@ -159,21 +167,28 @@ export const ApiService = {
 
   // Cart Management (future endpoints)
   cart: {
+    // Get cart items by user ID
     get: async (userId) => {
       return await apiRequest(`/api/cart/${userId}`);
     },
+
+    // Add item to cart
     addItem: async (userId, productId, quantity = 1) => {
       return await apiRequest("/api/cart/add", {
         method: "POST",
         body: { userId, productId, quantity },
       });
     },
+
+    // Remove item from cart
     removeItem: async (userId, productId) => {
       return await apiRequest("/api/cart/remove", {
         method: "DELETE",
         body: { userId, productId },
       });
     },
+
+    // Update exisitng cart item quantity
     updateQuantity: async (userId, productId, quantity) => {
       return await apiRequest("/api/cart/update", {
         method: "PUT",
@@ -184,15 +199,20 @@ export const ApiService = {
 
   // Orders Management (future endpoints)
   orders: {
+    // Create a new order
     create: async (orderData) => {
       return await apiRequest("/api/orders", {
         method: "POST",
         body: orderData,
       });
     },
+
+    // Get orders by user ID
     getByUser: async (userId) => {
       return await apiRequest(`/api/orders/user/${userId}`);
     },
+
+    // Get order by ID
     getById: async (orderId) => {
       return await apiRequest(`/api/orders/${orderId}`);
     },
@@ -200,15 +220,20 @@ export const ApiService = {
 
   // Wishlist Management (future endpoints)
   wishlist: {
+    // Get wishlist items for a user
     get: async (userId) => {
       return await apiRequest(`/api/wishlist/${userId}`);
     },
+
+    // Add item to wishlist
     add: async (userId, productId) => {
       return await apiRequest("/api/wishlist/add", {
         method: "POST",
         body: { userId, productId },
       });
     },
+
+    // Remove item from wishlist
     remove: async (userId, productId) => {
       return await apiRequest("/api/wishlist/remove", {
         method: "DELETE",
@@ -219,12 +244,12 @@ export const ApiService = {
 
   // Addresses Management
   addresses: {
-    // Obtener todas las direcciones de un usuario
+    // Get an existing address by user ID
     getByUser: async (userId) => {
       return await apiRequest(`/api/addresses/user/${userId}`);
     },
 
-    // Crear una nueva dirección
+    // Create a new address
     create: async (userId, addressData) => {
       return await apiRequest(`/api/addresses/user/${userId}`, {
         method: "POST",
@@ -232,7 +257,7 @@ export const ApiService = {
       });
     },
 
-    // Actualizar una dirección existente
+    // Update an existing address
     update: async (addressId, addressData) => {
       return await apiRequest(`/api/addresses/${addressId}`, {
         method: "PUT",
@@ -240,7 +265,7 @@ export const ApiService = {
       });
     },
 
-    // Eliminar una dirección
+    // Remove an existing address
     delete: async (addressId) => {
       return await apiRequest(`/api/addresses/${addressId}`, {
         method: "DELETE",
@@ -248,13 +273,13 @@ export const ApiService = {
     },
   },
 
-  // Categories Management
   categories: {
     // Get all categories
     getAll: async () => {
       return await apiRequest("/api/categories");
     },
 
+    // Get categories filtered by gender
     getByGender: async (gender) => {
       return await apiRequest(`/api/categories/${gender}`);
     },
