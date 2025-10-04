@@ -6,7 +6,7 @@ const {
   postUser,
   updateUser,
   deleteUser,
-} = require("../controllers/handlers");
+} = require("../controllers/users_handlers");
 
 // Test database connection endpoint
 router.get("/test-db", async (req, res) => {

@@ -1,5 +1,4 @@
 const db = require("../config/database");
-const { get } = require("../routes/categories");
 
 // GET all categories
 const getCategories = async (req, res) => {
@@ -12,11 +11,18 @@ const getCategories = async (req, res) => {
       FROM categories 
     `);
 
-    res.json(result.rows);
+    res.json({
+      success: true,
+      data: result.rows,
+    });
+
     console.log("✅ Fetched categories.");
   } catch (error) {
-    console.error("Error fetching categories:", error);
-    res.status(500).json({ error: error.message });
+    console.error(" ❌ Error fetching categories:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
   }
 };
 
@@ -43,11 +49,17 @@ const getCategoriesByGender = async (req, res) => {
       [gender]
     );
 
-    res.json(result.rows);
+    res.json({
+      success: true,
+      data: result.rows,
+    });
     console.log("✅ Fetched filtered categories.");
   } catch (error) {
-    console.error("Error fetching products by category:", error);
-    res.status(500).json({ error: error.message });
+    console.error("❌ Error fetching filtered categories:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
   }
 };
 

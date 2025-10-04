@@ -83,7 +83,7 @@ export default function HomeScreen({ navigation }) {
   };
 
   return (
-    <View style={styles.screenContainer}>
+    <SafeAreaView style={styles.screenContainer}>
       {/* Logo */}
       <Image
         source={require("../assets/Extreme_fit_new_logo-10.png")}
@@ -92,6 +92,7 @@ export default function HomeScreen({ navigation }) {
           height: 200,
           alignSelf: "center",
           marginBottom: -40,
+          marginTop: -20,
         }}
         resizeMode="contain"
       />
@@ -130,7 +131,7 @@ export default function HomeScreen({ navigation }) {
       </View>
 
       {/* Categories Grid */}
-      <SafeAreaView>
+      <View>
         <FlatList
           data={categories}
           keyExtractor={(item) => item.category_id}
@@ -155,8 +156,8 @@ export default function HomeScreen({ navigation }) {
             </TouchableOpacity>
           )}
         />
-      </SafeAreaView>
-    </View>
+      </View>
+    </SafeAreaView>
   );
 }
 

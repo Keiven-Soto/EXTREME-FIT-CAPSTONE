@@ -78,11 +78,18 @@ const getGenders = async (req, res) => {
       FROM products
     `);
 
-    res.json(result.rows);
-    console.log("Fetched data: ", result.rows);
+    res.json({
+      success: true,
+      data: result.rows,
+    });
+
+    console.log("✅ Fetched genders.");
   } catch (error) {
-    console.error("Error fetching products:", error);
-    res.status(500).json({ error: error.message });
+    console.error("Error fetching genders:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
   }
 };
 
