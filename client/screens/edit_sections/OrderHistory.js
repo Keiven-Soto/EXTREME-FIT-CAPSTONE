@@ -10,6 +10,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import ApiService from '../../services/api';
 
 /**
  * @file OrderHistory.js
@@ -90,41 +91,49 @@ export default function OrderHistoryScreen({ navigation }) {
   const [error, setError] = useState(null); 
 
   useEffect(() => {
-  // ADVERTENCIA: Si usas un dispositivo físico, usa tu IP local:
-    const API_URL = 'http://192.168.8.143:5001';
-  // const API_URL = 'http://localhost:5001'; // ← Cambiar si es necesario
-
     const userId = 1; // TODO: Cambiar USER ID dinámico
 
     const fetchOrdersWithImages = async () => {
       setLoading(true);
       setError(null);
       try {
-        // 1. Obtener las órdenes
-        const response = await fetch(`${API_URL}/api/orders/user/${userId}`);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const orders = await response.json();
+        // 1. Obtener las órdenes usando ApiService
+        const ordersResult = await ApiService.orders.getByUser(userId);
+        if (!ordersResult.success) {
+          throw new Error(ordersResult.error || 'Failed to fetch orders');
+        }
+        const orders = ordersResult.data || [];
 
         // 2. Obtener items + imágenes por orden
         const ordersWithImages = await Promise.all(
           orders.map(async (order) => {
-            const itemsRes = await fetch(`${API_URL}/api/orders/${order.order_id}/items`);
-            const orderItems = await itemsRes.json();
+            try {
+              // Obtener items de la orden
+              const itemsResult = await ApiService.orders.getItems(order.order_id);
+              const orderItems = itemsResult.success ? itemsResult.data || [] : [];
 
-            const images = await Promise.all(
-              orderItems.map(async (item) => {
-                const productRes = await fetch(`${API_URL}/api/products/${item.product_id}`);
-                const product = await productRes.json();
-                return product.image_url;
-              })
-            );
+              // Obtener imágenes de productos
+              const images = await Promise.all(
+                orderItems.map(async (item) => {
+                  try {
+                    const productResult = await ApiService.products.getById(item.product_id);
+                    return productResult.success ? productResult.data?.image_url : null;
+                  } catch {
+                    return null;
+                  }
+                })
+              );
 
-            return { ...order, images };
+              return { ...order, images: images.filter(Boolean) };
+            } catch {
+              return { ...order, images: [] };
+            }
           })
         );
 
         setOrders(ordersWithImages);
       } catch (err) {
+        console.error('Order fetch error:', err);
         setError('Error loading orders');
       } finally {
         setLoading(false);

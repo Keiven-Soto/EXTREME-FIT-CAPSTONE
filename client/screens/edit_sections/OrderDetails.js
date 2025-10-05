@@ -9,6 +9,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import ApiService from '../../services/api';
+import { getCloudinaryImageUrl } from '../../utils/cloudinary';
 
 /* ========= Helpers para las secciones de info ========= */
 function InfoSection({ title, children }) {
@@ -37,82 +39,78 @@ export default function OrderDetailsSection({ navigation, route }) {
   const [error, setError] = useState(null);
   const [order, setOrder] = useState(passedOrder); // { id, items[], totals... }
 
+  
   // Cambia a tu IP local si usas dispositivo físico
-  const API_URL = 'http://192.168.8.143:5001';
+  const API_URL = 'http://localhost:5001';
 
   // Si solo vino el orderId, hacemos fetch de items y totales
-  useEffect(() => {
-    const fetchOrder = async () => {
-      if (order || !passedOrderId) return; // ya hay datos
-      try {
-        setLoading(true);
-        // 1) Orden base
-        const baseRes = await fetch(`${API_URL}/api/orders/${passedOrderId}`);
-        const base = await baseRes.json();
-        // 2) Items de la orden
-        const itemsRes = await fetch(`${API_URL}/api/orders/${passedOrderId}/items`);
-        const items = await itemsRes.json();
+useEffect(() => {
+  const fetchOrder = async () => {
+    if (order || !passedOrderId) return;
+    try {
+      setLoading(true);
+      
+      // 1) Get order base data using ApiService
+      const baseResult = await ApiService.orders.getById(passedOrderId);
+      if (!baseResult.success) throw new Error(baseResult.error);
+      const base = baseResult.data;
+      
+      // 2) Get order items using ApiService
+      const itemsResult = await ApiService.orders.getOrderItems(passedOrderId);
+      if (!itemsResult.success) throw new Error(itemsResult.error);
+      const items = itemsResult.data;
 
-        // 3) Para cada item, obtén info del producto (imagen y nombre)
-        const hydrated = await Promise.all(
-          items.map(async (it) => {
-            const prodRes = await fetch(`${API_URL}/api/products/${it.product_id}`);
-            const product = await prodRes.json();
-            return {
-              ...it,
-              name: product?.name || `Product #${it.product_id}`,
-              size: it.size || product?.size || '',
-              image_url: product?.image_url || null,
-              unit_price: Number(it.unit_price || product?.price || 0),
-              qty: Number(it.quantity || 1),
-            };
-          })
-        );
+      // 3) For each item, get product info (image and name)
+      const hydrated = await Promise.all(
+        items.map(async (it) => {
+          const prodResult = await ApiService.products.getById(it.product_id);
+          // Handle response format (might be double-wrapped)
+          const product = prodResult.data?.data || prodResult.data;
+          
+          return {
+            ...it,
+            name: product?.name || `Product #${it.product_id}`,
+            size: it.size || '',
+            image_url: product?.cloudinary_public_id 
+              ? getCloudinaryImageUrl(product.cloudinary_public_id)
+              : null,
+            unit_price: Number(it.unit_price || product?.price || 0),
+            qty: Number(it.quantity || 1),
+          };
+        })
+      );
 
-        // 4) Totales
-        const subtotal = hydrated.reduce((acc, it) => acc + it.unit_price * it.qty, 0);
-        const shipping = Number(base?.shipping_cost || 0);
-        const taxes = Number(base?.tax_amount || 0);
-        const total = Number(base?.total_amount ?? subtotal + shipping + taxes);
+      // 4) Calculate totals
+      const subtotal = hydrated.reduce((acc, it) => acc + it.unit_price * it.qty, 0);
+      const shipping = Number(base?.shipping_cost || 0);
+      const taxes = 0; // Your orders table doesn't have tax_amount field
+      const total = Number(base?.total_amount || subtotal + shipping);
 
-        // 5) Hidratar campos extra para las secciones
-        setOrder({
-          id: base?.order_id ?? passedOrderId,
-          createdAt: base?.created_at,
-          status: base?.order_status,
-          currency: 'USD',
-          items: hydrated,
-          charges: { subtotal, shipping, taxes, total },
+      // 5) Set order data
+      setOrder({
+        id: base?.order_id ?? passedOrderId,
+        createdAt: base?.created_at,
+        status: base?.order_status,
+        currency: 'USD',
+        items: hydrated,
+        charges: { subtotal, shipping, taxes, total },
+        
+        // These fields don't exist in your orders table, so they'll be empty
+        contact: { name: '', email: '' },
+        shippingMethod: 'Standard',
+        payment: { method: base?.payment_method || '', last4: '' },
+        shippingAddress: { line1: '', line2: '', cityStateZip: '', country: '' },
+        billingAddress: { line1: '', line2: '', cityStateZip: '', country: '' },
+      });
+    } catch (e) {
+      console.error('Order fetch error:', e);
+      setError('Error loading order');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-          // Contact info: preferir user_name/user_email si existen, si no contact_name/contact_email
-          contact: {
-            name: base?.user_name || base?.contact_name || '',
-            email: base?.user_email || base?.contact_email || '',
-          },
-          shippingMethod: base?.shipping_method || 'Standard',
-          payment: { method: base?.payment_method || 'Card', last4: base?.card_last4 },
-
-          shippingAddress: {
-            line1: base?.ship_line1,
-            line2: base?.ship_line2,
-            cityStateZip: [base?.ship_city, base?.ship_state, base?.ship_zip].filter(Boolean).join(', '),
-            country: base?.ship_country,
-          },
-          billingAddress: {
-            line1: base?.bill_line1,
-            line2: base?.bill_line2,
-            cityStateZip: [base?.bill_city, base?.bill_state, base?.bill_zip].filter(Boolean).join(', '),
-            country: base?.bill_country,
-          },
-        });
-      } catch (e) {
-        setError('Error loading order');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchOrder();
+  fetchOrder();
   }, [passedOrderId]);
 
   // Si vino el objeto completo desde OrderHistory, normalizamos la forma
