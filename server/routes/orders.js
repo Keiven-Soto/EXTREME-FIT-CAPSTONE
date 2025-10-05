@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   getOrders,
-  getOrderById,
+  getOrderByIdWithDetails,
   createOrder,
   getOrderItems,
   createOrderItem,
@@ -11,7 +11,7 @@ const {
 
 // Orders
 router.get('/orders', getOrders);
-router.get('/orders/:id', getOrderById);
+router.get('/orders/:id', getOrderByIdWithDetails);
 router.post('/orders', createOrder);
 router.get('/orders/user/:user_id', getOrdersByUserId); // Get all orders by user ID
 

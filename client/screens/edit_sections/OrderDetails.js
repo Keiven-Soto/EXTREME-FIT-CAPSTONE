@@ -43,6 +43,9 @@ export default function OrderDetailsSection({ navigation, route }) {
   // Cambia a tu IP local si usas dispositivo físico
   const API_URL = 'http://localhost:5001';
 
+  // const API_URL = 'http://192.168.8.143:5001';
+  
+
   // Si solo vino el orderId, hacemos fetch de items y totales
 useEffect(() => {
   const fetchOrder = async () => {
@@ -86,29 +89,38 @@ useEffect(() => {
       const taxes = 0; // Your orders table doesn't have tax_amount field
       const total = Number(base?.total_amount || subtotal + shipping);
 
-      // 5) Set order data
-      setOrder({
-        id: base?.order_id ?? passedOrderId,
-        createdAt: base?.created_at,
-        status: base?.order_status,
-        currency: 'USD',
-        items: hydrated,
-        charges: { subtotal, shipping, taxes, total },
-        
-        // These fields don't exist in your orders table, so they'll be empty
-        contact: { name: '', email: '' },
-        shippingMethod: 'Standard',
-        payment: { method: base?.payment_method || '', last4: '' },
-        shippingAddress: { line1: '', line2: '', cityStateZip: '', country: '' },
-        billingAddress: { line1: '', line2: '', cityStateZip: '', country: '' },
-      });
-    } catch (e) {
-      console.error('Order fetch error:', e);
-      setError('Error loading order');
-    } finally {
-      setLoading(false);
-    }
-  };
+        // 5) Hidratar campos extra para las secciones
+        setOrder({
+          id: base?.order_id ?? passedOrderId,
+          createdAt: base?.created_at,
+          status: base?.order_status,
+          currency: 'USD',
+          items: hydrated,
+          charges: { subtotal, shipping, taxes, total },
+
+          // Contact info: usar nombre y email reales del usuario
+          contact: {
+            name: [base?.first_name, base?.last_name].filter(Boolean).join(' '),
+            email: base?.email || '',
+          },
+          shippingMethod: base?.shipping_method || 'Standard',
+          payment: { method: base?.payment_method || 'Card', last4: base?.card_last4 },
+
+          address: {
+            street_address: base?.street_address || '',
+            city: base?.city || '',
+            state: base?.state || '',
+            postal_code: base?.postal_code || '',
+            country: base?.country || '',
+          },
+        });
+      } catch (e) {
+        console.error('Order fetch error:', e);
+        setError('Error loading order');
+      } finally {
+        setLoading(false);
+      }
+    };
 
   fetchOrder();
   }, [passedOrderId]);
@@ -167,10 +179,6 @@ useEffect(() => {
             <Ionicons name="chevron-back" size={24} color="#111" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Order Details</Text>
-          <View style={styles.cartWrap}>
-            <Ionicons name="bag-outline" size={22} color="#111" />
-            <View style={styles.badge}><Text style={styles.badgeText}>7</Text></View>
-          </View>
         </View>
 
         {/* Body */}
@@ -180,34 +188,39 @@ useEffect(() => {
           <View style={styles.center}><Text>{error}</Text></View>
         ) : (
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-            {/* Items */}
-            {order?.items?.map((it, i) => (
-              <View key={i} style={styles.itemRow}>
-                <View style={styles.thumbWrap}>
-                  {it?.image_url ? (
-                    <Image source={{ uri: it.image_url }} style={styles.thumb} />
-                  ) : (
-                    <View style={styles.thumbPlaceholder}>
-                      <Ionicons name="image-outline" size={20} color="#9ca3af" />
-                    </View>
-                  )}
-                  <View style={styles.qtyBadge}>
-                    <Text style={styles.qtyText}>{it.qty ?? 1}</Text>
-                  </View>
+        {/* Items */}
+        {order?.items?.map((it, i) => (
+        <View key={i} style={styles.itemRow}>
+          <View style={styles.thumbWrap}>
+            <View style={styles.innerThumb}>
+              {it?.image_url ? (
+                <Image source={{ uri: it.image_url }} style={styles.thumb} />
+              ) : (
+                <View style={styles.thumbPlaceholder}>
+                  <Ionicons name="image-outline" size={20} color="#9ca3af" />
                 </View>
+              )}
+            </View>
 
-                <View style={styles.itemInfo}>
-                  <Text style={styles.itemTitle} numberOfLines={2}>
-                    {it.name || `Product #${it.product_id}`}
-                  </Text>
-                  {!!it.size && <Text style={styles.itemSub}>{it.size}</Text>}
-                </View>
+            {/* Quantity badge estilo “rounded square” */}
+            <View style={styles.qtyBadge}>
+              <Text style={styles.qtyText}>{it.qty ?? 1}</Text>
+            </View>
+          </View>
 
-                <Text style={styles.itemPrice}>
-                  ${Number(it.unit_price || 0).toFixed(2)}
-                </Text>
-              </View>
-            ))}
+          <View style={styles.itemInfo}>
+            <Text style={styles.itemTitle} numberOfLines={2}>
+              {it.name || `Product #${it.product_id}`}
+            </Text>
+            {!!it.size && <Text style={styles.itemSub}>{it.size}</Text>}
+          </View>
+
+          <Text style={styles.itemPrice}>
+            ${Number(it.unit_price || 0).toFixed(2)}
+          </Text>
+        </View>
+        ))}
+
 
             <View style={styles.divider} />
 
@@ -240,16 +253,16 @@ useEffect(() => {
                 <InfoLine text={order?.contact?.email} />
               </InfoSection>
 
-              <InfoSection title="SHIPPING ADDRESS">
-                <InfoLine text={order?.shippingAddress?.line1} />
-                <InfoLine text={order?.shippingAddress?.line2} />
-                <InfoLine text={order?.shippingAddress?.cityStateZip} />
-                <InfoLine text={order?.shippingAddress?.country} />
+              <InfoSection title="ADDRESS">
+                <InfoLine text={order?.address?.street_address} />
+                <InfoLine text={order?.address?.city} />
+                <InfoLine text={order?.address?.state} />
+                <InfoLine text={order?.address?.postal_code} />
+                <InfoLine text={order?.address?.country} />
               </InfoSection>
 
               <InfoSection title="PAYMENT METHOD">
                 <InfoLine text={order?.payment?.method} />
-                <InfoLine text={order?.payment?.last4 ? `•••• ${order.payment.last4}` : ''} />
               </InfoSection>
 
 
@@ -298,12 +311,28 @@ const styles = StyleSheet.create({
   itemRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12,
   },
-  thumbWrap: { width: 64, height: 64, borderRadius: 12, overflow: 'hidden', backgroundColor: '#f4f4f5' },
+  thumbWrap: { width: 64, height: 64, borderRadius: 12, position: 'relative', overflow: 'visible', backgroundColor: '#f4f4f5' },
+  innerThumb: { flex: 1, borderRadius: 12, overflow: 'hidden', backgroundColor: '#f4f4f5' },
   thumb: { width: '100%', height: '100%' },
   thumbPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   qtyBadge: {
-    position: 'absolute', top: -6, left: -6, width: 24, height: 24, borderRadius: 8,
-    backgroundColor: '#111', alignItems: 'center', justifyContent: 'center',
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#fff',
+    backgroundColor: '#111',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 3,
+
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
   },
   qtyText: { color: '#fff', fontSize: 12, fontWeight: '700' },
 

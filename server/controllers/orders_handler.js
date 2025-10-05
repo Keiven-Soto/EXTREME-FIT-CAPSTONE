@@ -35,6 +35,29 @@ const getOrderById = async (req, res) => {
   }
 };
 
+// GET order by ID with user and address details
+const getOrderByIdWithDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await db.query(
+      `SELECT o.*, 
+              a.street_address, a.city, a.state, a.postal_code, a.country,
+              u.first_name, u.last_name, u.email
+       FROM orders o
+       LEFT JOIN addresses a ON o.shipping_address_id = a.address_id
+       LEFT JOIN users u ON o.user_id = u.user_id
+       WHERE o.order_id = $1`,
+      [id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Order with details not found' });
+    }
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 // POST create new order
 const createOrder = async (req, res) => {
   try {
@@ -79,7 +102,7 @@ const createOrderItem = async (req, res) => {
 
 module.exports = {
   getOrders,
-  getOrderById,
+  getOrderByIdWithDetails,
   createOrder,
   getOrderItems,
   createOrderItem,
