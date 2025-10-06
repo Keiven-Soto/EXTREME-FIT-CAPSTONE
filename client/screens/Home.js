@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import ApiService from "../services/api";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ScrollView } from "react-native-web";
 
 // dynamic adjustment to device screen width
 const { width } = Dimensions.get("window");
@@ -38,19 +39,8 @@ export default function HomeScreen({ navigation }) {
       const result = await ApiService.products.getGenders();
 
       if (result.success) {
-        // // Normalize the capitalization of the gender strings
-        // const normalizedGenders = result.data.map((item) => ({
-        //   ...item,
-        //   gender: item.gender
-        //     ? item.gender.charAt(0).toUpperCase() +
-        //       item.gender.slice(1).toLowerCase()
-        //     : item.gender, // Handle null or undefined gender
-        // }));
-
         setGenders(result.data);
-
-        setSelected(genders.length > 0 ? genders[0].gender : "unisex");
-
+        setSelected(result.data.length > 0 ? result.data[0].gender : "unisex");
       } else {
         Alert.alert("Error", "Failed to load genders");
       }
@@ -83,7 +73,7 @@ export default function HomeScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.screenContainer}>
+    <ScrollView style={styles.screenContainer}>
       {/* Logo */}
       <Image
         source={require("../assets/Extreme_fit_new_logo-10.png")}
@@ -111,15 +101,15 @@ export default function HomeScreen({ navigation }) {
               <Pressable
                 onPress={() => setSelected(item.gender)}
                 style={({ pressed }) => [
-                  styles.category, // Default style
-                  isActive && styles.activeCategory, // Active style
-                  pressed && styles.pressedCategory, // Pressed style
+                  styles.gender, // Default style
+                  isActive && styles.activeGender, // Active style
+                  pressed && styles.pressedGender, // Pressed style
                 ]}
               >
                 <Text
                   style={[
-                    styles.categoryText,
-                    isActive && styles.activeCategoryText,
+                    styles.genderText,
+                    isActive && styles.activeGenderText,
                   ]}
                 >
                   {item.gender}
@@ -161,7 +151,7 @@ export default function HomeScreen({ navigation }) {
           )}
         />
       </View>
-    </SafeAreaView>
+    </ScrollView>
   );
 }
 
@@ -178,7 +168,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  category: {
+  gender: {
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 20,
@@ -186,22 +176,22 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
 
-  activeCategory: {
+  activeGender: {
     backgroundColor: "#000",
   },
 
-  pressedCategory: {
+  pressedGender: {
     opacity: 0.7,
     transform: [{ scale: 0.96 }],
   },
 
-  categoryText: {
+  genderText: {
     fontSize: 16,
     color: "#333",
     textTransform: "capitalize",
   },
 
-  activeCategoryText: {
+  activeGenderText: {
     color: "#fff",
     fontWeight: "600",
   },
