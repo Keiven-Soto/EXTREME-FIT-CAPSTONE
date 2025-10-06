@@ -1,21 +1,19 @@
-
-
-const db = require('../config/database');
+const db = require("../config/database");
 
 // GET all products
 const getProducts = async (req, res) => {
   try {
-    const result = await db.query('SELECT * FROM products ORDER BY product_id');
-    
+    const result = await db.query("SELECT * FROM products ORDER BY product_id");
+
     res.json({
       success: true,
-      data: result.rows
+      data: result.rows,
     });
   } catch (error) {
-    console.error('Error fetching products:', error);
+    console.error("Error fetching products:", error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -28,11 +26,12 @@ const getProductById = async (req, res) => {
     if (isNaN(id)) {
       return res.status(400).json({ 
         success: false,
-        error: 'Invalid product ID' 
+        error: "Invalid product ID",
       });
     }
 
-    const result = await db.query(`
+    const result = await db.query(
+      `
       SELECT
         product_id,
         name,
@@ -47,24 +46,49 @@ const getProductById = async (req, res) => {
         gender
       FROM products
       WHERE product_id = $1
-    `, [id]);
+    `,
+      [id]
+    );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'Product not found' 
+        error: "Product not found",
       });
     }
 
     res.json({
       success: true,
-      data: result.rows[0]
+      data: result.rows[0],
     });
   } catch (error) {
-    console.error('Error fetching product:', error);
-    res.status(500).json({ 
+    console.error("Error fetching product:", error);
+    res.status(500).json({
       success: false,
-      error: error.message 
+      error: error.message,
+    });
+  }
+};
+
+const getGenders = async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT DISTINCT
+        gender
+      FROM products
+    `);
+
+    res.json({
+      success: true,
+      data: result.rows,
+    });
+
+    console.log("✅ Fetched genders.");
+  } catch (error) {
+    console.error("Error fetching genders:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
     });
   }
 };
@@ -72,41 +96,54 @@ const getProductById = async (req, res) => {
 // CREATE new product
 const createProduct = async (req, res) => {
   try {
-    const { name, description, price, sizes, colors, gender, stock_quantity, category_id, cloudinary_public_id } = req.body;
+    const {
+      name,
+      description,
+      price,
+      sizes,
+      colors,
+      gender,
+      stock_quantity,
+      category_id,
+      cloudinary_public_id,
+    } = req.body;
 
     // Validation
     if (!name || !price) {
       return res.status(400).json({
         success: false,
-        error: 'Name and price are required'
+        error: "Name and price are required",
       });
     }
 
-    const result = await db.query(`
+    const result = await db.query(
+      `
       INSERT INTO products (name, description, price, sizes, colors, gender, stock_quantity, category_id, cloudinary_public_id)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
-    `, [
-      name,
-      description || null,
-      price,
-      JSON.stringify(sizes || []),
-      JSON.stringify(colors || []),
-      gender || 'unisex',
-      stock_quantity || 0,
-      category_id || null,
-      cloudinary_public_id || null
-    ]);
+    `,
+      [
+        name,
+        description || null,
+        price,
+        JSON.stringify(sizes || []),
+        JSON.stringify(colors || []),
+        gender || "unisex",
+        stock_quantity || 0,
+        category_id || null,
+        cloudinary_public_id || null,
+      ]
+    );
 
     res.status(201).json({
       success: true,
-      data: result.rows[0]
+      data: result.rows[0],
     });
   } catch (error) {
-    console.error('Error creating product:', error);
-    res.status(500).json({ 
+    console.error("Error creating product:", error);
+    res.status(500).json({
       success: false,
-      error: error.message 
+      error: error.message,
     });
   }
 };
@@ -115,12 +152,22 @@ const createProduct = async (req, res) => {
 const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, price, sizes, colors, gender, stock_quantity, category_id, cloudinary_public_id } = req.body;
+    const {
+      name,
+      description,
+      price,
+      sizes,
+      colors,
+      gender,
+      stock_quantity,
+      category_id,
+      cloudinary_public_id,
+    } = req.body;
 
     if (isNaN(id)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid product ID'
+        error: "Invalid product ID",
       });
     }
 
@@ -169,14 +216,14 @@ const updateProduct = async (req, res) => {
     if (updates.length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'No fields to update'
+        error: "No fields to update",
       });
     }
 
     values.push(id);
     const query = `
       UPDATE products 
-      SET ${updates.join(', ')}
+      SET ${updates.join(", ")}
       WHERE product_id = $${paramCount}
       RETURNING *
     `;
@@ -186,19 +233,19 @@ const updateProduct = async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Product not found'
+        error: "Product not found",
       });
     }
 
     res.json({
       success: true,
-      data: result.rows[0]
+      data: result.rows[0],
     });
   } catch (error) {
-    console.error('Error updating product:', error);
+    console.error("Error updating product:", error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -211,31 +258,31 @@ const deleteProduct = async (req, res) => {
     if (isNaN(id)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid product ID'
+        error: "Invalid product ID",
       });
     }
 
     const result = await db.query(
-      'DELETE FROM products WHERE product_id = $1 RETURNING *',
+      "DELETE FROM products WHERE product_id = $1 RETURNING *",
       [id]
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Product not found'
+        error: "Product not found",
       });
     }
 
     res.json({
       success: true,
-      data: result.rows[0]
+      data: result.rows[0],
     });
   } catch (error) {
-    console.error('Error deleting product:', error);
+    console.error("Error deleting product:", error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -248,25 +295,28 @@ const searchProducts = async (req, res) => {
     if (!q) {
       return res.status(400).json({
         success: false,
-        error: 'Search query is required'
+        error: "Search query is required",
       });
     }
 
-    const result = await db.query(`
+    const result = await db.query(
+      `
       SELECT * FROM products 
       WHERE name ILIKE $1 OR description ILIKE $1
       ORDER BY product_id
-    `, [`%${q}%`]);
+    `,
+      [`%${q}%`]
+    );
 
     res.json({
       success: true,
-      data: result.rows
+      data: result.rows,
     });
   } catch (error) {
-    console.error('Error searching products:', error);
+    console.error("Error searching products:", error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -279,24 +329,24 @@ const getProductsByCategory = async (req, res) => {
     if (isNaN(category_id)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid category ID'
+        error: "Invalid category ID",
       });
     }
 
     const result = await db.query(
-      'SELECT * FROM products WHERE category_id = $1 ORDER BY product_id',
+      "SELECT * FROM products WHERE category_id = $1 ORDER BY product_id",
       [category_id]
     );
 
     res.json({
       success: true,
-      data: result.rows
+      data: result.rows,
     });
   } catch (error) {
-    console.error('Error fetching products by category:', error);
+    console.error("Error fetching products by category:", error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -304,9 +354,10 @@ const getProductsByCategory = async (req, res) => {
 module.exports = {
   getProducts,
   getProductById,
+  getGenders,
   createProduct,
   updateProduct,
   deleteProduct,
+  getProductsByCategory,
   searchProducts,
-  getProductsByCategory
 };

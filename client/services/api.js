@@ -1,51 +1,55 @@
 // services/api.js
-import Constants from 'expo-constants';
+import Constants from "expo-constants";
 
 // API Configuration with improved network detection
 const getApiUrl = () => {
   if (__DEV__) {
-    const debuggerHost = Constants.expoConfig?.hostUri?.split(':')[0];
-    if (debuggerHost && debuggerHost !== 'localhost' && debuggerHost !== '127.0.0.1') {
-      console.log('Using Expo debugger host:', debuggerHost);
+    const debuggerHost = Constants.expoConfig?.hostUri?.split(":")[0];
+    if (
+      debuggerHost &&
+      debuggerHost !== "localhost" &&
+      debuggerHost !== "127.0.0.1"
+    ) {
+      console.log("Using Expo debugger host:", debuggerHost);
       return `http://${debuggerHost}:5001`;
     }
-    
-    console.log('Falling back to localhost');
-    return 'http://localhost:5001';
+
+    console.log("Falling back to localhost");
+    return "http://localhost:5001";
   }
-  return 'https://your-production-api.com';
+  return "https://your-production-api.com";
 };
 
 const API_BASE_URL = getApiUrl();
-console.log('API Base URL:', API_BASE_URL);
+console.log("API Base URL:", API_BASE_URL);
 
 // Generic API request function
 const apiRequest = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
   const config = {
     headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
+      "Content-Type": "application/json",
+      Accept: "application/json",
       ...options.headers,
     },
     timeout: 10000, // 10 second timeout
     ...options,
   };
 
-  if (config.body && typeof config.body === 'object') {
+  if (config.body && typeof config.body === "object") {
     config.body = JSON.stringify(config.body);
   }
 
   try {
-    console.log(`API Request: ${config.method || 'GET'} ${url}`);
-    
+    console.log(`API Request: ${config.method || "GET"} ${url}`);
+
     const response = await Promise.race([
       fetch(url, config),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout')), config.timeout)
-      )
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Request timeout")), config.timeout)
+      ),
     ]);
-    
+
     const data = await response.json();
 
     if (!response.ok) {
@@ -57,20 +61,25 @@ const apiRequest = async (endpoint, options = {}) => {
     return data;
   } catch (error) {
     console.error(`API Error for ${endpoint}:`, error.message);
-    
+
     // Provide helpful error messages for common issues
     let userFriendlyMessage = error.message;
-    
-    if (error.message.includes('Network request failed') || error.message.includes('timeout')) {
-      userFriendlyMessage = 'Cannot connect to server. Make sure the backend is running and you\'re on the same network.';
-    } else if (error.message.includes('Connection refused')) {
-      userFriendlyMessage = 'Backend server is not running. Please start the server and try again.';
+
+    if (
+      error.message.includes("Network request failed") ||
+      error.message.includes("timeout")
+    ) {
+      userFriendlyMessage =
+        "Cannot connect to server. Make sure the backend is running and you're on the same network.";
+    } else if (error.message.includes("Connection refused")) {
+      userFriendlyMessage =
+        "Backend server is not running. Please start the server and try again.";
     }
-    
-    return { 
-      success: false, 
+
+    return {
+      success: false,
       error: userFriendlyMessage,
-      originalError: error.message 
+      originalError: error.message,
     };
   }
 };
@@ -79,15 +88,15 @@ const apiRequest = async (endpoint, options = {}) => {
 export const ApiService = {
   // Test connection
   testConnection: async () => {
-    console.log('Testing connection to:', API_BASE_URL);
-    const result = await apiRequest('/api/test-db');
-    
+    console.log("Testing connection to:", API_BASE_URL);
+    const result = await apiRequest("/api/test-db");
+
     if (result.success) {
-      console.log('Server connection successful!');
+      console.log("Server connection successful!");
     } else {
-      console.log('Server connection failed:', result.error);
+      console.log("Server connection failed:", result.error);
     }
-    
+
     return result;
   },
 
@@ -95,15 +104,15 @@ export const ApiService = {
   users: {
     // Create new user
     create: async (userData) => {
-      return await apiRequest('/api/users', {
-        method: 'POST',
+      return await apiRequest("/api/users", {
+        method: "POST",
         body: userData,
       });
     },
 
     // Get all users
     getAll: async () => {
-      return await apiRequest('/api/users');
+      return await apiRequest("/api/users");
     },
 
     // Get user by ID
@@ -114,7 +123,7 @@ export const ApiService = {
     // Update user
     update: async (userId, userData) => {
       return await apiRequest(`/api/users/${userId}`, {
-        method: 'PUT',
+        method: "PUT",
         body: userData,
       });
     },
@@ -122,16 +131,24 @@ export const ApiService = {
     // Delete user
     delete: async (userId) => {
       return await apiRequest(`/api/users/${userId}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
     },
   },
 
   // Products Management
   products: {
+    // Get all products
     getAll: async () => {
-      return await apiRequest('/api/products');
+      return await apiRequest("/api/products");
     },
+
+    // Get all genders
+    getGenders: async () => {
+      return await apiRequest("/api/products/genders");
+    },
+
+    // Get product by ID
     getById: async (productId) => {
       return await apiRequest(`/api/products/${productId}`);
     },
@@ -153,8 +170,12 @@ export const ApiService = {
       });
     },
     search: async (query) => {
-      return await apiRequest(`/api/products/search?q=${encodeURIComponent(query)}`);
+      return await apiRequest(
+        `/api/products/search?q=${encodeURIComponent(query)}`
+      );
     },
+
+    // Get products by category
     getByCategory: async (categoryId) => {
       return await apiRequest(`/api/products/category/${categoryId}`);
     },
@@ -190,43 +211,55 @@ export const ApiService = {
 
   // Cart Management
   cart: {
+    // Get cart items by user ID
     get: async (userId) => {
       return await apiRequest(`/api/cart/${userId}`);
     },
+
+    // Add item to cart
     addItem: async (userId, productId, quantity = 1) => {
-      return await apiRequest('/api/cart/add', {
-        method: 'POST',
+      return await apiRequest("/api/cart/add", {
+        method: "POST",
         body: { userId, productId, quantity },
       });
     },
+
+    // Remove item from cart
     removeItem: async (userId, productId) => {
-      return await apiRequest('/api/cart/remove', {
-        method: 'DELETE',
+      return await apiRequest("/api/cart/remove", {
+        method: "DELETE",
         body: { userId, productId },
       });
     },
+
+    // Update exisitng cart item quantity
     updateQuantity: async (userId, productId, quantity) => {
-      return await apiRequest('/api/cart/update', {
-        method: 'PUT',
+      return await apiRequest("/api/cart/update", {
+        method: "PUT",
         body: { userId, productId, quantity },
       });
     },
   },
 
-  // Wishlist Management
+  // Wishlist Management (future endpoints)
   wishlist: {
+    // Get wishlist items for a user
     get: async (userId) => {
       return await apiRequest(`/api/wishlist/${userId}`);
     },
+
+    // Add item to wishlist
     add: async (userId, productId) => {
-      return await apiRequest('/api/wishlist/add', {
-        method: 'POST',
+      return await apiRequest("/api/wishlist/add", {
+        method: "POST",
         body: { userId, productId },
       });
     },
+
+    // Remove item from wishlist
     remove: async (userId, productId) => {
-      return await apiRequest('/api/wishlist/remove', {
-        method: 'DELETE',
+      return await apiRequest("/api/wishlist/remove", {
+        method: "DELETE",
         body: { userId, productId },
       });
     },
@@ -242,7 +275,7 @@ export const ApiService = {
     // Create a new address
     create: async (userId, addressData) => {
       return await apiRequest(`/api/addresses/user/${userId}`, {
-        method: 'POST',
+        method: "POST",
         body: addressData,
       });
     },
@@ -250,7 +283,7 @@ export const ApiService = {
     // Update an existing address
     update: async (addressId, addressData) => {
       return await apiRequest(`/api/addresses/${addressId}`, {
-        method: 'PUT',
+        method: "PUT",
         body: addressData,
       });
     },
@@ -258,8 +291,20 @@ export const ApiService = {
     // Delete an address
     delete: async (addressId) => {
       return await apiRequest(`/api/addresses/${addressId}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
+    },
+  },
+
+  categories: {
+    // Get all categories
+    getAll: async () => {
+      return await apiRequest("/api/categories");
+    },
+
+    // Get categories filtered by gender
+    getByGender: async (gender) => {
+      return await apiRequest(`/api/categories/${gender}`);
     },
   },
 };
