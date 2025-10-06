@@ -73,7 +73,7 @@ export default function HomeScreen({ navigation }) {
   };
 
   return (
-    <ScrollView style={styles.screenContainer}>
+    <SafeAreaView style={styles.screenContainer}>
       {/* Logo */}
       <Image
         source={require("../assets/Extreme_fit_new_logo-10.png")}
@@ -151,7 +151,7 @@ export default function HomeScreen({ navigation }) {
           )}
         />
       </View>
-    </ScrollView>
+    </SafeAreaView>
   );
 }
 
