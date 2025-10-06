@@ -38,19 +38,19 @@ export default function HomeScreen({ navigation }) {
       const result = await ApiService.products.getGenders();
 
       if (result.success) {
-        // Normalize the capitalization of the gender strings
-        const normalizedGenders = result.data.map((item) => ({
-          ...item,
-          gender: item.gender
-            ? item.gender.charAt(0).toUpperCase() +
-              item.gender.slice(1).toLowerCase()
-            : item.gender, // Handle null or undefined gender
-        }));
+        // // Normalize the capitalization of the gender strings
+        // const normalizedGenders = result.data.map((item) => ({
+        //   ...item,
+        //   gender: item.gender
+        //     ? item.gender.charAt(0).toUpperCase() +
+        //       item.gender.slice(1).toLowerCase()
+        //     : item.gender, // Handle null or undefined gender
+        // }));
 
-        setGenders(normalizedGenders);
-        if (normalizedGenders.length > 0) {
-          setSelected(normalizedGenders[0].gender); // Set the first gender as default
-        }
+        setGenders(result.data);
+
+        setSelected(genders.length > 0 ? genders[0].gender : "unisex");
+
       } else {
         Alert.alert("Error", "Failed to load genders");
       }
@@ -146,7 +146,6 @@ export default function HomeScreen({ navigation }) {
             <TouchableOpacity
               style={styles.categoryCard}
               onPress={() =>
-
                 navigation.navigate("CategoryProducts", {
                   category_id: item.category_id,
                   category_name: item.name,
@@ -199,6 +198,7 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 16,
     color: "#333",
+    textTransform: "capitalize",
   },
 
   activeCategoryText: {
