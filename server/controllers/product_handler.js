@@ -24,7 +24,7 @@ const getProductById = async (req, res) => {
     const { id } = req.params;
 
     if (isNaN(id)) {
-      return res.status(400).json({
+      return res.status(400).json({ 
         success: false,
         error: "Invalid product ID",
       });

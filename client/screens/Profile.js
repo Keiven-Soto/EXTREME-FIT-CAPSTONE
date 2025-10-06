@@ -12,6 +12,12 @@ export default function ProfileScreen({navigation}) {
     // Navegar a la sección de edición de perfil
     navigation && navigation.navigate('EditProfile');
   };
+
+  const gotoOrderHistory = () => {
+    // Navegar a la sección de historial de pedidos
+    navigation && navigation.navigate('OrderHistory');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -34,9 +40,7 @@ export default function ProfileScreen({navigation}) {
             <Ionicons name="chevron-forward" size={20} color={Colors.mutedText} />
           </TouchableOpacity>
 
-
-
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} onPress={gotoOrderHistory}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="receipt-outline" size={24} color={Colors.mutedText} />
               <Text style={styles.menuItemText}>Order History</Text>

@@ -57,6 +57,7 @@ const apiRequest = async (endpoint, options = {}) => {
     }
 
     console.log(`API Success: ${endpoint}`);
+    // Backend returns {success: true, data: ...}, so just return it as-is
     return data;
   } catch (error) {
     console.error(`API Error for ${endpoint}:`, error.message);
@@ -135,7 +136,7 @@ export const ApiService = {
     },
   },
 
-  // Products Management (future endpoints)
+  // Products Management
   products: {
     // Get all products
     getAll: async () => {
@@ -151,8 +152,23 @@ export const ApiService = {
     getById: async (productId) => {
       return await apiRequest(`/api/products/${productId}`);
     },
-
-    // Search products by query
+    create: async (productData) => {
+      return await apiRequest('/api/products', {
+        method: 'POST',
+        body: productData,
+      });
+    },
+    update: async (productId, productData) => {
+      return await apiRequest(`/api/products/${productId}`, {
+        method: 'PUT',
+        body: productData,
+      });
+    },
+    delete: async (productId) => {
+      return await apiRequest(`/api/products/${productId}`, {
+        method: 'DELETE',
+      });
+    },
     search: async (query) => {
       return await apiRequest(
         `/api/products/search?q=${encodeURIComponent(query)}`
@@ -160,12 +176,40 @@ export const ApiService = {
     },
 
     // Get products by category
-    getByCategory: async (category) => {
-      return await apiRequest(`/api/products/category/${category}`);
+    getByCategory: async (categoryId) => {
+      return await apiRequest(`/api/products/category/${categoryId}`);
     },
   },
 
-  // Cart Management (future endpoints)
+  // Orders Management
+  orders: {
+    create: async (orderData) => {
+      return await apiRequest('/api/orders', {
+        method: 'POST',
+        body: orderData,
+      });
+    },
+    getAll: async () => {
+      return await apiRequest('/api/orders');
+    },
+    getByUser: async (userId) => {
+      return await apiRequest(`/api/orders/user/${userId}`);
+    },
+    getById: async (orderId) => {
+      return await apiRequest(`/api/orders/${orderId}`);
+    },
+    getOrderItems: async (orderId) => {
+      return await apiRequest(`/api/orders/${orderId}/items`);
+    },
+    addOrderItem: async (orderId, itemData) => {
+      return await apiRequest(`/api/orders/${orderId}/items`, {
+        method: 'POST',
+        body: itemData,
+      });
+    },
+  },
+
+  // Cart Management
   cart: {
     // Get cart items by user ID
     get: async (userId) => {
@@ -244,7 +288,7 @@ export const ApiService = {
 
   // Addresses Management
   addresses: {
-    // Get an existing address by user ID
+    // Get all addresses for a user
     getByUser: async (userId) => {
       return await apiRequest(`/api/addresses/user/${userId}`);
     },
@@ -265,7 +309,7 @@ export const ApiService = {
       });
     },
 
-    // Remove an existing address
+    // Delete an address
     delete: async (addressId) => {
       return await apiRequest(`/api/addresses/${addressId}`, {
         method: "DELETE",
