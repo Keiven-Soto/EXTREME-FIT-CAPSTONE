@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ApiService from '../../services/api';
+import { getCloudinaryImageUrl } from '../../utils/cloudinary';
 
 /**
  * @file OrderHistory.js
@@ -91,6 +92,7 @@ export default function OrderHistoryScreen({ navigation }) {
   const [error, setError] = useState(null); 
 
   useEffect(() => {
+    console.log('OrderHistoryScreen useEffect ejecutado');
     const userId = 1; // TODO: Cambiar USER ID dinámico
 
     const fetchOrdersWithImages = async () => {
@@ -109,23 +111,45 @@ export default function OrderHistoryScreen({ navigation }) {
           orders.map(async (order) => {
             try {
               // Obtener items de la orden
-              const itemsResult = await ApiService.orders.getItems(order.order_id);
+              const itemsResult = await ApiService.orders.getOrderItems(order.order_id);
+              console.log('OrderItems para order', order.order_id, itemsResult);
               const orderItems = itemsResult.success ? itemsResult.data || [] : [];
 
-              // Obtener imágenes de productos
+              // Obtener imágenes de productos (Cloudinary o fallback) y loggear para debug
               const images = await Promise.all(
                 orderItems.map(async (item) => {
                   try {
                     const productResult = await ApiService.products.getById(item.product_id);
-                    return productResult.success ? productResult.data?.image_url : null;
-                  } catch {
+                    console.log('ProductResult para item', item.product_id, productResult);
+                    if (!productResult.success) {
+                      console.log('No productResult.success', { item, productResult });
+                      return null;
+                    }
+                    const product = productResult.data?.data || productResult.data;
+                    console.log('Producto para OrderHistory:', product);
+                    if (product?.cloudinary_public_id) {
+                      const url = getCloudinaryImageUrl(product.cloudinary_public_id);
+                      console.log('Cloudinary URL generada:', url);
+                      return url;
+                    }
+                    // Fallback a image_url si no hay Cloudinary | TODO: ELIMINAR ESTO DESPUÉS---
+                    if (product?.image_url) {
+                      console.log('Fallback image_url:', product.image_url);
+                      return product.image_url;
+                    }
+                    //------------------------------------
+                    return null;
+                  } catch (err) {
+                    console.log('Error obteniendo producto:', err);
                     return null;
                   }
                 })
               );
 
+              console.log('Imágenes generadas para la orden', order.order_id, images);
               return { ...order, images: images.filter(Boolean) };
-            } catch {
+            } catch (err) {
+              console.log('Error en fetch de items/productos para order', order.order_id, err);
               return { ...order, images: [] };
             }
           })
