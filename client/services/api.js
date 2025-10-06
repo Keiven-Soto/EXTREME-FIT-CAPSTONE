@@ -241,27 +241,6 @@ export const ApiService = {
     },
   },
 
-  // Orders Management (future endpoints)
-  orders: {
-    // Create a new order
-    create: async (orderData) => {
-      return await apiRequest("/api/orders", {
-        method: "POST",
-        body: orderData,
-      });
-    },
-
-    // Get orders by user ID
-    getByUser: async (userId) => {
-      return await apiRequest(`/api/orders/user/${userId}`);
-    },
-
-    // Get order by ID
-    getById: async (orderId) => {
-      return await apiRequest(`/api/orders/${orderId}`);
-    },
-  },
-
   // Wishlist Management (future endpoints)
   wishlist: {
     // Get wishlist items for a user
