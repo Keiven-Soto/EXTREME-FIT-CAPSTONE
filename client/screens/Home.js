@@ -1,4 +1,4 @@
-import React, { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import Colors from "../colors";
 import {
@@ -146,7 +146,12 @@ export default function HomeScreen({ navigation }) {
             <TouchableOpacity
               style={styles.categoryCard}
               onPress={() =>
-                navigation.navigate("Shop", { category: item.category_id })
+
+                navigation.navigate("CategoryProducts", {
+                  category_id: item.category_id,
+                  category_name: item.name,
+                  gender: selected,
+                })
               }
             >
               <View style={styles.categoryContent}>
@@ -220,7 +225,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
 
-  featureImage: {
+  categoryImage: {
     width: "100%",
     height: 150,
     resizeMode: "cover",
