@@ -83,11 +83,12 @@ useEffect(() => {
         })
       );
 
-      // 4) Calculate totals
-      const subtotal = hydrated.reduce((acc, it) => acc + it.unit_price * it.qty, 0);
-      const shipping = Number(base?.shipping_cost || 0);
-      const taxes = 0; // Your orders table doesn't have tax_amount field
-      const total = Number(base?.total_amount || subtotal + shipping);
+  // 4) Calculate totals
+  const subtotal = hydrated.reduce((acc, it) => acc + it.unit_price * it.qty, 0);
+  const shipping = Number(base?.shipping_cost || 0);
+  const ivu = 0.115;
+  const taxes = +(subtotal * ivu).toFixed(2); // 11.5% tax
+  const total = Number(subtotal + shipping + taxes);
 
         // 5) Hidratar campos extra para las secciones
         setOrder({
@@ -187,7 +188,7 @@ useEffect(() => {
         ) : error ? (
           <View style={styles.center}><Text>{error}</Text></View>
         ) : (
-          <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Items */}
         {order?.items?.map((it, i) => (
         <View key={i} style={styles.itemRow}>
