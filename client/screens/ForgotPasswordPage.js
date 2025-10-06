@@ -11,64 +11,63 @@ import {
   Platform,
   ScrollView
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useSignUp } from '@clerk/clerk-expo';
+import { useSignIn } from '@clerk/clerk-expo';
 import Colors from '../colors';
 
-export default function CreateAccountPage({ navigation }) {
-  const { isLoaded, signUp, setActive } = useSignUp();
+export default function ForgotPasswordPage({ navigation }) {
+  const { signIn, isLoaded } = useSignIn();
   
   const [emailAddress, setEmailAddress] = useState('');
-  const [password, setPassword] = useState('');
-  const [pendingVerification, setPendingVerification] = useState(false);
   const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [successfulCreation, setSuccessfulCreation] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const onSignUpPress = async () => {
+  const onRequestReset = async () => {
     if (!isLoaded) return;
     setLoading(true);
 
     try {
-      await signUp.create({
-        emailAddress,
+      await signIn.create({
+        strategy: 'reset_password_email_code',
+        identifier: emailAddress,
+      });
+      setSuccessfulCreation(true);
+      Alert.alert('Success', 'Check your email for a reset code');
+    } catch (err) {
+      Alert.alert('Error', err.errors?.[0]?.message || 'Failed to send reset code');
+      console.error(JSON.stringify(err, null, 2));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onReset = async () => {
+    if (!isLoaded) return;
+    setLoading(true);
+
+    try {
+      const result = await signIn.attemptFirstFactor({
+        strategy: 'reset_password_email_code',
+        code,
         password,
       });
 
-      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
-      setPendingVerification(true);
-    } catch (err) {
-      Alert.alert('Error', err.errors?.[0]?.message || 'Failed to sign up');
-      console.error(JSON.stringify(err, null, 2));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onVerifyPress = async () => {
-    if (!isLoaded) return;
-    setLoading(true);
-
-    try {
-      const signUpAttempt = await signUp.attemptEmailAddressVerification({
-        code,
-      });
-
-      if (signUpAttempt.status === 'complete') {
-        await setActive({ session: signUpAttempt.createdSessionId });
-        navigation.replace('Main');
+      if (result.status === 'complete') {
+        Alert.alert('Success', 'Password reset successfully');
+        navigation.navigate('LogInPage');
       } else {
-        Alert.alert('Error', 'Verification incomplete');
-        console.error(JSON.stringify(signUpAttempt, null, 2));
+        Alert.alert('Error', 'Password reset incomplete');
       }
     } catch (err) {
-      Alert.alert('Error', err.errors?.[0]?.message || 'Failed to verify');
+      Alert.alert('Error', err.errors?.[0]?.message || 'Failed to reset password');
       console.error(JSON.stringify(err, null, 2));
     } finally {
       setLoading(false);
     }
   };
 
-  if (pendingVerification) {
+  if (successfulCreation) {
     return (
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -76,9 +75,9 @@ export default function CreateAccountPage({ navigation }) {
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.header}>
-            <Text style={styles.title}>VERIFY EMAIL</Text>
+            <Text style={styles.title}>RESET PASSWORD</Text>
             <Text style={styles.subtitle}>
-              We sent a verification code to{'\n'}{emailAddress}
+              Enter the code sent to{'\n'}{emailAddress}
             </Text>
           </View>
 
@@ -86,22 +85,30 @@ export default function CreateAccountPage({ navigation }) {
             <TextInput
               style={styles.input}
               value={code}
-              placeholder="Enter verification code"
+              placeholder="Reset code"
               placeholderTextColor="#666"
               onChangeText={setCode}
               keyboardType="number-pad"
-              autoFocus
+            />
+            
+            <TextInput
+              style={styles.input}
+              value={password}
+              placeholder="New password"
+              placeholderTextColor="#666"
+              secureTextEntry={true}
+              onChangeText={setPassword}
             />
             
             <TouchableOpacity 
               style={[styles.button, loading && styles.buttonDisabled]}
-              onPress={onVerifyPress}
+              onPress={onReset}
               disabled={loading}
             >
               {loading ? (
                 <ActivityIndicator color="#000" />
               ) : (
-                <Text style={styles.buttonText}>VERIFY EMAIL</Text>
+                <Text style={styles.buttonText}>RESET PASSWORD</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -117,8 +124,10 @@ export default function CreateAccountPage({ navigation }) {
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Text style={styles.title}>CREATE ACCOUNT</Text>
-          <Text style={styles.subtitle}>Join Extreme Fit today</Text>
+          <Text style={styles.title}>FORGOT PASSWORD</Text>
+          <Text style={styles.subtitle}>
+            Enter your email to receive a reset code
+          </Text>
         </View>
 
         <View style={styles.formContainer}>
@@ -130,38 +139,25 @@ export default function CreateAccountPage({ navigation }) {
             placeholderTextColor="#666"
             onChangeText={setEmailAddress}
             keyboardType="email-address"
-            autoComplete="email"
-          />
-          
-          <TextInput
-            style={styles.input}
-            value={password}
-            placeholder="Password"
-            placeholderTextColor="#666"
-            secureTextEntry={true}
-            onChangeText={setPassword}
-            autoComplete="password"
           />
           
           <TouchableOpacity 
             style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={onSignUpPress}
+            onPress={onRequestReset}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#000" />
             ) : (
-              <Text style={styles.buttonText}>CONTINUE</Text>
+              <Text style={styles.buttonText}>SEND RESET CODE</Text>
             )}
           </TouchableOpacity>
 
           <TouchableOpacity 
-            onPress={() => navigation.navigate('LogInPage')}
+            onPress={() => navigation.goBack()}
             style={styles.linkButton}
           >
-            <Text style={styles.linkText}>
-              Already have an account? <Text style={styles.linkTextBold}>Log in</Text>
-            </Text>
+            <Text style={styles.linkText}>Back to Login</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -234,9 +230,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     opacity: 0.8,
-  },
-  linkTextBold: {
-    fontWeight: '600',
     textDecorationLine: 'underline',
   },
 });

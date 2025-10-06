@@ -1,21 +1,48 @@
 import React from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useUser, useClerk } from '@clerk/clerk-expo';
 import Colors from '../colors';
 
-export default function ProfileScreen({navigation}) {
-  // Usa el icono local como foto de perfil
+export default function ProfileScreen({ navigation }) {
+  const { user } = useUser();
+  const { signOut } = useClerk();
+  
   const profilePic = require('../assets/Extreme_fit_new_logo-01.png');
 
-  const gotoEditProfileSection= () => {
-    // Navegar a la sección de edición de perfil
+  const gotoEditProfileSection = () => {
     navigation && navigation.navigate('EditProfile');
   };
 
   const gotoOrderHistory = () => {
-    // Navegar a la sección de historial de pedidos
     navigation && navigation.navigate('OrderHistory');
+  };
+
+  const handleLogOut = async () => {
+    Alert.alert(
+      'Log Out',
+      'Are you sure you want to log out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Log Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut();
+              navigation.replace('Welcome');
+            } catch (err) {
+              Alert.alert('Error', 'Failed to log out');
+              console.error(JSON.stringify(err, null, 2));
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -27,8 +54,14 @@ export default function ProfileScreen({navigation}) {
               <Image source={profilePic} style={styles.profileImagePic} />
             </View>
           </View>
-          <Text style={styles.userName}>John Smith</Text>
-          <Text style={styles.userEmail}>john.smith@email.com</Text>
+          <Text style={styles.userName}>
+            {user?.firstName && user?.lastName 
+              ? `${user.firstName} ${user.lastName}` 
+              : user?.username || 'User'}
+          </Text>
+          <Text style={styles.userEmail}>
+            {user?.emailAddresses?.[0]?.emailAddress || 'No email'}
+          </Text>
         </View>
 
         <View style={styles.menuSection}>
@@ -76,7 +109,10 @@ export default function ProfileScreen({navigation}) {
         </View>
 
         <View style={styles.menuSection}>
-          <TouchableOpacity style={[styles.menuItem, styles.logoutItem]}>
+          <TouchableOpacity 
+            style={[styles.menuItem, styles.logoutItem]}
+            onPress={handleLogOut}
+          >
             <View style={styles.menuItemLeft}>
               <Ionicons name="log-out-outline" size={24} color={Colors.mainColor} />
               <Text style={[styles.menuItemText, styles.logoutText]}>Log Out</Text>
@@ -113,7 +149,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.mainColor,
     justifyContent: 'center',
     alignItems: 'center',
-    overflow: 'hidden', // Ensures the image stays within the circle
+    overflow: 'hidden',
   },
   profileImagePic: {
     width: 80,
