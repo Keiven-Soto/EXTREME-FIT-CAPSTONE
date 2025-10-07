@@ -1,9 +1,14 @@
 // services/api.js
 import Constants from 'expo-constants';
 
+const USE_NGROK = true;
 // API Configuration with improved network detection
 const getApiUrl = () => {
   if (__DEV__) {
+    if (USE_NGROK) {
+      return 'https://unpaining-cris-scorningly.ngrok-free.dev';
+    }
+    
     const debuggerHost = Constants.expoConfig?.hostUri?.split(':')[0];
     if (debuggerHost && debuggerHost !== 'localhost' && debuggerHost !== '127.0.0.1') {
       console.log('Using Expo debugger host:', debuggerHost);
@@ -26,6 +31,7 @@ const apiRequest = async (endpoint, options = {}) => {
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'ngrok-skip-browser-warning': 'true',
       ...options.headers,
     },
     timeout: 10000, // 10 second timeout

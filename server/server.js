@@ -11,7 +11,7 @@ const ordersRoute = require('./routes/orders');
 const app = express();
 const PORT = process.env.PORT || 5001; // ← Usar variable de entorno
 
-// app.use('/api/webhooks', express.raw({ type: 'application/json' }), require('./routes/webhooks'));
+app.use('/api/webhooks', require('./routes/webhooks'));
 app.use(cors());
 app.use(express.json());
 

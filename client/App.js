@@ -11,6 +11,8 @@ import Navbar from './components/Navbar';
 import EditProfileSection from './screens/edit_sections/EditProfile';
 import EditAddressSection from './screens/edit_sections/EditAddress';
 import ProductDetails from './screens/productDetails';
+import OrderHistoryScreen from './screens/edit_sections/OrderHistory';
+import OrderDetailsSection from './screens/edit_sections/OrderDetails';
 import SignOutButton from './components/SignOutButton';
 
 const Stack = createStackNavigator();
@@ -28,6 +30,8 @@ export default function App() {
           <Stack.Screen name="LogInPage" component={LogInPage} />
           <Stack.Screen name="ForgotPasswordPage" component={ForgotPasswordPage} />
           <Stack.Screen name="Main" component={Navbar} />
+          <Stack.Screen name="OrderDetails" component={OrderDetailsSection} />
+          <Stack.Screen name="OrderHistory" component={OrderHistoryScreen}options={{ headerShown: false }}/>
           <Stack.Screen name="EditProfile" component={EditProfileSection} />
           <Stack.Screen name="EditAddress" component={EditAddressSection} />
           <Stack.Screen name="ProductDetails" component={ProductDetails} />
