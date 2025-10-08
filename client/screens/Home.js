@@ -8,13 +8,14 @@ import {
   Image,
   FlatList,
   TouchableOpacity,
+  ActivityIndicator,
+  ScrollView,
   Dimensions,
   Pressable,
   Alert,
 } from "react-native";
 import ApiService from "../services/api";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ScrollView } from "react-native-web";
 
 // dynamic adjustment to device screen width
 const { width } = Dimensions.get("window");
@@ -72,85 +73,102 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
+  const renderCategory = (category) => {
+    if (!category) {
+      return (
+        <View key={category.category_id} style={styles.categoryCard}>
+          <Text>Loading cateogry data...</Text>
+        </View>
+      );
+    }
+
+    return (
+      <TouchableOpacity
+        key={category.category_id}
+        style={styles.categoryCard}
+        onPress={() =>
+          navigation.navigate("CategoryProducts", {
+            category_id: category.category_id,
+            category_name: category.name,
+            gender: selected,
+          })
+        }
+      >
+        {/* Category Image */}
+        <Image
+          source={require("../assets/adaptive-icon.png")}
+          style={styles.categoryImage}
+          resizeMode="contain"
+        />
+
+        {/* Category Name */}
+        <View style={styles.categoryInfo}>
+          <Text style={styles.categoryName}>{category.name}</Text>
+          <Ionicons name="chevron-forward" style={styles.categoryIcon} />
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.screenContainer}>
-      {/* Logo */}
-      <Image
-        source={require("../assets/Extreme_fit_new_logo-10.png")}
-        style={{
-          width: 200,
-          height: 200,
-          alignSelf: "center",
-          marginBottom: -40,
-          marginTop: -20,
-        }}
-        resizeMode="contain"
-      />
+      <ScrollView showVerticalScrollIndicator={true}>
+        {/* Logo */}
+        <Image
+          source={require("../assets/Extreme_fit_new_logo-10.png")}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
 
-      {/* Genders */}
-      <View style={styles.gendersContainer}>
-        <FlatList
-          data={genders}
-          keyExtractor={(item) => item.gender}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          ListEmptyComponent={<Text>No options available</Text>}
-          renderItem={({ item }) => {
-            const isActive = selected === item.gender;
-            return (
-              <Pressable
-                onPress={() => setSelected(item.gender)}
-                style={({ pressed }) => [
-                  styles.gender, // Default style
-                  isActive && styles.activeGender, // Active style
-                  pressed && styles.pressedGender, // Pressed style
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.genderText,
-                    isActive && styles.activeGenderText,
+        {/* Genders */}
+        <View style={styles.gendersContainer}>
+          <FlatList
+            data={genders}
+            keyExtractor={(item) => item.gender}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            ListEmptyComponent={<Text>No options available</Text>}
+            renderItem={({ item }) => {
+              const isActive = selected === item.gender;
+              return (
+                <Pressable
+                  onPress={() => setSelected(item.gender)}
+                  style={({ pressed }) => [
+                    styles.gender, // Default style
+                    isActive && styles.activeGender, // Active style
+                    pressed && styles.pressedGender, // Pressed style
                   ]}
                 >
-                  {item.gender}
-                </Text>
-              </Pressable>
-            );
-          }}
-        />
-      </View>
+                  <Text
+                    style={[
+                      styles.genderText,
+                      isActive && styles.activeGenderText,
+                    ]}
+                  >
+                    {item.gender}
+                  </Text>
+                </Pressable>
+              );
+            }}
+          />
+        </View>
 
-      {/* Categories Grid */}
-      <View>
-        <FlatList
-          data={categories}
-          keyExtractor={(item) => item.category_id}
-          numColumns={2}
-          ListEmptyComponent={<Text>No categories available</Text>}
-          columnWrapperStyle={{
-            justifyContent: "space-between",
-            paddingHorizontal: 16,
-          }}
-          showsVerticalScrollIndicator={true}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.categoryCard}
-              onPress={() =>
-                navigation.navigate("CategoryProducts", {
-                  category_id: item.category_id,
-                  category_name: item.name,
-                  gender: selected,
-                })
-              }
-            >
-              <View style={styles.categoryContent}>
-                <Text style={styles.categoryName}>{item.name}</Text>
-                <Ionicons name="chevron-forward" style={styles.categoryIcon} />
-              </View>
-            </TouchableOpacity>
+        {/* Categories Grid */}
+        <View style={styles.catalogContainer}>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={Colors.mainColor} />
+              <Text style={styles.loadingText}>Loading categories...</Text>
+            </View>
+          ) : categories.length > 0 ? (
+            <View style={styles.categoryGrid}>
+              {categories.map(renderCategory)}
+            </View>
+          ) : (
+            <Text style={styles.noResults}>No categories found 😢</Text>
           )}
-        />
-      </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -161,6 +179,14 @@ const styles = StyleSheet.create({
   screenContainer: {
     flex: 1,
     backgroundColor: Colors.lightBackground,
+  },
+
+  logoImage: {
+    width: 200,
+    height: 200,
+    alignSelf: "center",
+    marginBottom: -40,
+    marginTop: -20,
   },
 
   gendersContainer: {
@@ -203,15 +229,13 @@ const styles = StyleSheet.create({
 
   categoryCard: {
     width: CARD_WIDTH,
-    height: 200,
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    shadowColor: "#000",
+    backgroundColor: Colors.whiteBackground,
+    shadowColor: Colors.shadowColor,
     shadowOpacity: 0.15,
     shadowRadius: 6,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 2 },
+    borderRadius: 8,
     elevation: 4,
-    marginBottom: 16,
     overflow: "hidden",
   },
 
@@ -221,10 +245,10 @@ const styles = StyleSheet.create({
     resizeMode: "cover",
   },
 
-  categoryContent: {
+  categoryInfo: {
     width: "100%",
-    padding: 8,
-    paddingTop: 16,
+    padding: 10,
+    flex: 1,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -233,11 +257,36 @@ const styles = StyleSheet.create({
   categoryName: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#222",
+    color: Colors.darkText,
   },
 
   categoryIcon: {
     fontSize: 20,
     color: "#888",
+  },
+
+  categoryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 15,
+  },
+
+  loadingContainer: {
+    padding: 40,
+    alignItems: "center",
+  },
+
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: Colors.mutedText,
+  },
+
+  noResults: {
+    textAlign: "center",
+    fontSize: 16,
+    color: Colors.mutedText,
+    fontStyle: "italic",
+    paddingVertical: 20,
   },
 });

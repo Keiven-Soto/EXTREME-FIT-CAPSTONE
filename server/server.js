@@ -8,6 +8,7 @@ const addressRoutes = require('./routes/addresses');
 const productRoute = require('./routes/products')
 const ordersRoute = require('./routes/orders');
 const categoriesRoute = require('./routes/categories');
+const wishlistRoute = require('./routes/wishlist');
 
 const app = express();
 const PORT = process.env.PORT || 5001; // ← Usar variable de entorno
@@ -43,6 +44,7 @@ app.use('/api/addresses', addressRoutes);
 app.use('/api/products', productRoute);
 app.use('/api/', ordersRoute);
 app.use('/api/categories', categoriesRoute);
+app.use('/api/wishlist', wishlistRoute);
 
 if (require.main === module) {
   app.listen(PORT, () => {

@@ -61,8 +61,10 @@ const getProductById = async (req, res) => {
       success: true,
       data: result.rows[0],
     });
+
+    console.log("✅ Fetched product.");
   } catch (error) {
-    console.error("Error fetching product:", error);
+    console.error("❌ Error fetching product:", error);
     res.status(500).json({
       success: false,
       error: error.message,

@@ -152,23 +152,27 @@ export const ApiService = {
     getById: async (productId) => {
       return await apiRequest(`/api/products/${productId}`);
     },
+
     create: async (productData) => {
-      return await apiRequest('/api/products', {
-        method: 'POST',
+      return await apiRequest("/api/products", {
+        method: "POST",
         body: productData,
       });
     },
+
     update: async (productId, productData) => {
       return await apiRequest(`/api/products/${productId}`, {
-        method: 'PUT',
+        method: "PUT",
         body: productData,
       });
     },
+
     delete: async (productId) => {
       return await apiRequest(`/api/products/${productId}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
     },
+
     search: async (query) => {
       return await apiRequest(
         `/api/products/search?q=${encodeURIComponent(query)}`
@@ -184,13 +188,13 @@ export const ApiService = {
   // Orders Management
   orders: {
     create: async (orderData) => {
-      return await apiRequest('/api/orders', {
-        method: 'POST',
+      return await apiRequest("/api/orders", {
+        method: "POST",
         body: orderData,
       });
     },
     getAll: async () => {
-      return await apiRequest('/api/orders');
+      return await apiRequest("/api/orders");
     },
     getByUser: async (userId) => {
       return await apiRequest(`/api/orders/user/${userId}`);
@@ -203,7 +207,7 @@ export const ApiService = {
     },
     addOrderItem: async (orderId, itemData) => {
       return await apiRequest(`/api/orders/${orderId}/items`, {
-        method: 'POST',
+        method: "POST",
         body: itemData,
       });
     },
@@ -248,6 +252,10 @@ export const ApiService = {
       return await apiRequest(`/api/wishlist/${userId}`);
     },
 
+    getById: async (userId, productId) => {
+      return await apiRequest(`/api/wishlist/${userId}/${productId}`);
+    },
+
     // Add item to wishlist
     add: async (userId, productId) => {
       return await apiRequest("/api/wishlist/add", {
@@ -258,7 +266,7 @@ export const ApiService = {
 
     // Remove item from wishlist
     remove: async (userId, productId) => {
-      return await apiRequest("/api/wishlist/remove", {
+      return await apiRequest(`/api/wishlist/remove`, {
         method: "DELETE",
         body: { userId, productId },
       });
