@@ -1,9 +1,26 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
+const { getClerkUser } = require('../middleware/clerkUser');
 
-// Get all addresses for a user
-router.get('/user/:userId', async (req, res) => {
+// Get all addresses for the authenticated user
+router.get('/user/me', getClerkUser, async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM addresses WHERE user_id = $1', [req.user.user_id]);
+    res.json({ 
+      success: true, 
+      data: result.rows 
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Get all addresses for a user (by user_id param - for admin use)
+router.get('/user/:userId', getClerkUser, async (req, res) => {
   try {
     const { userId } = req.params;
     const result = await db.query('SELECT * FROM addresses WHERE user_id = $1', [userId]);
@@ -19,8 +36,31 @@ router.get('/user/:userId', async (req, res) => {
   }
 });
 
-// Create new address
-router.post('/user/:userId', async (req, res) => {
+// Create new address for authenticated user
+router.post('/user/me', getClerkUser, async (req, res) => {
+  try {
+    const { street_address, city, state, postal_code, country, is_default, address_type } = req.body;
+    
+    const result = await db.query(
+      `INSERT INTO addresses (user_id, street_address, city, state, postal_code, country, is_default, address_type)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [req.user.user_id, street_address, city, state, postal_code, country, is_default || false, address_type || null]
+    );
+    
+    res.status(201).json({
+      success: true,
+      data: result.rows[0]
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// Create new address (by user_id param - for admin use)
+router.post('/user/:userId', getClerkUser, async (req, res) => {
   try {
     const { userId } = req.params;
     const { street_address, city, state, postal_code, country, is_default, address_type } = req.body;
@@ -44,7 +84,7 @@ router.post('/user/:userId', async (req, res) => {
 });
 
 // Update address
-router.put('/:addressId', async (req, res) => {
+router.put('/:addressId', getClerkUser, async (req, res) => {
   try {
     const { addressId } = req.params;
     const { street_address, city, state, postal_code, country, is_default, address_type } = req.body;
@@ -76,7 +116,7 @@ router.put('/:addressId', async (req, res) => {
 });
 
 // Delete address
-router.delete('/:addressId', async (req, res) => {
+router.delete('/:addressId', getClerkUser, async (req, res) => {
   try {
     const { addressId } = req.params;
     await db.query('DELETE FROM addresses WHERE address_id = $1', [addressId]);

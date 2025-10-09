@@ -19,6 +19,19 @@ export default function ProfileScreen({ navigation }) {
     navigation && navigation.navigate('OrderHistory');
   };
 
+  // DEBUG: Show Clerk ID
+  const showClerkId = () => {
+    Alert.alert(
+      'Your Clerk ID',
+      `Clerk ID: ${user?.id}\n\nCopy this and update your database!`,
+      [{ text: 'OK' }]
+    );
+    console.log('=== CLERK USER INFO ===');
+    console.log('Clerk ID:', user?.id);
+    console.log('Email:', user?.emailAddresses?.[0]?.emailAddress);
+    console.log('Name:', user?.firstName, user?.lastName);
+  };
+
   const handleLogOut = async () => {
     Alert.alert(
       'Log Out',
@@ -79,6 +92,15 @@ export default function ProfileScreen({ navigation }) {
               <Text style={styles.menuItemText}>Order History</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={Colors.mutedText} />
+          </TouchableOpacity>
+
+          {/* DEBUG BUTTON - Remove after getting clerk_id */}
+          <TouchableOpacity style={styles.menuItem} onPress={showClerkId}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="bug-outline" size={24} color="#FF6B00" />
+              <Text style={[styles.menuItemText, { color: '#FF6B00' }]}>Show Clerk ID (Debug)</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#FF6B00" />
           </TouchableOpacity>
         </View>
 
