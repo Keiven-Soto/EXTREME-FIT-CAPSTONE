@@ -239,6 +239,13 @@ export const ApiService = {
         body: { userId, productId, quantity },
       });
     },
+
+    // Clear all items from cart for a user
+    clear: async (userId) => {
+      return await apiRequest(`/api/cart/clear/${userId}`, {
+        method: "DELETE"
+      });
+    },
   },
 
   // Wishlist Management (future endpoints)

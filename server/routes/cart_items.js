@@ -6,8 +6,11 @@ const {
 	getCart,
 	addItemToCart,
 	removeItemFromCart,
-	updateCartItemQuantity
+	updateCartItemQuantity,
+	clearCart
 } = require('../controllers/cart_items_handler');
+// Vaciar el carrito completo de un usuario
+router.delete('/cart/clear/:userId', clearCart);
 
 // Obtener los productos del carrito de un usuario
 router.get('/cart/:userId', getCart);

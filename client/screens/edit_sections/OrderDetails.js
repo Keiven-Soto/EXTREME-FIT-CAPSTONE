@@ -74,6 +74,7 @@ useEffect(() => {
             ...it,
             name: product?.name || `Product #${it.product_id}`,
             size: it.size || '',
+            color: it.color || '',
             image_url: product?.cloudinary_public_id 
               ? getCloudinaryImageUrl(product.cloudinary_public_id)
               : null,
@@ -213,7 +214,13 @@ useEffect(() => {
             <Text style={styles.itemTitle} numberOfLines={2}>
               {it.name || `Product #${it.product_id}`}
             </Text>
-            {!!it.size && <Text style={styles.itemSub}>{it.size}</Text>}
+            {(!!it.size || !!it.color) && (
+              <Text style={styles.itemSub}>
+                {it.size ? `Size: ${it.size}` : ''}
+                {it.size && it.color ? ' | ' : ''}
+                {it.color ? `Color: ${it.color}` : ''}
+              </Text>
+            )}
           </View>
 
           <Text style={styles.itemPrice}>

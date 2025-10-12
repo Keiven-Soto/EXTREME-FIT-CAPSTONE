@@ -17,6 +17,82 @@ if (Platform.OS !== 'web') {
 }
 
 export default function BagScreen() {
+  // Pago simulado
+  const handleSimulatedPayment = async () => {
+    if (!cartItems || cartItems.length === 0) {
+      Alert.alert('Error', 'El carrito está vacío. Agrega productos antes de pagar.');
+      return;
+    }
+
+    try {
+      // 1. Buscar dirección default del usuario
+      const addressResult = await ApiService.addresses.getByUser(userId);
+      let defaultAddress = null;
+      if (addressResult.success && Array.isArray(addressResult.data)) {
+        defaultAddress = addressResult.data.find(addr => addr.is_default);
+      }
+      if (!defaultAddress) {
+        Alert.alert('Error', 'No tienes una dirección de envío predeterminada. Agrega una dirección en tu perfil.');
+        return;
+      }
+
+      // 2. Crear la orden en el backend con shipping_address_id
+      const orderPayload = {
+        user_id: userId,
+        total_amount: subtotal + SHIPPING_COST,
+        shipping_cost: SHIPPING_COST,
+        payment_method: 'simulado',
+        payment_status: 'pagado',
+        order_status: 'confirmado',
+        shipping_address_id: defaultAddress.address_id,
+      };
+      const orderResult = await ApiService.orders.create(orderPayload);
+      if (!orderResult || !orderResult.order_id) {
+        Alert.alert('Error', 'No se pudo crear la orden.');
+        return;
+      }
+      const orderId = orderResult.order_id;
+
+      // 3. Crear los order items
+      let allItemsOk = true;
+      for (const item of cartItems) {
+        const itemPayload = {
+          product_id: item.id,
+          quantity: item.quantity,
+          unit_price: item.price,
+          size: item.size || '',
+          color: item.color || '',
+        };
+        const itemResult = await ApiService.orders.addOrderItem(orderId, itemPayload);
+        if (!itemResult || !itemResult.order_item_id) {
+          allItemsOk = false;
+          break;
+        }
+      }
+      if (!allItemsOk) {
+        Alert.alert('Error', 'No se pudieron guardar todos los productos en la orden.');
+        return;
+      }
+
+      // 4. Vaciar el carrito en backend y frontend SIEMPRE después de pagar
+      await ApiService.cart.clear(userId);
+      setCartItems([]);
+      Alert.alert(
+        'Pago exitoso',
+        '¡Pago simulado realizado correctamente!',
+        [
+          {
+            text: 'Ver orden',
+            onPress: () => {
+              navigation.navigate('OrderDetails', { orderId });
+            }
+          }
+        ]
+      );
+    } catch (err) {
+      Alert.alert('Error', 'Hubo un problema al procesar la orden.');
+    }
+  };
   // Import useNavigation and useFocusEffect
   const navigation = require('@react-navigation/native').useNavigation();
   const useFocusEffect = require('@react-navigation/native').useFocusEffect;
@@ -254,6 +330,10 @@ export default function BagScreen() {
           <Text style={styles.checkoutButtonText}>Pay with PayPal</Text>
           <Ionicons name="logo-paypal" size={20} color={Colors.whiteText} />
         </TouchableOpacity>
+        <TouchableOpacity style={styles.testingcheckoutButton} onPress={handleSimulatedPayment}>
+          <Text style={styles.checkoutButtonText}>Pagar ahora</Text>
+          <Ionicons name="card-outline" size={20} color={Colors.whiteText} />
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -441,9 +521,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
+  testingcheckoutButton: {
+    backgroundColor: 'black',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    padding: 18,
+    borderRadius: 100,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 10,
+  },
   checkoutButtonText: {
     color: Colors.whiteText,
     fontSize: 18,
     fontWeight: 'bold',
   },
+
 });

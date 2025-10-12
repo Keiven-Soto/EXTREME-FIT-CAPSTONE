@@ -77,9 +77,21 @@ const updateCartItemQuantity = async (req, res) => {
 };
 
 
+// DELETE clear all items from cart for a user
+const clearCart = async (req, res) => {
+    const { userId } = req.params;
+    try {
+        await db.query('DELETE FROM cart WHERE user_id = $1', [userId]);
+        res.json({ success: true, message: 'Carrito vaciado correctamente' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
 module.exports = {
     getCart,
     addItemToCart,
     removeItemFromCart,
-    updateCartItemQuantity
+    updateCartItemQuantity,
+    clearCart
 };
