@@ -6,10 +6,10 @@ const db = require('../config/database');
  */
 const getClerkUser = async (req, res, next) => {
   console.log('🔍 getClerkUser middleware called');
-  console.log('🔍 req.auth:', req.auth);
+  console.log('🔍 req.auth():', req.auth());
   
   try {
-    const clerkId = req.auth?.userId;
+    const clerkId = req.auth()?.userId;
     console.log('🔍 Extracted clerkId:', clerkId);
 
     if (!clerkId) {

@@ -8,15 +8,16 @@ const {
   createOrderItem,
   getOrdersByUserId
 } = require('../controllers/orders_handler');
+const { getClerkUser } = require('../middleware/clerkUser');
 
 // Orders
-router.get('/orders', getOrders);
-router.get('/orders/:id', getOrderByIdWithDetails);
-router.post('/orders', createOrder);
-router.get('/orders/user/:user_id', getOrdersByUserId); // Get all orders by user ID
+router.get('/', (req, res, next) => {next();}, getClerkUser, getOrders);
+router.post('/', (req, res, next) =>  getClerkUser, createOrder);
+router.get('/user/:user_id', (req, res, next) => getClerkUser, getOrdersByUserId);
 
 // Order Items
-router.get('/orders/:id/items', getOrderItems);
-router.post('/orders/:id/items', createOrderItem);
+router.get('/:id/items', (req, res, next) =>  getClerkUser, getOrderItems);
+router.post('/:id/items', (req, res, next) =>  getClerkUser, createOrderItem);
+router.get('/:id', (req, res, next) => getClerkUser, getOrderByIdWithDetails);
 
 module.exports = router;
