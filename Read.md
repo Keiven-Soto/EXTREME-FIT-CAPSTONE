@@ -6,10 +6,10 @@
 
 ```bash
 # Crear y ejecutar el container de PostgreSQL
-docker run --name extremefit_container \
-  -e POSTGRES_PASSWORD=your_password \
-  -d -p 5433:5432 \
-  -v postgres_data:/var/lib/postgresql/data \
+docker run --name extremefit_container 
+  -e POSTGRES_PASSWORD=your_password 
+  -d -p 5433:5432 
+  -v postgres_data:/var/lib/postgresql/data 
   postgres
 
 # Verificar que esté corriendo
