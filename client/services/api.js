@@ -1,16 +1,25 @@
 // services/api.js
-import Constants from "expo-constants";
+import Constants from 'expo-constants';
 
+// Global token storage (set by components using useAuth)
+let globalToken = null;
+
+export const setGlobalAuthToken = (token) => {
+  globalToken = token;
+  console.log('🎫 Global token set:', !!token);
+};
+
+const USE_NGROK = true;
 // API Configuration with improved network detection
 const getApiUrl = () => {
   if (__DEV__) {
-    const debuggerHost = Constants.expoConfig?.hostUri?.split(":")[0];
-    if (
-      debuggerHost &&
-      debuggerHost !== "localhost" &&
-      debuggerHost !== "127.0.0.1"
-    ) {
-      console.log("Using Expo debugger host:", debuggerHost);
+    if (USE_NGROK) {
+      return 'https://unpaining-cris-scorningly.ngrok-free.dev'; //TODO: replace with your ngrok URL
+    }
+    
+    const debuggerHost = Constants.expoConfig?.hostUri?.split(':')[0];
+    if (debuggerHost && debuggerHost !== 'localhost' && debuggerHost !== '127.0.0.1') {
+      console.log('Using Expo debugger host:', debuggerHost);
       return `http://${debuggerHost}:5001`;
     }
 
@@ -23,13 +32,19 @@ const getApiUrl = () => {
 const API_BASE_URL = getApiUrl();
 console.log("API Base URL:", API_BASE_URL);
 
-// Generic API request function
+// Generic API request function with JWT authentication
 const apiRequest = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
+
+  // Use the globally set token
+  const token = globalToken;
+
   const config = {
     headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'ngrok-skip-browser-warning': 'true',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
       ...options.headers,
     },
     timeout: 10000, // 10 second timeout
@@ -102,6 +117,11 @@ export const ApiService = {
 
   // User Management
   users: {
+    // Get current authenticated user
+    getCurrentUser: async () => {
+      return await apiRequest('/api/users/me');
+    },
+
     // Create new user
     create: async (userData) => {
       return await apiRequest("/api/users", {

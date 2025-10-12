@@ -1,26 +1,36 @@
 const express = require('express');
 const cors = require('cors');
+const { clerkMiddleware, requireAuth } = require('@clerk/express');
 require('dotenv').config(); 
 
-//RUTAS
 const routes = require('./routes/routes');
 const addressRoutes = require('./routes/addresses');
-const productRoute = require('./routes/products')
+const productRoute = require('./routes/products');
 const ordersRoute = require('./routes/orders');
 const categoriesRoute = require('./routes/categories');
 const cartItemsRoute = require('./routes/cart_items');
 
 const app = express();
-const PORT = process.env.PORT || 5001; // ← Usar variable de entorno
+const PORT = process.env.PORT || 5001;
+
+// ⚠️ Webhooks MUST be before express.json()
+app.use('/api/webhooks', require('./routes/webhooks'));
 
 app.use(cors());
 app.use(express.json());
 
+// 🔐 Add Clerk middleware GLOBALLY (verifies JWT but doesn't require it)
+app.use(clerkMiddleware({
+  publishableKey: process.env.CLERK_PUBLISHABLE_KEY,
+  secretKey: process.env.CLERK_SECRET_KEY
+}));
+
+// Root route (public)
 app.get('/', (req, res) => {
   res.json({ message: 'ExtremeFit API is running!' });
 });
 
-// Test database connection
+// Test database connection (public)
 app.get('/api/test-db', async (req, res) => {
   try {
     const db = require('./config/database');
@@ -39,12 +49,23 @@ app.get('/api/test-db', async (req, res) => {
   }
 });
 
-app.use('/api', routes);
-app.use('/api/addresses', addressRoutes);
+// 🔐 Protected routes - Apply requireAuth() here
+console.log('📍 Registering /api/addresses');
+app.use('/api/addresses', requireAuth(), addressRoutes);
+
+console.log('📍 Registering /api/orders');
+app.use('/api/orders', requireAuth(), ordersRoute);
+
+// Public routes (no auth required)
+console.log('📍 Registering /api/products (public)');
 app.use('/api/products', productRoute);
 app.use('/api/', ordersRoute);
 app.use('/api/categories', categoriesRoute);
 app.use('/api', cartItemsRoute);
+
+// 🔐 Important: /api routes must be AFTER specific routes to avoid conflicts
+console.log('📍 Registering /api (generic)');
+app.use('/api', requireAuth(), routes);
 
 if (require.main === module) {
   app.listen(PORT, () => {
@@ -52,3 +73,5 @@ if (require.main === module) {
     console.log(`Test DB connection: http://localhost:${PORT}/api/test-db`);
   });
 }
+
+module.exports = app;

@@ -10,8 +10,10 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@clerk/clerk-expo';
 import ApiService from '../../services/api';
 import { getCloudinaryImageUrl } from '../../utils/cloudinary';
+import ApiService, { setGlobalAuthToken } from '../../services/api';
 
 /**
  * @file OrderHistory.js
@@ -87,20 +89,32 @@ function OrderCard({ order, onPress, navigation }) {
 
 // ================== PANTALLA PRINCIPAL ==================
 export default function OrderHistoryScreen({ navigation }) {
-  const [orders, setOrders] = useState([]); 
-  const [loading, setLoading] = useState(true); 
-  const [error, setError] = useState(null); 
+  const { getToken, isSignedIn } = useAuth();
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    console.log('OrderHistoryScreen useEffect ejecutado');
-    const userId = 1; // TODO: Cambiar USER ID dinámico
-
     const fetchOrdersWithImages = async () => {
       setLoading(true);
       setError(null);
       try {
-        // 1. Obtener las órdenes usando ApiService
-        const ordersResult = await ApiService.orders.getByUser(userId);
+        // Get JWT token and set it globally
+        const token = await getToken();
+        if (!token) {
+          throw new Error('No authentication token available');
+        }
+        setGlobalAuthToken(token);
+
+        // 1. Get authenticated user from database
+        const currentUser = await ApiService.users.getCurrentUser();
+
+        if (!currentUser || !currentUser.user_id) {
+          throw new Error('User not authenticated');
+        }
+
+        // 2. Obtener las órdenes usando el user_id real
+        const ordersResult = await ApiService.orders.getByUser(currentUser.user_id);
         if (!ordersResult.success) {
           throw new Error(ordersResult.error || 'Failed to fetch orders');
         }
@@ -156,9 +170,11 @@ export default function OrderHistoryScreen({ navigation }) {
         );
 
         setOrders(ordersWithImages);
+        console.log(ordersWithImages);
+        console.log(ordersResult);
       } catch (err) {
         console.error('Order fetch error:', err);
-        setError('Error loading orders');
+        setError(err.message || 'Error loading orders');
       } finally {
         setLoading(false);
       }

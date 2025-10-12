@@ -7,11 +7,13 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "@clerk/express": "^1.7.37",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "node-fetch": "^3.3.2",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "svix": "^1.76.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

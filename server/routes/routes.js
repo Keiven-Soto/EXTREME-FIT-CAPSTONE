@@ -1,15 +1,12 @@
-const express = require("express");
+const db = require('../config/database');
+const express = require('express');
 const router = express.Router();
-const {
-  getUsers,
-  getUserById,
-  postUser,
-  updateUser,
-  deleteUser,
-} = require("../controllers/users_handlers");
+const { getUsers, getUserById, postUser, updateUser, deleteUser } = require('../controllers/handlers');
+const { getClerkUser } = require('../middleware/clerkUser');
 
-// Test database connection endpoint
-router.get("/test-db", async (req, res) => {
+// Test database connection endpoint (public)
+router.get('/test-db', async (req, res) => {
+  console.log('✅ /test-db route hit');
   try {
     const db = require("../config/database");
     const result = await db.query("SELECT NOW() as current_time, version()");
@@ -24,6 +21,23 @@ router.get("/test-db", async (req, res) => {
       status: "Error ❌",
       message: error.message,
     });
+  }
+});
+
+// GET current authenticated user info
+router.get('/users/me', (req, res, next) => {
+  console.log('🎯 /users/me route HIT!');
+  console.log('🎯 req.auth before middleware:', req.auth);
+  next();
+}, getClerkUser, async (req, res) => {
+  console.log('🎯 Inside final /users/me handler');
+  console.log('🎯 req.user:', req.user);
+  
+  try {
+    res.json(req.user);
+  } catch (error) {
+    console.error('❌ Error in /users/me final handler:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

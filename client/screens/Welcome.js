@@ -1,9 +1,18 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ImageBackground, Platform } from 'react-native';
+import { useAuth } from '@clerk/clerk-expo';
 import Colors from '../colors';
 
-
 export default function WelcomeScreen({ navigation }) {
+  const { isSignedIn } = useAuth();
+
+  useEffect(() => {
+    // If user is already signed in, redirect to main app
+    if (isSignedIn) {
+      navigation.replace('Main');
+    }
+  }, [isSignedIn]);
+
   const handleCreateAccount = () => {
     navigation.navigate('CreateAccountPage');
   };
@@ -64,7 +73,7 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     flex: 1,
-    backgroundColor: Colors.darkBackground, // Placeholder background - replace with your image
+    backgroundColor: Colors.darkBackground,
     justifyContent: 'flex-end',
     paddingBottom: 60,
   },
