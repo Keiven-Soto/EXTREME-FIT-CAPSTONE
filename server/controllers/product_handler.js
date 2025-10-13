@@ -31,22 +31,7 @@ const getProductById = async (req, res) => {
     }
 
     const result = await db.query(
-      `
-      SELECT
-        product_id,
-        name,
-        description,
-        price,
-        category_id,
-        stock_quantity,
-        image_url,
-        cloudinary_public_id,
-        sizes,
-        colors,
-        gender
-      FROM products
-      WHERE product_id = $1
-    `,
+        `SELECT * FROM products WHERE product_id = $1`,
       [id]
     );
 

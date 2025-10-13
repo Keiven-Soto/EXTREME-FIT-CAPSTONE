@@ -25,7 +25,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
 
-  const USER_ID = 1; // hardcoded dummy user ID
+  const USER_ID = 1; // TODO: hardcoded dummy ID for authentication
 
   useEffect(() => {
     loadProduct();
@@ -39,6 +39,10 @@ export default function ProductDetailScreen({ route, navigation }) {
       if (result.success) {
         const productData = result.data.data || result.data;
         setProduct(productData);
+
+        // No seleccionar talla por defecto
+        setSelectedSize(null);
+        // Mantener color predeterminado si existe
 
         // Set default selections
         if (productData.sizes && productData.sizes.length > 0) {
@@ -75,7 +79,7 @@ export default function ProductDetailScreen({ route, navigation }) {
     }
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!selectedSize) {
       Alert.alert("Select Size", "Please select a size before adding to cart");
       return;
@@ -88,22 +92,21 @@ export default function ProductDetailScreen({ route, navigation }) {
       return;
     }
 
-    // TODO: Implement cart functionality
-    Alert.alert(
-      "Added to Cart",
-      `${product.name}\nSize: ${selectedSize}\nColor: ${selectedColor}\nQuantity: ${quantity}`,
-      [{ text: "OK" }]
-    );
+    try {
+      const result = await ApiService.cart.addItem(USER_ID, product.product_id, quantity, selectedSize, selectedColor);
+      if (result.success) {
+        // Fetch cart to update data after adding item
+        await ApiService.cart.get(USER_ID);
+        Alert.alert('Added to Cart', `${product.name}\nSize: ${selectedSize}\nColor: ${selectedColor}\nQuantity: ${quantity}`);
+      } else {
+        Alert.alert('Error', result.error || 'Could not add to cart');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to connect to server');
+    }
   };
 
   const handleWishlistToggle = async (productId) => {
-    // setIsWishlisted(!isWishlisted);
-    // TODO: Implement wishlist API call
-    // Alert.alert(
-    //   isWishlisted ? 'Removed from Wishlist' : 'Added to Wishlist',
-    //   product.name
-    // );
-
     if (!isWishlisted) {
       console.log("Sent User ID and Product ID: ", USER_ID, ", ", productId);
       await ApiService.wishlist.add(USER_ID, productId);
@@ -138,8 +141,13 @@ export default function ProductDetailScreen({ route, navigation }) {
     }
   };
 
+  // Nueva lógica: cantidad depende del stock de la talla seleccionada
   const incrementQuantity = () => {
-    if (quantity < (product?.stock_quantity || 99)) {
+    if (
+      product?.sizes &&
+      selectedSize &&
+      quantity < (product.sizes[selectedSize] || 0)
+    ) {
       setQuantity(quantity + 1);
     }
   };
@@ -247,29 +255,60 @@ export default function ProductDetailScreen({ route, navigation }) {
           )}
 
           {/* Size Selection */}
-          {product.sizes && product.sizes.length > 0 && (
+          {product.sizes && Object.keys(product.sizes).length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Select Size</Text>
               <View style={styles.optionsContainer}>
-                {product.sizes.map((size) => (
+                {Object.keys(product.sizes).length === 1 && product.sizes["OS"] !== undefined ? (
+                  // Solo OS
                   <TouchableOpacity
-                    key={size}
+                    key="OS"
                     style={[
                       styles.optionButton,
-                      selectedSize === size && styles.optionButtonSelected,
+                      selectedSize === "OS" && styles.optionButtonSelected,
+                      product.sizes["OS"] === 0 && styles.buttonDisabled,
                     ]}
-                    onPress={() => setSelectedSize(size)}
+                    onPress={() => setSelectedSize("OS")}
+                    disabled={product.sizes["OS"] === 0}
                   >
                     <Text
                       style={[
                         styles.optionText,
-                        selectedSize === size && styles.optionTextSelected,
+                        selectedSize === "OS" && styles.optionTextSelected,
+                        product.sizes["OS"] === 0 && { color: Colors.mutedText },
                       ]}
                     >
-                      {size}
+                      OS {product.sizes["OS"] === 0 ? '(Agotado)' : ''}
                     </Text>
                   </TouchableOpacity>
-                ))}
+                ) : (
+                  // S, M, L, XL en orden si existen
+                  ["S", "M", "L", "XL"].filter(size => product.sizes[size] !== undefined).map((size) => {
+                    const qty = product.sizes[size] ?? 0;
+                    return (
+                      <TouchableOpacity
+                        key={size}
+                        style={[
+                          styles.optionButton,
+                          selectedSize === size && styles.optionButtonSelected,
+                          qty === 0 && styles.buttonDisabled,
+                        ]}
+                        onPress={() => setSelectedSize(size)}
+                        disabled={qty === 0}
+                      >
+                        <Text
+                          style={[
+                            styles.optionText,
+                            selectedSize === size && styles.optionTextSelected,
+                            qty === 0 && { color: Colors.mutedText },
+                          ]}
+                        >
+                          {size} {qty === 0 ? '(Agotado)' : ''}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })
+                )}
               </View>
             </View>
           )}
@@ -321,13 +360,17 @@ export default function ProductDetailScreen({ route, navigation }) {
               <TouchableOpacity
                 style={styles.quantityButton}
                 onPress={incrementQuantity}
-                disabled={quantity >= (product.stock_quantity || 99)}
+                disabled={
+                  !selectedSize ||
+                  quantity >= (product.sizes[selectedSize] || 0)
+                }
               >
                 <Ionicons
                   name="add"
                   size={20}
                   color={
-                    quantity >= (product.stock_quantity || 99)
+                    !selectedSize ||
+                    quantity >= (product.sizes[selectedSize] || 0)
                       ? Colors.mutedText
                       : Colors.darkText
                   }
@@ -336,12 +379,12 @@ export default function ProductDetailScreen({ route, navigation }) {
             </View>
           </View>
 
-          {/* Stock Info */}
-          {product.stock_quantity !== undefined && (
+          {/* Stock Info por talla */}
+          {selectedSize && product.sizes && (
             <Text style={styles.stockText}>
-              {product.stock_quantity > 0
-                ? `${product.stock_quantity} items in stock`
-                : "Out of stock"}
+              {product.sizes[selectedSize] > 0
+                ? `${product.sizes[selectedSize]} items in stock for size ${selectedSize}`
+                : `Out of stock for size ${selectedSize}`}
             </Text>
           )}
         </View>
@@ -356,11 +399,18 @@ export default function ProductDetailScreen({ route, navigation }) {
         <TouchableOpacity
           style={[
             styles.addToCartButton,
-            (!product.stock_quantity || product.stock_quantity === 0) &&
-              styles.buttonDisabled,
+            (
+              !selectedSize ||
+              !product.sizes[selectedSize] ||
+              product.sizes[selectedSize] === 0
+            ) && styles.buttonDisabled,
           ]}
           onPress={handleAddToCart}
-          disabled={!product.stock_quantity || product.stock_quantity === 0}
+          disabled={
+            !selectedSize ||
+            !product.sizes[selectedSize] ||
+            product.sizes[selectedSize] === 0
+          }
         >
           <Ionicons name="cart-outline" size={24} color={Colors.whiteText} />
           <Text style={styles.addToCartText}>Add to Cart</Text>

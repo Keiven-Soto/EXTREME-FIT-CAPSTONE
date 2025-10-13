@@ -221,10 +221,10 @@ export const ApiService = {
     },
 
     // Add item to cart
-    addItem: async (userId, productId, quantity = 1) => {
+    addItem: async (userId, productId, quantity, size, color) => {
       return await apiRequest("/api/cart/add", {
         method: "POST",
-        body: { userId, productId, quantity },
+        body: { userId, productId, quantity, size, color },
       });
     },
 
@@ -241,6 +241,13 @@ export const ApiService = {
       return await apiRequest("/api/cart/update", {
         method: "PUT",
         body: { userId, productId, quantity },
+      });
+    },
+
+    // Clear all items from cart for a user
+    clear: async (userId) => {
+      return await apiRequest(`/api/cart/clear/${userId}`, {
+        method: "DELETE"
       });
     },
   },

@@ -88,11 +88,11 @@ const getOrderItems = async (req, res) => {
 const createOrderItem = async (req, res) => {
   try {
     const { id } = req.params;
-    const { product_id, quantity, unit_price } = req.body;
+    const { product_id, quantity, unit_price, size, color } = req.body;
     const result = await db.query(
-      `INSERT INTO order_items (order_id, product_id, quantity, unit_price)
-       VALUES ($1, $2, $3, $4) RETURNING *`,
-      [id, product_id, quantity, unit_price]
+      `INSERT INTO order_items (order_id, product_id, quantity, unit_price, size, color)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [id, product_id, quantity, unit_price, size, color]
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -102,6 +102,7 @@ const createOrderItem = async (req, res) => {
 
 module.exports = {
   getOrders,
+  getOrderById,
   getOrderByIdWithDetails,
   createOrder,
   getOrderItems,

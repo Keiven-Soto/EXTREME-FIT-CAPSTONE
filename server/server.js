@@ -8,6 +8,7 @@ const addressRoutes = require('./routes/addresses');
 const productRoute = require('./routes/products')
 const ordersRoute = require('./routes/orders');
 const categoriesRoute = require('./routes/categories');
+const cartItemsRoute = require('./routes/cart_items');
 const wishlistRoute = require('./routes/wishlist');
 
 const app = express();
@@ -44,6 +45,7 @@ app.use('/api/addresses', addressRoutes);
 app.use('/api/products', productRoute);
 app.use('/api/', ordersRoute);
 app.use('/api/categories', categoriesRoute);
+app.use('/api', cartItemsRoute);
 app.use('/api/wishlist', wishlistRoute);
 
 if (require.main === module) {

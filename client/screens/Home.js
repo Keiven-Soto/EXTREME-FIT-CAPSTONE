@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import ApiService from "../services/api";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ScrollView } from "react-native-web";
 
 // dynamic adjustment to device screen width
 const { width } = Dimensions.get("window");
