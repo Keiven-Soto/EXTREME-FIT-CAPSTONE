@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { 
-  StyleSheet, 
-  Text, 
-  View, 
-  TextInput, 
-  TouchableOpacity, 
+import {
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  TouchableOpacity,
   Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -12,6 +12,7 @@ import {
   ScrollView
 } from 'react-native';
 import { useSignIn } from '@clerk/clerk-expo';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import Colors from '../colors';
 
 export default function LogInPage({ navigation }) {
@@ -20,6 +21,7 @@ export default function LogInPage({ navigation }) {
   const [emailAddress, setEmailAddress] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const onSignInPress = async () => {
     if (!isLoaded) return;
@@ -52,6 +54,13 @@ export default function LogInPage({ navigation }) {
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.navigate('Welcome')}
+        >
+          <Ionicons name="arrow-back" size={28} color="#fff" />
+        </TouchableOpacity>
+
         <View style={styles.header}>
           <Text style={styles.title}>WELCOME BACK</Text>
           <Text style={styles.subtitle}>Log in to continue</Text>
@@ -69,15 +78,27 @@ export default function LogInPage({ navigation }) {
             autoComplete="email"
           />
           
-          <TextInput
-            style={styles.input}
-            value={password}
-            placeholder="Password"
-            placeholderTextColor="#666"
-            secureTextEntry={true}
-            onChangeText={setPassword}
-            autoComplete="password"
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              value={password}
+              placeholder="Password"
+              placeholderTextColor="#666"
+              secureTextEntry={!showPassword}
+              onChangeText={setPassword}
+              autoComplete="password"
+            />
+            <TouchableOpacity
+              style={styles.eyeIcon}
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              <Ionicons
+                name={showPassword ? "eye-off" : "eye"}
+                size={24}
+                color="#666"
+              />
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity 
             onPress={() => navigation.navigate('ForgotPasswordPage')}
@@ -121,6 +142,14 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     padding: 30,
+    paddingTop: 60,
+  },
+  backButton: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    zIndex: 10,
+    padding: 10,
   },
   header: {
     marginBottom: 40,
@@ -151,6 +180,26 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     fontSize: 16,
     color: '#fff',
+  },
+  passwordContainer: {
+    position: 'relative',
+    marginBottom: 15,
+  },
+  passwordInput: {
+    backgroundColor: '#1a1a1a',
+    borderWidth: 1,
+    borderColor: '#333',
+    padding: 15,
+    paddingRight: 50,
+    borderRadius: 10,
+    fontSize: 16,
+    color: '#fff',
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 15,
+    top: 15,
+    padding: 5,
   },
   forgotButton: {
     alignSelf: 'flex-end',

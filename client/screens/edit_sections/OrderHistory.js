@@ -11,9 +11,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@clerk/clerk-expo';
-import ApiService from '../../services/api';
-import { getCloudinaryImageUrl } from '../../utils/cloudinary';
 import ApiService, { setGlobalAuthToken } from '../../services/api';
+import { getCloudinaryImageUrl } from '../../utils/cloudinary';
 
 /**
  * @file OrderHistory.js
@@ -94,93 +93,72 @@ export default function OrderHistoryScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchOrdersWithImages = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        // Get JWT token and set it globally
-        const token = await getToken();
-        if (!token) {
-          throw new Error('No authentication token available');
-        }
-        setGlobalAuthToken(token);
-
-        // 1. Get authenticated user from database
-        const currentUser = await ApiService.users.getCurrentUser();
-
-        if (!currentUser || !currentUser.user_id) {
-          throw new Error('User not authenticated');
-        }
-
-        // 2. Obtener las órdenes usando el user_id real
-        const ordersResult = await ApiService.orders.getByUser(currentUser.user_id);
-        if (!ordersResult.success) {
-          throw new Error(ordersResult.error || 'Failed to fetch orders');
-        }
-        const orders = ordersResult.data || [];
-
-        // 2. Obtener items + imágenes por orden
-        const ordersWithImages = await Promise.all(
-          orders.map(async (order) => {
-            try {
-              // Obtener items de la orden
-              const itemsResult = await ApiService.orders.getOrderItems(order.order_id);
-              console.log('OrderItems para order', order.order_id, itemsResult);
-              const orderItems = itemsResult.success ? itemsResult.data || [] : [];
-
-              // Obtener imágenes de productos (Cloudinary o fallback) y loggear para debug
-              const images = await Promise.all(
-                orderItems.map(async (item) => {
-                  try {
-                    const productResult = await ApiService.products.getById(item.product_id);
-                    console.log('ProductResult para item', item.product_id, productResult);
-                    if (!productResult.success) {
-                      console.log('No productResult.success', { item, productResult });
-                      return null;
-                    }
-                    const product = productResult.data?.data || productResult.data;
-                    console.log('Producto para OrderHistory:', product);
-                    if (product?.cloudinary_public_id) {
-                      const url = getCloudinaryImageUrl(product.cloudinary_public_id);
-                      console.log('Cloudinary URL generada:', url);
-                      return url;
-                    }
-                    // Fallback a image_url si no hay Cloudinary | TODO: ELIMINAR ESTO DESPUÉS---
-                    if (product?.image_url) {
-                      console.log('Fallback image_url:', product.image_url);
-                      return product.image_url;
-                    }
-                    //------------------------------------
-                    return null;
-                  } catch (err) {
-                    console.log('Error obteniendo producto:', err);
-                    return null;
-                  }
-                })
-              );
-
-              console.log('Imágenes generadas para la orden', order.order_id, images);
-              return { ...order, images: images.filter(Boolean) };
-            } catch (err) {
-              console.log('Error en fetch de items/productos para order', order.order_id, err);
-              return { ...order, images: [] };
-            }
-          })
-        );
-
-        setOrders(ordersWithImages);
-        console.log(ordersWithImages);
-        console.log(ordersResult);
-      } catch (err) {
-        console.error('Order fetch error:', err);
-        setError(err.message || 'Error loading orders');
-      } finally {
-        setLoading(false);
+useEffect(() => {
+  const fetchOrdersWithImages = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = await getToken();
+      if (!token) {
+        throw new Error('No authentication token available');
       }
-    };
-    fetchOrdersWithImages();
-  }, []);
+      setGlobalAuthToken(token);
+
+      const currentUser = await ApiService.users.getCurrentUser();
+
+      if (!currentUser || !currentUser.user_id) {
+        throw new Error('User not authenticated');
+      }
+
+      const ordersResult = await ApiService.orders.getByUser(currentUser.user_id);
+      if (!ordersResult.success) {
+        throw new Error(ordersResult.error || 'Failed to fetch orders');
+      }
+      const orders = ordersResult.data || [];
+
+      const ordersWithImages = await Promise.all(
+        orders.map(async (order) => {
+          try {
+            const itemsResult = await ApiService.orders.getOrderItems(order.order_id);
+            const orderItems = itemsResult.success ? itemsResult.data || [] : [];
+
+            const images = await Promise.all(
+              orderItems.map(async (item) => {
+                try {
+                  const productResult = await ApiService.products.getById(item.product_id);
+                  if (!productResult.success) return null;
+                  
+                  const product = productResult.data?.data || productResult.data;
+                  if (product?.cloudinary_public_id) {
+                    return getCloudinaryImageUrl(product.cloudinary_public_id);
+                  }
+                  if (product?.image_url) {
+                    return product.image_url;
+                  }
+                  return null;
+                } catch (err) {
+                  return null;
+                }
+              })
+            );
+
+            return { ...order, images: images.filter(Boolean) };
+          } catch (err) {
+            return { ...order, images: [] };
+          }
+        })
+      );
+
+      setOrders(ordersWithImages);
+    } catch (err) {
+      console.error('Order fetch error:', err);
+      setError(err.message || 'Error loading orders');
+    } finally {
+      setLoading(false);
+    }
+  };
+  fetchOrdersWithImages();
+}, []);
 
   return (
     <SafeAreaView style={styles.safeArea}> 
