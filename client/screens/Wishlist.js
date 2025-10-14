@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   StyleSheet,
   Text,
@@ -54,6 +54,7 @@ export default function WishlistScreen( ) {
         setLoading(false);
       } else {
         Alert.alert("Info", result.error || "No wishlist items found.");
+        setWishlistItems([]);
       }
     } catch (error) {
       console.error("❌ Error loading wishlist:", error);

@@ -13,17 +13,17 @@ const getWishlistItem = async (req, res) => {
 
     const result = await db.query(
       `
-      SELECT * FROM wishlist WHERE user_id = $1 ORDER BY added_at
+      SELECT wishlist_id, user_id, product_id, added_at FROM wishlist WHERE user_id = $1 ORDER BY added_at
     `,
       [user_id]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: "No wishlist items were found",
-      });
-    }
+    // if (result.rows.length === 0) {
+    //   return res.status(404).json({
+    //     success: false,
+    //     error: "No wishlist items were found",
+    //   });
+    // }
 
     res.json({
       success: true,
