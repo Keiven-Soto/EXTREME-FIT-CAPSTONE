@@ -6,23 +6,23 @@ import {
   Text,
   View,
   Image,
-  FlatList,
   TouchableOpacity,
+  Pressable,
   Dimensions,
   ActivityIndicator,
-  Pressable,
+  ScrollView,
   Alert,
 } from "react-native";
 import ApiService from "../services/api";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getCloudinaryImageUrl } from "../utils/cloudinary";
-import { ScrollView } from "react-native-web";
 
 // dynamic adjustment to device screen width
 const { width } = Dimensions.get("window");
 
 export default function CategoryProducts({ route, navigation }) {
   const { category_id, category_name, gender } = route.params;
+  
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isWishlisted, setIsWishlisted] = useState(false);
@@ -50,106 +50,108 @@ export default function CategoryProducts({ route, navigation }) {
     }
   };
 
-  const normalizeText = (text) => {
-    return text
-      ? text.charAt(0).toUpperCase() + text.slice(1).toLowerCase()
-      : text;
+  const renderProduct = (product) => {
+    const getImageSource = () => {
+      if (product.cloudinary_public_id) {
+        const imageUrl = getCloudinaryImageUrl(product.cloudinary_public_id, {
+          format: "auto",
+        });
+        return { uri: imageUrl };
+      }
+      return null;
+    };
+
+    const imageSource = getImageSource();
+
+    return (
+      <TouchableOpacity
+        key={product.product_id}
+        style={styles.productCard}
+        onPress={() =>
+          navigation.navigate("ProductDetails", {
+            productId: product.product_id,
+          })
+        }
+      >
+        {/* Product Image */}
+        <Image
+          source={imageSource}
+          style={styles.productImage}
+          onError={() =>
+            console.log("Image failed to load for product:", product.name)
+          }
+        />
+
+        {/* Product Info */}
+        <View style={styles.productInfo}>
+          {/* Product Name & Price */}
+          <Text style={styles.productName} numberOfLines={2}>
+            {product.name}
+          </Text>
+          <Text style={styles.productPrice}>
+            ${parseFloat(product.price).toFixed(2)}
+          </Text>
+
+          {/* Product Info Footer */}
+          <View style={styles.productInfoFooter}>
+            {/* Gender */}
+            {product.gender && (
+              <Text style={styles.productGender}>{product.gender}</Text>
+            )}
+
+            {/* Wishlist Icon */}
+            <Pressable
+              style={styles.productIcon}
+              onPress={() => handleFavorite(product)}
+            >
+              <Ionicons
+                name={isWishlisted ? "heart" : "heart-outline"}
+                size={18}
+                color={isWishlisted ? Colors.mainColor : Colors.darkText}
+              />
+            </Pressable>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
   };
 
-  const getImageSource = (product) => {
-    if (product.cloudinary_public_id) {
-      const imageUrl = getCloudinaryImageUrl(product.cloudinary_public_id, {
-        format: "auto",
-      });
-      return { uri: imageUrl };
+    function handleFavorite(product) {
+      Alert.alert("Coming soon!");
     }
-    return null;
-  };
-
-  // const handleWishlistToggle = (product) => {
-  //   setIsWishlisted(!isWishlisted);
-  //   // TODO: Implement wishlist API call
-  //   Alert.alert(
-  //     isWishlisted ? "Removed from Wishlist" : "Added to Wishlist",
-  //     product.name
-  //   );
-  // };
 
   return (
     <SafeAreaView style={styles.screenContainer}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <Ionicons name="arrow-back" size={24} color={Colors.darkText} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {normalizeText(gender)} - {category_name}
-        </Text>
-      </View>
+      <ScrollView showVerticalScrollIndicator={true}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color={Colors.darkText} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>
+            {gender} - {category_name}
+          </Text>
+        </View>
 
-      {/* Products Grid */}
-      <SafeAreaView >
-        <FlatList
-          data={products}
-          keyExtractor={(item) => item.product_id}
-          numColumns={2}
-          ListEmptyComponent={<Text>No products available</Text>}
-          columnWrapperStyle={{
-            justifyContent: "space-between",
-            paddingHorizontal: 16,
-          }}
-          showsVerticalScrollIndicator={true}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.productCard}
-              onPress={() =>
-                navigation.navigate("ProductDetails", {
-                  productId: item.product_id,
-                })
-              }
-            >
-              {/* Product Image */}
-              <Image
-                source={getImageSource(item)}
-                style={styles.productImage}
-                onError={() =>
-                  console.log("Image failed to load for product:", item.name)
-                }
-              />
-
-              {/* Product Info Container */}
-              <View style={styles.productInfo}>
-                <Text style={styles.productName} numberOfLines={2}>
-                  {item.name}
-                </Text>
-                <Text style={styles.productPrice}>
-                  ${parseFloat(item.price).toFixed(2)}
-                </Text>
-
-                {/* Product Info Footer */}
-                <View style={styles.productInfoFooter}>
-                  {/* Gender */}
-                  {item.gender && (
-                    <Text style={styles.productGender}>{item.gender}</Text>
-                  )}
-
-                  {/* Wishlist Icon */}
-                  <Pressable style={styles.productIcon}>
-                    <Ionicons
-                      name={isWishlisted ? "heart" : "heart-outline"}
-                      size={28}
-                      color={isWishlisted ? Colors.mainColor : Colors.darkText}
-                    />
-                  </Pressable>
-                </View>
-              </View>
-            </TouchableOpacity>
+        {/* Products Grid */}
+        <View style={styles.productsContainer}>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={Colors.mainColor} />
+              <Text style={styles.loadingText}>Loading products...</Text>
+            </View>
+          ) : products.length > 0 ? (
+            <View style={styles.productsGrid}>
+              {products.map(renderProduct)}
+            </View>
+          ) : (
+            <Text style={styles.noResults}>No products available 😢</Text>
           )}
-        />
-      </SafeAreaView>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -175,6 +177,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: Colors.darkText,
     marginBottom: 5,
+    textTransform: "capitalize",
   },
 
   headerSubtitle: {
@@ -196,7 +199,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     borderRadius: 8,
     elevation: 4,
-    marginBottom: 16,
     overflow: "hidden",
   },
 
@@ -208,10 +210,10 @@ const styles = StyleSheet.create({
 
   productInfo: {
     width: "100%",
-    padding: 10,
+    padding: 8,
+    flex: 1,
     flexDirection: "column",
-    justifyContent: "flex-end",
-    alignItems: "left",
+    justifyContent: "flex-start",
   },
 
   productName: {
@@ -222,9 +224,10 @@ const styles = StyleSheet.create({
   },
 
   productPrice: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "bold",
     color: Colors.mainColor,
+    marginBottom: 5,
   },
 
   productGender: {
@@ -235,13 +238,42 @@ const styles = StyleSheet.create({
 
   productIcon: {
     fontSize: 12,
-    color: "#888",
-    justifyContent: "flex-end",
+    color: Colors.grayIcon,
   },
 
   productInfoFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+  },
+
+  productsContainer: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+
+  productsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 15,
+  },
+
+  loadingContainer: {
+    padding: 40,
+    alignItems: "center",
+  },
+
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: Colors.mutedText,
+  },
+
+  noResults: {
+    textAlign: "center",
+    fontSize: 16,
+    color: Colors.mutedText,
+    fontStyle: "italic",
+    paddingVertical: 20,
   },
 });

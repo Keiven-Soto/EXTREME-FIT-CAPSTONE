@@ -9,6 +9,7 @@ const productRoute = require('./routes/products');
 const ordersRoute = require('./routes/orders');
 const categoriesRoute = require('./routes/categories');
 const cartItemsRoute = require('./routes/cart_items');
+const wishlistRoute = require('./routes/wishlist');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -62,6 +63,7 @@ app.use('/api/products', productRoute);
 app.use('/api/', ordersRoute);
 app.use('/api/categories', categoriesRoute);
 app.use('/api', cartItemsRoute);
+app.use('/api/wishlist', wishlistRoute);
 
 // 🔐 Important: /api routes must be AFTER specific routes to avoid conflicts
 console.log('📍 Registering /api (generic)');

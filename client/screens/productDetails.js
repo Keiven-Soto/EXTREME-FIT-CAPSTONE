@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -8,16 +8,16 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import Colors from '../colors';
-import { getCloudinaryImageUrl } from '../utils/cloudinary';
-import ApiService from '../services/api';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import Colors from "../colors";
+import { getCloudinaryImageUrl } from "../utils/cloudinary";
+import ApiService from "../services/api";
 
 export default function ProductDetailScreen({ route, navigation }) {
   const { productId } = route.params;
-  
+
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState(null);
@@ -25,34 +25,54 @@ export default function ProductDetailScreen({ route, navigation }) {
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
 
+  const USER_ID = 1; // TODO: hardcoded dummy ID for authentication
+
   useEffect(() => {
     loadProduct();
   }, [productId]);
 
-const loadProduct = async () => {
-  try {
-    setLoading(true);
-    const result = await ApiService.products.getById(productId);
-    
-    console.log('Full result:', result);
-    
-    if (result.success) {
-      const productData = result.data.data || result.data;
-      setProduct(productData);
-      
-      // No seleccionar talla por defecto
-      setSelectedSize(null);
-      // Mantener color predeterminado si existe
-      if (productData.colors && productData.colors.length > 0) {
-        setSelectedColor(productData.colors[0]);
-      }
+  const loadProduct = async () => {
+    try {
+      setLoading(true);
+      const result = await ApiService.products.getById(productId);
+
+      if (result.success) {
+        const productData = result.data.data || result.data;
+        setProduct(productData);
+
+        // No seleccionar talla por defecto
+        setSelectedSize(null);
+        // Mantener color predeterminado si existe
+
+        // Set default selections
+        if (productData.sizes && productData.sizes.length > 0) {
+          setSelectedSize(productData.sizes[0]);
+        }
+        if (productData.colors && productData.colors.length > 0) {
+          setSelectedColor(productData.colors[0]);
+        }
+
+        // Check wishlist
+        try {
+          const wishlistCheck = await ApiService.wishlist.getById(
+            USER_ID,
+            productId
+          );
+
+          setIsWishlisted(
+            Array.isArray(wishlistCheck.data) && wishlistCheck.data.length > 0
+          );
+        } catch (err) {
+          console.error("Failed to fetch wishlist status", err);
+          setIsWishlisted(false);
+        }
       } else {
-        Alert.alert('Error', 'Failed to load product');
+        Alert.alert("Error", "Failed to load product");
         navigation.goBack();
       }
     } catch (error) {
-      console.error('Error loading product:', error);
-      Alert.alert('Error', 'Failed to connect to server');
+      console.error("Error loading product:", error);
+      Alert.alert("Error", "Failed to connect to server");
       navigation.goBack();
     } finally {
       setLoading(false);
@@ -61,21 +81,22 @@ const loadProduct = async () => {
 
   const handleAddToCart = async () => {
     if (!selectedSize) {
-      Alert.alert('Select Size', 'Please select a size before adding to cart');
+      Alert.alert("Select Size", "Please select a size before adding to cart");
       return;
     }
     if (!selectedColor) {
-      Alert.alert('Select Color', 'Please select a color before adding to cart');
+      Alert.alert(
+        "Select Color",
+        "Please select a color before adding to cart"
+      );
       return;
     }
 
-    const userId = 1; //TODO: Reemplaza esto por el userId real (ejemplo: de contexto, auth, etc.)
-
     try {
-      const result = await ApiService.cart.addItem(userId, product.product_id, quantity, selectedSize, selectedColor);
+      const result = await ApiService.cart.addItem(USER_ID, product.product_id, quantity, selectedSize, selectedColor);
       if (result.success) {
         // Fetch cart to update data after adding item
-        await ApiService.cart.get(userId);
+        await ApiService.cart.get(USER_ID);
         Alert.alert('Added to Cart', `${product.name}\nSize: ${selectedSize}\nColor: ${selectedColor}\nQuantity: ${quantity}`);
       } else {
         Alert.alert('Error', result.error || 'Could not add to cart');
@@ -85,13 +106,39 @@ const loadProduct = async () => {
     }
   };
 
-  const handleWishlistToggle = () => {
-    setIsWishlisted(!isWishlisted);
-    // TODO: Implement wishlist API call
-    Alert.alert(
-      isWishlisted ? 'Removed from Wishlist' : 'Added to Wishlist',
-      product.name
-    );
+  const handleWishlistToggle = async (productId) => {
+    if (!isWishlisted) {
+      console.log("Sent User ID and Product ID: ", USER_ID, ", ", productId);
+      await ApiService.wishlist.add(USER_ID, productId);
+      Alert.alert(
+        "Added to Wishlist",
+        `${product.name}\nSize: ${selectedSize}\nColor: ${selectedColor}\nQuantity: ${quantity}`,
+        [{ text: "OK" }]
+      );
+      setIsWishlisted(true);
+    } else {
+      Alert.alert(
+        "Remove from wishlist?",
+        `Are you sure you want to remove "${product.name}" from your wishlist?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Remove",
+            style: "destructive",
+            onPress: async () => {
+              // call API to remove and refresh list
+              console.log(
+                "Sent User ID and Product ID: ",
+                USER_ID,
+                product.product_id
+              );
+              await ApiService.wishlist.remove(USER_ID, product.product_id);
+              setIsWishlisted(false);
+            },
+          },
+        ]
+      );
+    }
   };
 
   // Nueva lógica: cantidad depende del stock de la talla seleccionada
@@ -121,7 +168,7 @@ const loadProduct = async () => {
       </SafeAreaView>
     );
   }
-  
+
   if (!product) {
     return (
       <SafeAreaView style={styles.container}>
@@ -133,7 +180,11 @@ const loadProduct = async () => {
   }
 
   const imageSource = product.cloudinary_public_id
-    ? { uri: getCloudinaryImageUrl(product.cloudinary_public_id, { format: 'auto' }) }
+    ? {
+        uri: getCloudinaryImageUrl(product.cloudinary_public_id, {
+          format: "auto",
+        }),
+      }
     : null;
 
   const totalPrice = (parseFloat(product.price) * quantity).toFixed(2);
@@ -143,12 +194,18 @@ const loadProduct = async () => {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header with Back Button */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
             <Ionicons name="arrow-back" size={24} color={Colors.darkText} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleWishlistToggle} style={styles.wishlistButton}>
+          <TouchableOpacity
+            onPress={() => handleWishlistToggle(productId)}
+            style={styles.wishlistButton}
+          >
             <Ionicons
-              name={isWishlisted ? 'heart' : 'heart-outline'}
+              name={isWishlisted ? "heart" : "heart-outline"}
               size={28}
               color={isWishlisted ? Colors.mainColor : Colors.darkText}
             />
@@ -158,10 +215,18 @@ const loadProduct = async () => {
         {/* Product Image */}
         <View style={styles.imageContainer}>
           {imageSource ? (
-            <Image source={imageSource} style={styles.productImage} resizeMode="cover" />
+            <Image
+              source={imageSource}
+              style={styles.productImage}
+              resizeMode="cover"
+            />
           ) : (
             <View style={styles.imagePlaceholder}>
-              <Ionicons name="image-outline" size={80} color={Colors.mutedText} />
+              <Ionicons
+                name="image-outline"
+                size={80}
+                color={Colors.mutedText}
+              />
               <Text style={styles.placeholderText}>No Image Available</Text>
             </View>
           )}
@@ -170,12 +235,16 @@ const loadProduct = async () => {
         {/* Product Info */}
         <View style={styles.contentContainer}>
           <Text style={styles.productName}>{product.name}</Text>
-          
+
           {product.gender && (
-            <Text style={styles.productGender}>{product.gender.toUpperCase()}</Text>
+            <Text style={styles.productGender}>
+              {product.gender.toUpperCase()}
+            </Text>
           )}
 
-          <Text style={styles.productPrice}>${parseFloat(product.price).toFixed(2)}</Text>
+          <Text style={styles.productPrice}>
+            ${parseFloat(product.price).toFixed(2)}
+          </Text>
 
           {/* Description */}
           {product.description && (
@@ -358,8 +427,8 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 40,
   },
   loadingText: {
@@ -372,9 +441,9 @@ const styles = StyleSheet.create({
     color: Colors.mutedText,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
     backgroundColor: Colors.whiteBackground,
   },
@@ -385,19 +454,19 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   imageContainer: {
-    width: '100%',
+    width: "100%",
     height: 400,
     backgroundColor: Colors.whiteBackground,
   },
   productImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   imagePlaceholder: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
     backgroundColor: Colors.lightBackground,
   },
   placeholderText: {
@@ -410,21 +479,21 @@ const styles = StyleSheet.create({
   },
   productName: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.darkText,
     marginBottom: 8,
   },
   productGender: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.mutedText,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 1,
     marginBottom: 12,
   },
   productPrice: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.mainColor,
     marginBottom: 20,
   },
@@ -433,7 +502,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.darkText,
     marginBottom: 12,
   },
@@ -443,8 +512,8 @@ const styles = StyleSheet.create({
     color: Colors.mutedText,
   },
   optionsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
   },
   optionButton: {
@@ -461,15 +530,15 @@ const styles = StyleSheet.create({
   },
   optionText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.darkText,
   },
   optionTextSelected: {
     color: Colors.whiteText,
   },
   quantityContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 20,
   },
   quantityButton: {
@@ -477,17 +546,17 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: Colors.whiteBackground,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 1,
     borderColor: Colors.grayBorder,
   },
   quantityText: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.darkText,
     minWidth: 30,
-    textAlign: 'center',
+    textAlign: "center",
   },
   stockText: {
     fontSize: 14,
@@ -506,9 +575,9 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   totalContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
   },
   totalLabel: {
@@ -517,16 +586,16 @@ const styles = StyleSheet.create({
   },
   totalPrice: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.darkText,
   },
   addToCartButton: {
-    flexDirection: 'row',
+    flexDirection: "row",
     backgroundColor: Colors.mainColor,
     paddingVertical: 16,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     gap: 10,
     shadowColor: Colors.shadowColor,
     shadowOffset: { width: 0, height: 4 },
@@ -540,7 +609,7 @@ const styles = StyleSheet.create({
   },
   addToCartText: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.whiteText,
   },
 });
