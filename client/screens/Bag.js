@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../colors';
+import CornerLogo from '../components/CornerLogo';
 
 // Only import PayPal on native platforms
 let PayPal = null;
@@ -113,6 +114,7 @@ export default function BagScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
+          <CornerLogo></CornerLogo>
           <Text style={styles.headerTitle}>🛒 My Cart</Text>
           <Text style={styles.headerSubtitle}>{totalItems} items</Text>
         </View>

@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../colors';
+import CornerLogo from '../components/CornerLogo';
 
 export default function WishlistScreen() {
   return (
@@ -9,6 +10,7 @@ export default function WishlistScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Wishlist</Text>
+          <CornerLogo></CornerLogo>
           <Text style={styles.headerSubtitle}>Your favorite products</Text>
         </View>
 

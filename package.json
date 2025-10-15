@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "react-native-blob-util": "^0.22.2",
+    "react-native-pdf": "^7.0.1",
+    "svix": "^1.77.0"
+  }
+}

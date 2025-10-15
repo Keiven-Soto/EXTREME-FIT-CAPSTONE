@@ -4,11 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useUser, useClerk } from '@clerk/clerk-expo';
 import Colors from '../colors';
+import CornerLogo from '../components/CornerLogo';
+import TermsScreen from './profile_sections/TermsScreen';
+import NotificationDropdown from '../components/Notification';
 
 export default function ProfileScreen({ navigation }) {
   const { user } = useUser();
   const { signOut } = useClerk();
-  
+
   const profilePic = require('../assets/Extreme_fit_new_logo-01.png');
 
   const gotoEditProfileSection = () => {
@@ -24,10 +27,7 @@ export default function ProfileScreen({ navigation }) {
       'Log Out',
       'Are you sure you want to log out?',
       [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Log Out',
           style: 'destructive',
@@ -48,15 +48,17 @@ export default function ProfileScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header */}
         <View style={styles.header}>
+          <CornerLogo />
           <View style={styles.profileImageContainer}>
             <View style={styles.profileImage}>
               <Image source={profilePic} style={styles.profileImagePic} />
             </View>
           </View>
           <Text style={styles.userName}>
-            {user?.firstName && user?.lastName 
-              ? `${user.firstName} ${user.lastName}` 
+            {user?.firstName && user?.lastName
+              ? `${user.firstName} ${user.lastName}`
               : user?.username || 'User'}
           </Text>
           <Text style={styles.userEmail}>
@@ -64,6 +66,7 @@ export default function ProfileScreen({ navigation }) {
           </Text>
         </View>
 
+        {/* Menu Section */}
         <View style={styles.menuSection}>
           <TouchableOpacity style={styles.menuItem} onPress={gotoEditProfileSection}>
             <View style={styles.menuItemLeft}>
@@ -80,18 +83,14 @@ export default function ProfileScreen({ navigation }) {
             </View>
             <Ionicons name="chevron-forward" size={20} color={Colors.mutedText} />
           </TouchableOpacity>
-        </View>
 
-        <View style={styles.menuSection}>
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="notifications-outline" size={24} color={Colors.mutedText} />
-              <Text style={styles.menuItemText}>Notifications</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={Colors.mutedText} />
-          </TouchableOpacity>
+          {/* Inline Notification Dropdown */}
+          <NotificationDropdown />
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('HelpSupportScreen')}
+          >
             <View style={styles.menuItemLeft}>
               <Ionicons name="help-circle-outline" size={24} color={Colors.mutedText} />
               <Text style={styles.menuItemText}>Help & Support</Text>
@@ -99,7 +98,10 @@ export default function ProfileScreen({ navigation }) {
             <Ionicons name="chevron-forward" size={20} color={Colors.mutedText} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('TermsScreen')}
+          >
             <View style={styles.menuItemLeft}>
               <Ionicons name="document-text-outline" size={24} color={Colors.mutedText} />
               <Text style={styles.menuItemText}>Terms & Conditions</Text>
@@ -108,11 +110,9 @@ export default function ProfileScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
+        {/* Log Out Section */}
         <View style={styles.menuSection}>
-          <TouchableOpacity 
-            style={[styles.menuItem, styles.logoutItem]}
-            onPress={handleLogOut}
-          >
+          <TouchableOpacity style={[styles.menuItem, styles.logoutItem]} onPress={handleLogOut}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="log-out-outline" size={24} color={Colors.mainColor} />
               <Text style={[styles.menuItemText, styles.logoutText]}>Log Out</Text>
@@ -120,6 +120,7 @@ export default function ProfileScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
+        {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>Extreme Fit v1.0.0</Text>
         </View>
@@ -128,20 +129,16 @@ export default function ProfileScreen({ navigation }) {
   );
 }
 
+// Styles
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.lightBackground,
-  },
+  container: { flex: 1, backgroundColor: Colors.lightBackground },
   header: {
     alignItems: 'center',
     paddingTop: 20,
     paddingBottom: 30,
     backgroundColor: Colors.whiteBackground,
   },
-  profileImageContainer: {
-    marginBottom: 15,
-  },
+  profileImageContainer: { marginBottom: 15 },
   profileImage: {
     width: 80,
     height: 80,
@@ -151,21 +148,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     overflow: 'hidden',
   },
-  profileImagePic: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-  },
-  userName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: Colors.darkText,
-    marginBottom: 5,
-  },
-  userEmail: {
-    fontSize: 16,
-    color: Colors.mutedText,
-  },
+  profileImagePic: { width: 80, height: 80, borderRadius: 40 },
+  userName: { fontSize: 24, fontWeight: 'bold', color: Colors.darkText, marginBottom: 5 },
+  userEmail: { fontSize: 16, color: Colors.mutedText },
   menuSection: {
     backgroundColor: Colors.whiteBackground,
     marginTop: 20,
@@ -186,28 +171,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.grayBorder,
   },
-  menuItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  menuItemText: {
-    fontSize: 16,
-    color: Colors.darkText,
-    marginLeft: 15,
-    fontWeight: '500',
-  },
-  logoutItem: {
-    borderBottomWidth: 0,
-  },
-  logoutText: {
-    color: Colors.mainColor,
-  },
-  footer: {
-    alignItems: 'center',
-    paddingVertical: 30,
-  },
-  footerText: {
-    fontSize: 14,
-    color: Colors.mutedText,
-  },
+  menuItemLeft: { flexDirection: 'row', alignItems: 'center' },
+  menuItemText: { fontSize: 16, color: Colors.darkText, marginLeft: 15, fontWeight: '500' },
+  logoutItem: { borderBottomWidth: 0 },
+  logoutText: { color: Colors.mainColor },
+  footer: { alignItems: 'center', paddingVertical: 30 },
+  footerText: { fontSize: 14, color: Colors.mutedText },
 });

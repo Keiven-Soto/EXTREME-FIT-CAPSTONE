@@ -14,6 +14,8 @@ import ProductDetails from './screens/productDetails';
 import OrderHistoryScreen from './screens/edit_sections/OrderHistory';
 import OrderDetailsSection from './screens/edit_sections/OrderDetails';
 import SignOutButton from './components/SignOutButton';
+import TermsScreen from './screens/profile_sections/TermsScreen';
+import HelpSupportScreen from './screens/profile_sections/HelpSupportScreen';
 
 const Stack = createStackNavigator();
 
@@ -35,6 +37,8 @@ export default function App() {
           <Stack.Screen name="EditProfile" component={EditProfileSection} />
           <Stack.Screen name="EditAddress" component={EditAddressSection} />
           <Stack.Screen name="ProductDetails" component={ProductDetails} />
+          <Stack.Screen name="TermsScreen" component={TermsScreen}/>
+          <Stack.Screen name="HelpSupportScreen" component={HelpSupportScreen}/>
         </Stack.Navigator>
       </NavigationContainer>
     </ClerkProvider>

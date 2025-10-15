@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Alert
 } from 'react-native';
+import CornerLogo from '../components/CornerLogo';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import ApiService from '../services/api';
@@ -106,6 +107,7 @@ export default function ShopScreen({ navigation }) {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
+          <CornerLogo></CornerLogo>
           <Text style={styles.headerTitle}>Shop</Text>
           <Text style={styles.headerSubtitle}>Find your athletic gear</Text>
         </View>
