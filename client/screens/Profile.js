@@ -1,24 +1,84 @@
 import React from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useUser, useClerk } from '@clerk/clerk-expo';
 import Colors from '../colors';
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ navigation }) {
+  const { user } = useUser();
+  const { signOut } = useClerk();
+  
+  const profilePic = require('../assets/Extreme_fit_new_logo-01.png');
+
+  const gotoEditProfileSection = () => {
+    navigation && navigation.navigate('EditProfile');
+  };
+
+  const gotoOrderHistory = () => {
+    navigation && navigation.navigate('OrderHistory');
+  };
+
+  // DEBUG: Show Clerk ID
+  const showClerkId = () => {
+    Alert.alert(
+      'Your Clerk ID',
+      `Clerk ID: ${user?.id}\n\nCopy this and update your database!`,
+      [{ text: 'OK' }]
+    );
+    console.log('=== CLERK USER INFO ===');
+    console.log('Clerk ID:', user?.id);
+    console.log('Email:', user?.emailAddresses?.[0]?.emailAddress);
+    console.log('Name:', user?.firstName, user?.lastName);
+  };
+
+  const handleLogOut = async () => {
+    Alert.alert(
+      'Log Out',
+      'Are you sure you want to log out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Log Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut();
+              navigation.replace('Welcome');
+            } catch (err) {
+              Alert.alert('Error', 'Failed to log out');
+              console.error(JSON.stringify(err, null, 2));
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={styles.profileImageContainer}>
             <View style={styles.profileImage}>
-              <Text style={styles.profileImageText}>👤</Text>
+              <Image source={profilePic} style={styles.profileImagePic} />
             </View>
           </View>
-          <Text style={styles.userName}>John Smith</Text>
-          <Text style={styles.userEmail}>john.smith@email.com</Text>
+          <Text style={styles.userName}>
+            {user?.firstName && user?.lastName 
+              ? `${user.firstName} ${user.lastName}` 
+              : user?.username || 'User'}
+          </Text>
+          <Text style={styles.userEmail}>
+            {user?.emailAddresses?.[0]?.emailAddress || 'No email'}
+          </Text>
         </View>
 
         <View style={styles.menuSection}>
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} onPress={gotoEditProfileSection}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="person-outline" size={24} color={Colors.mutedText} />
               <Text style={styles.menuItemText}>Edit Profile</Text>
@@ -26,28 +86,21 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={20} color={Colors.mutedText} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="location-outline" size={24} color={Colors.mutedText} />
-              <Text style={styles.menuItemText}>Addresses</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={Colors.mutedText} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="card-outline" size={24} color={Colors.mutedText} />
-              <Text style={styles.menuItemText}>Payment Methods</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={Colors.mutedText} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} onPress={gotoOrderHistory}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="receipt-outline" size={24} color={Colors.mutedText} />
               <Text style={styles.menuItemText}>Order History</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={Colors.mutedText} />
+          </TouchableOpacity>
+
+          {/* DEBUG BUTTON - Remove after getting clerk_id */}
+          <TouchableOpacity style={styles.menuItem} onPress={showClerkId}>
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="bug-outline" size={24} color="#FF6B00" />
+              <Text style={[styles.menuItemText, { color: '#FF6B00' }]}>Show Clerk ID (Debug)</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#FF6B00" />
           </TouchableOpacity>
         </View>
 
@@ -75,18 +128,13 @@ export default function ProfileScreen() {
             </View>
             <Ionicons name="chevron-forward" size={20} color={Colors.mutedText} />
           </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="shield-checkmark-outline" size={24} color={Colors.mutedText} />
-              <Text style={styles.menuItemText}>Privacy</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={Colors.mutedText} />
-          </TouchableOpacity>
         </View>
 
         <View style={styles.menuSection}>
-          <TouchableOpacity style={[styles.menuItem, styles.logoutItem]}>
+          <TouchableOpacity 
+            style={[styles.menuItem, styles.logoutItem]}
+            onPress={handleLogOut}
+          >
             <View style={styles.menuItemLeft}>
               <Ionicons name="log-out-outline" size={24} color={Colors.mainColor} />
               <Text style={[styles.menuItemText, styles.logoutText]}>Log Out</Text>
@@ -123,10 +171,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.mainColor,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
-  profileImageText: {
-    fontSize: 32,
-    color: Colors.whiteText,
+  profileImagePic: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
   },
   userName: {
     fontSize: 24,
