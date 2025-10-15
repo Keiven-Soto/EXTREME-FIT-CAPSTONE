@@ -36,10 +36,12 @@ router.post('/clerk', express.raw({ type: 'application/json' }), async (req, res
     switch (type) {
       case 'user.created':
         await db.query(`
-          INSERT INTO users (first_name, last_name, email, phone, created_at)
-          VALUES ($1, $2, $3, $4, NOW())
-          ON CONFLICT (email) DO NOTHING
+          INSERT INTO users (clerk_id, first_name, last_name, email, phone, created_at)
+          VALUES ($1, $2, $3, $4, $5, NOW())
+          ON CONFLICT (email) DO UPDATE 
+          SET clerk_id = EXCLUDED.clerk_id
         `, [
+          data.id, // ← This is the clerk_id!
           data.first_name || '',
           data.last_name || '',
           data.email_addresses[0]?.email_address,
@@ -50,23 +52,24 @@ router.post('/clerk', express.raw({ type: 'application/json' }), async (req, res
 
       case 'user.updated':
         await db.query(`
-          UPDATE users 
-          SET first_name = $1, last_name = $2, phone = $3, updated_at = NOW()
-          WHERE email = $4
+          UPDATE users
+          SET first_name = $1, last_name = $2, email = $3, phone = $4, updated_at = NOW()
+          WHERE clerk_id = $5
         `, [
           data.first_name,
           data.last_name,
+          data.email_addresses[0]?.email_address,
           data.phone_numbers[0]?.phone_number || null,
-          data.email_addresses[0]?.email_address
+          data.id
         ]);
-        console.log('✅ User updated:', data.email_addresses[0]?.email_address);
+        console.log('✅ User updated:', data.email_addresses[0]?.email_address, 'Clerk ID:', data.id);
         break;
 
       case 'user.deleted':
-        await db.query('DELETE FROM users WHERE email = $1', [
-          data.email_addresses[0]?.email_address
+        await db.query('DELETE FROM users WHERE clerk_id = $1', [
+          data.id
         ]);
-        console.log('✅ User deleted:', data.email_addresses[0]?.email_address);
+        console.log('✅ User deleted:', data.email_addresses[0]?.email_address, 'Clerk ID:', data.id);
         break;
 
       default:

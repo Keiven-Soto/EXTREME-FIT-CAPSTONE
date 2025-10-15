@@ -14,7 +14,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import ApiService from '../../services/api';
+import { useAuth } from '@clerk/clerk-expo';
+import ApiService, { setGlobalAuthToken } from '../../services/api';
 import Colors from '../../colors';
 
 /**
@@ -28,10 +29,11 @@ import Colors from '../../colors';
  * - "Set as default" toggle.
  */
 export default function EditAddressSection({ navigation, route }) {
-  const userId = '1'; // TODO: get from auth/context
+  const { getToken } = useAuth();
   const editing = Boolean(route?.params?.address);
   const original = route?.params?.address ?? {};
 
+  const [currentUser, setCurrentUser] = useState(null);
   const [form, setForm] = useState({
     country: original.country || '',
     street_address: original.street_address || '',
@@ -41,38 +43,63 @@ export default function EditAddressSection({ navigation, route }) {
     is_default: Boolean(original.is_default) || false,
   });
 
-  const [loading, setLoading] = useState(editing); // Nuevo: loading para fetch inicial
+  const [loading, setLoading] = useState(true); // Loading for fetching user + address
   const [saving, setSaving] = useState(false);
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [showStatePicker, setShowStatePicker] = useState(false);
 
 
-  // Nuevo: obtener dirección si editing y address_id
+  // Get authenticated user and address if editing
   useEffect(() => {
-    const fetchAddress = async () => {
-      if (editing && original.address_id) {
-        setLoading(true);
-        const result = await ApiService.addresses.getByUser(userId);
-        // Busca la dirección específica por address_id
-        const found = result.success
-          ? result.data.find(addr => addr.address_id === original.address_id)
-          : null;
-        if (found) {
-          setForm({
-            country: found.country || '',
-            street_address: found.street_address || '',
-            city: found.city || '',
-            state: found.state || '',
-            postal_code: found.postal_code || '',
-            is_default: Boolean(found.is_default) || false,
-          });
+    const fetchUserAndAddress = async () => {
+      setLoading(true);
+      try {
+        // Get JWT token and set it globally
+        const token = await getToken();
+        if (!token) {
+          Alert.alert('Error', 'Not authenticated');
+          navigation?.goBack();
+          return;
         }
-        setLoading(false);
+        setGlobalAuthToken(token);
+
+        // Get authenticated user from database
+        const user = await ApiService.users.getCurrentUser();
+
+        if (!user || !user.user_id) {
+          Alert.alert('Error', 'User not authenticated');
+          navigation?.goBack();
+          return;
+        }
+
+        setCurrentUser(user);
+
+        // If editing, fetch the address details
+        if (editing && original.address_id) {
+          const result = await ApiService.addresses.getByUser(user.user_id);
+          const found = result.success
+            ? result.data.find(addr => addr.address_id === original.address_id)
+            : null;
+          if (found) {
+            setForm({
+              country: found.country || '',
+              street_address: found.street_address || '',
+              city: found.city || '',
+              state: found.state || '',
+              postal_code: found.postal_code || '',
+              is_default: Boolean(found.is_default) || false,
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user:', error);
+        Alert.alert('Error', 'Failed to load user information');
       }
+      setLoading(false);
     };
-    fetchAddress();
+    fetchUserAndAddress();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editing, original.address_id, userId]);
+  }, [editing, original.address_id]);
 
 
   const onChange = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
@@ -96,7 +123,7 @@ export default function EditAddressSection({ navigation, route }) {
   };
 
   const handleSave = async () => {
-    if (!validate()) return;
+    if (!validate() || !currentUser?.user_id) return;
     try {
       setSaving(true);
 
@@ -118,7 +145,7 @@ export default function EditAddressSection({ navigation, route }) {
         console.log('PUT response:', result);
       } else {
         // create
-        result = await ApiService.addresses.create(userId, payload);
+        result = await ApiService.addresses.create(currentUser.user_id, payload);
         console.log('POST response:', result);
       }
 

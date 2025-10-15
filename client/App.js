@@ -2,7 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { ClerkProvider } from '@clerk/clerk-expo';
-import { tokenCache } from '@clerk/clerk-expo/token-cache';
+import { tokenCache } from './utils/tokenCache';
 import WelcomeScreen from './screens/Welcome';
 import CreateAccountPage from './screens/CreateAccountPage';
 import LogInPage from './screens/LogInPage';
@@ -14,9 +14,14 @@ import ProductDetails from './screens/productDetails';
 import OrderHistoryScreen from './screens/edit_sections/OrderHistory';
 import OrderDetailsSection from './screens/edit_sections/OrderDetails';
 import SignOutButton from './components/SignOutButton';
+import ProfileScreen from './screens/Profile.js';
 import TermsScreen from './screens/profile_sections/TermsScreen';
 import HelpSupportScreen from './screens/profile_sections/HelpSupportScreen';
 
+//neW IMPORTS
+import HomeScreen from "./screens/Home";
+import ShopScreen from "./screens/Shop";
+import CategoryProducts from "./screens/CategoryProducts.js";
 const Stack = createStackNavigator();
 
 export default function App() {
@@ -28,6 +33,11 @@ export default function App() {
       <NavigationContainer>
         <Stack.Navigator initialRouteName="Welcome" screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Welcome" component={WelcomeScreen} />
+          <Stack.Screen name="Home" component={HomeScreen} /> 
+          <Stack.Screen name="Shop" component={ShopScreen} />
+          <Stack.Screen name="Profile" component={ProfileScreen} />
+          {/* <Stack.Screen name="SignOut" component={SignOutButton} /> */}
+          <Stack.Screen name="CategoryProducts" component={CategoryProducts} />
           <Stack.Screen name="CreateAccountPage" component={CreateAccountPage} />
           <Stack.Screen name="LogInPage" component={LogInPage} />
           <Stack.Screen name="ForgotPasswordPage" component={ForgotPasswordPage} />
@@ -36,7 +46,7 @@ export default function App() {
           <Stack.Screen name="OrderHistory" component={OrderHistoryScreen}options={{ headerShown: false }}/>
           <Stack.Screen name="EditProfile" component={EditProfileSection} />
           <Stack.Screen name="EditAddress" component={EditAddressSection} />
-          <Stack.Screen name="ProductDetails" component={ProductDetails} />
+          <Stack.Screen name="ProductDetails" component={ProductDetails} options={{ headerShown: false }}/>
           <Stack.Screen name="TermsScreen" component={TermsScreen}/>
           <Stack.Screen name="HelpSupportScreen" component={HelpSupportScreen}/>
         </Stack.Navigator>

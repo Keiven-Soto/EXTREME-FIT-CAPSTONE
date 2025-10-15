@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { 
-  StyleSheet, 
-  Text, 
-  View, 
-  TextInput, 
-  TouchableOpacity, 
+import {
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  TouchableOpacity,
   Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSignUp } from '@clerk/clerk-expo';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import Colors from '../colors';
 
 export default function CreateAccountPage({ navigation }) {
@@ -116,6 +117,13 @@ export default function CreateAccountPage({ navigation }) {
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.navigate('Welcome')}
+        >
+          <Ionicons name="arrow-back" size={28} color="#fff" />
+        </TouchableOpacity>
+
         <View style={styles.header}>
           <Text style={styles.title}>CREATE ACCOUNT</Text>
           <Text style={styles.subtitle}>Join Extreme Fit today</Text>
@@ -178,6 +186,14 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     padding: 30,
+    paddingTop: 60,
+  },
+  backButton: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    zIndex: 10,
+    padding: 10,
   },
   header: {
     marginBottom: 40,
