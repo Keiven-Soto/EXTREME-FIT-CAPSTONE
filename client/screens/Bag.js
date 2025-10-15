@@ -1,7 +1,10 @@
-import React, { useState, useMemo } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView, Alert, Platform } from 'react-native';
+import React, { useState, useMemo, useEffect } from 'react';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Platform, Image, ActivityIndicator } from 'react-native';
+import { getCloudinaryImageUrl } from '../utils/cloudinary';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../colors';
+import ApiService from '../services/api';
 
 // Only import PayPal on native platforms
 let PayPal = null;
@@ -14,30 +17,165 @@ if (Platform.OS !== 'web') {
 }
 
 export default function BagScreen() {
-  const SHIPPING_COST = 15.00;
+  // Pago simulado
+  const handleSimulatedPayment = async () => {
+    if (!cartItems || cartItems.length === 0) {
+      Alert.alert('Error', 'El carrito está vacío. Agrega productos antes de pagar.');
+      return;
+    }
 
-  const [cartItems, setCartItems] = useState([
-    { id: 1, name: 'Athletic Gear 1', details: 'Size L - Black', price: 45.99, quantity: 2 },
-    { id: 2, name: 'Athletic Gear 2', details: 'Size M - Red', price: 52.99, quantity: 1 },
-    { id: 3, name: 'Athletic Gear 3', details: 'Size XL - Blue', price: 38.95, quantity: 3 },
-  ]);
+    try {
+      // 1. Buscar dirección default del usuario
+      const addressResult = await ApiService.addresses.getByUser(userId);
+      let defaultAddress = null;
+      if (addressResult.success && Array.isArray(addressResult.data)) {
+        defaultAddress = addressResult.data.find(addr => addr.is_default);
+      }
+      if (!defaultAddress) {
+        Alert.alert('Error', 'No tienes una dirección de envío predeterminada. Agrega una dirección en tu perfil.');
+        return;
+      }
 
-  const incrementQuantity = (id) => {
-    setCartItems(items => 
-      items.map(item => 
-        item.id === id ? { ...item, quantity: item.quantity + 1 } : item
-      )
-    );
+      // 2. Crear la orden en el backend con shipping_address_id
+      const orderPayload = {
+        user_id: userId,
+        total_amount: subtotal + SHIPPING_COST,
+        shipping_cost: SHIPPING_COST,
+        payment_method: 'simulado',
+        payment_status: 'pagado',
+        order_status: 'confirmado',
+        shipping_address_id: defaultAddress.address_id,
+      };
+      const orderResult = await ApiService.orders.create(orderPayload);
+      if (!orderResult || !orderResult.order_id) {
+        Alert.alert('Error', 'No se pudo crear la orden.');
+        return;
+      }
+      const orderId = orderResult.order_id;
+
+      // 3. Crear los order items
+      let allItemsOk = true;
+      for (const item of cartItems) {
+        const itemPayload = {
+          product_id: item.id,
+          quantity: item.quantity,
+          unit_price: item.price,
+          size: item.size || '',
+          color: item.color || '',
+        };
+        const itemResult = await ApiService.orders.addOrderItem(orderId, itemPayload);
+        if (!itemResult || !itemResult.order_item_id) {
+          allItemsOk = false;
+          break;
+        }
+      }
+      if (!allItemsOk) {
+        Alert.alert('Error', 'No se pudieron guardar todos los productos en la orden.');
+        return;
+      }
+
+      // 4. Vaciar el carrito en backend y frontend SIEMPRE después de pagar
+      await ApiService.cart.clear(userId);
+      setCartItems([]);
+      Alert.alert(
+        'Pago exitoso',
+        '¡Pago simulado realizado correctamente!',
+        [
+          {
+            text: 'Ver orden',
+            onPress: () => {
+              navigation.navigate('OrderDetails', { orderId });
+            }
+          }
+        ]
+      );
+    } catch (err) {
+      Alert.alert('Error', 'Hubo un problema al procesar la orden.');
+    }
+  };
+  // Import useNavigation and useFocusEffect
+  const navigation = require('@react-navigation/native').useNavigation();
+  const useFocusEffect = require('@react-navigation/native').useFocusEffect;
+  const SHIPPING_COST = 15.00; //TODO: Ajustar costo de envío según sea necesario
+
+  // Reemplaza esto por el userId real (ejemplo: de contexto, auth, etc.)
+  const userId = 1;
+  const [cartItems, setCartItems] = useState([]);
+  const [loadingItems, setLoadingItems] = useState(false);
+
+  // Función para obtener el carrito desde el backend
+  const fetchCart = async () => {
+    setLoadingItems(true);
+    const result = await ApiService.cart.get(userId);
+    if (result.success) {
+      // Espera medio segundo antes de mostrar los items
+      setTimeout(() => {
+        setCartItems(result.data.map(item => ({
+          id: item.product_id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          size: item.size,
+          color: item.color,
+          image_url: item.cloudinary_public_id ? getCloudinaryImageUrl(item.cloudinary_public_id) : null,
+        })));
+        setLoadingItems(false);
+      }, 500);
+    } else {
+      Alert.alert('Error', result.error || 'No se pudo cargar el carrito');
+      setLoadingItems(false);
+    }
   };
 
-  const decrementQuantity = (id) => {
-    setCartItems(items => 
-      items.map(item => 
-        item.id === id && item.quantity > 1 ? { ...item, quantity: item.quantity - 1 } : item
-      )
-    );
+  useEffect(() => {
+    fetchCart();
+  }, [userId]);
+
+  // Refresca el carrito cada vez que la pantalla recibe foco
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchCart();
+    }, [userId])
+  );
+
+  // Actualizar cantidad en el backend y refrescar el carrito
+  const incrementQuantity = async (id) => {
+    const item = cartItems.find(i => i.id === id);
+    if (!item) return;
+    const newQty = item.quantity + 1;
+    const result = await ApiService.cart.updateQuantity(userId, id, newQty);
+    if (result.success) {
+      await fetchCart();
+    } else {
+      Alert.alert('Error', result.error || 'No se pudo actualizar la cantidad');
+    }
   };
 
+  const decrementQuantity = async (id) => {
+    const item = cartItems.find(i => i.id === id);
+    if (!item || item.quantity <= 1) return;
+    const newQty = item.quantity - 1;
+    const result = await ApiService.cart.updateQuantity(userId, id, newQty);
+    if (result.success) {
+      await fetchCart();
+    } else {
+      Alert.alert('Error', result.error || 'No se pudo actualizar la cantidad');
+    }
+  };
+
+  // Eliminar producto del carrito y refrescar
+  const removeItem = async (id) => {
+    const item = cartItems.find(i => i.id === id);
+    if (!item) return;
+    const result = await ApiService.cart.removeItem(userId, id);
+    if (result.success) {
+      await fetchCart();
+    } else {
+      Alert.alert('Error', result.error || 'No se pudo eliminar el producto');
+    }
+  };
+
+  // TODO: Implementar PayPal -----
   const handlePayPalPayment = () => {
     if (Platform.OS === 'web') {
       // For web platform, show a demo success message
@@ -118,33 +256,59 @@ export default function BagScreen() {
         </View>
 
         <View style={styles.cartItems}>
-          {cartItems.map((item) => (
-            <View key={item.id} style={styles.cartItem}>
-              <View style={styles.productImage}>
-                <Text style={styles.productImageText}>📦</Text>
-              </View>
-              <View style={styles.productInfo}>
-                <Text style={styles.productName}>{item.name}</Text>
-                <Text style={styles.productDetails}>{item.details}</Text>
-                <Text style={styles.productPrice}>${item.price.toFixed(2)}</Text>
-              </View>
-              <View style={styles.quantityControls}>
-                <TouchableOpacity 
-                  style={styles.quantityButton}
-                  onPress={() => decrementQuantity(item.id)}
-                >
-                  <Ionicons name="remove" size={16} color={Colors.mainColor} />
-                </TouchableOpacity>
-                <Text style={styles.quantityText}>{item.quantity}</Text>
-                <TouchableOpacity 
-                  style={styles.quantityButton}
-                  onPress={() => incrementQuantity(item.id)}
-                >
-                  <Ionicons name="add" size={16} color={Colors.mainColor} />
-                </TouchableOpacity>
-              </View>
+          {loadingItems ? (
+            <View style={styles.loadingItemsContainer}>
+              <ActivityIndicator size="large" color={Colors.mainColor} />
+              <Text style={styles.loadingText}>Loading...</Text>
             </View>
-          ))}
+          ) : (
+            cartItems.map((item) => (
+              <View key={item.id} style={styles.cartItem}>
+                <View style={styles.productImageWrap}>
+                  <View style={styles.productImageInner}>
+                    {item.image_url ? (
+                      <Image source={{ uri: item.image_url }} style={styles.productImageReal} />
+                    ) : (
+                      <View style={styles.productImagePlaceholder}>
+                        <Ionicons name="image-outline" size={20} color="#9ca3af" />
+                      </View>
+                    )}
+                  </View>
+                </View>
+                <View style={styles.productInfo}>
+                  <View style={styles.namePriceRow}>
+                    <Text style={styles.productName}>{item.name}</Text>
+                    <Text style={styles.productPrice}>${Number(item.price).toFixed(2)}</Text>
+                  </View>
+                  <Text style={styles.productDetails}>
+                    {item.size ? `Size: ${item.size}` : ''}
+                    {item.color ? `  Color: ${item.color}` : ''}
+                  </Text>
+                  <View style={styles.quantityControlsRow}>
+                    <TouchableOpacity 
+                      style={styles.quantityButton}
+                      onPress={() => decrementQuantity(item.id)}
+                    >
+                      <Ionicons name="remove" size={16} color={Colors.mainColor} />
+                    </TouchableOpacity>
+                    <Text style={styles.quantityText}>{item.quantity}</Text>
+                    <TouchableOpacity 
+                      style={styles.quantityButton}
+                      onPress={() => incrementQuantity(item.id)}
+                    >
+                      <Ionicons name="add" size={16} color={Colors.mainColor} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={() => removeItem(item.id)}
+                    >
+                      <Ionicons name="trash" size={18} color={Colors.errorColor || 'black'} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            ))
+          )}
         </View>
 
         <View style={styles.summary}>
@@ -166,12 +330,32 @@ export default function BagScreen() {
           <Text style={styles.checkoutButtonText}>Pay with PayPal</Text>
           <Ionicons name="logo-paypal" size={20} color={Colors.whiteText} />
         </TouchableOpacity>
+        <TouchableOpacity style={styles.testingcheckoutButton} onPress={handleSimulatedPayment}>
+          <Text style={styles.checkoutButtonText}>Pagar ahora</Text>
+          <Ionicons name="card-outline" size={20} color={Colors.whiteText} />
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  namePriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  loadingItemsContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: Colors.mutedText,
+  },
   container: {
     flex: 1,
     backgroundColor: Colors.lightBackground,
@@ -183,6 +367,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
+    textAlign: 'center',
     color: Colors.darkText,
     marginBottom: 5,
   },
@@ -206,17 +391,29 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  productImage: {
+  productImageWrap: {
+    width: 90,
+    height: 90,
+    borderRadius: 16,
+    position: 'relative',
+    overflow: 'visible',
     backgroundColor: Colors.lightBackground,
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
+    marginRight: 18,
   },
-  productImageText: {
-    fontSize: 20,
+  productImageInner: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: Colors.lightBackground,
+  },
+  productImageReal: {
+    width: '100%',
+    height: '100%',
+  },
+  productImagePlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   productInfo: {
     flex: 1,
@@ -237,10 +434,22 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: Colors.mainColor,
   },
-  quantityControls: {
+  quantityControlsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    marginTop: 8,
+  },
+  deleteButton: {
+    backgroundColor: Colors.lightBackground,
+    width: 50,
+    height: 30,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.errorColor || 'black',
+    margin: 10,
   },
   quantityButton: {
     backgroundColor: Colors.lightBackground,
@@ -312,9 +521,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
+  testingcheckoutButton: {
+    backgroundColor: 'black',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    padding: 18,
+    borderRadius: 100,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 10,
+  },
   checkoutButtonText: {
     color: Colors.whiteText,
     fontSize: 18,
     fontWeight: 'bold',
   },
+
 });
