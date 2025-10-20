@@ -42,12 +42,7 @@ export default function OrderDetailsSection({ navigation, route }) {
   
   // Cambia a tu IP local si usas dispositivo físico
   const API_URL = 'http://localhost:5001';
-
-  // const API_URL = 'http://192.168.8.143:5001';
-  
-
-  // Si solo vino el orderId, hacemos fetch de items y totales
-useEffect(() => {
+  useEffect(() => {
   const fetchOrder = async () => {
     if (order || !passedOrderId) return;
     try {

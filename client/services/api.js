@@ -9,14 +9,20 @@ export const setGlobalAuthToken = (token) => {
   console.log('🎫 Global token set:', !!token);
 };
 
-const USE_NGROK = true;
-// API Configuration with improved network detection
+const USE_NGROK = false;
+const FORCE_PRODUCTION = false; 
+
 const getApiUrl = () => {
+  if (FORCE_PRODUCTION) {
+    console.log('⚠️ FORCE_PRODUCTION enabled - using production API');
+    return "https://extreme-fit-capstone-backend.vercel.app";
+  }
+
   if (__DEV__) {
     if (USE_NGROK) {
       return 'https://unpaining-cris-scorningly.ngrok-free.dev'; //TODO: replace with your ngrok URL
     }
-    
+
     const debuggerHost = Constants.expoConfig?.hostUri?.split(':')[0];
     if (debuggerHost && debuggerHost !== 'localhost' && debuggerHost !== '127.0.0.1') {
       console.log('Using Expo debugger host:', debuggerHost);
@@ -26,7 +32,9 @@ const getApiUrl = () => {
     console.log("Falling back to localhost");
     return "http://localhost:5001";
   }
-  return "https://your-production-api.com";
+
+  console.log('🚀 Using production API');
+  return "https://extreme-fit-capstone-backend.vercel.app";
 };
 
 const API_BASE_URL = getApiUrl();
@@ -56,7 +64,6 @@ const apiRequest = async (endpoint, options = {}) => {
   }
 
   try {
-    console.log(`API Request: ${config.method || "GET"} ${url}`);
 
     const response = await Promise.race([
       fetch(url, config),
@@ -65,17 +72,28 @@ const apiRequest = async (endpoint, options = {}) => {
       ),
     ]);
 
-    const data = await response.json();
+    // Try to get response text first
+    const responseText = await response.text();
+
+    // Try to parse as JSON
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('❌ Failed to parse JSON response:', parseError.message);
+      console.error('Response received:', responseText.substring(0, 200));
+      throw new Error(`Server returned non-JSON response: ${responseText.substring(0, 100)}`);
+    }
 
     if (!response.ok) {
+      console.error(`❌ API Error (${response.status}):`, data.error || data);
       throw new Error(data.error || `HTTP error! status: ${response.status}`);
     }
 
-    console.log(`API Success: ${endpoint}`);
     // Backend returns {success: true, data: ...}, so just return it as-is
     return data;
   } catch (error) {
-    console.error(`API Error for ${endpoint}:`, error.message);
+    console.error(`❌ API Error for ${endpoint}:`, error.message);
 
     // Provide helpful error messages for common issues
     let userFriendlyMessage = error.message;
