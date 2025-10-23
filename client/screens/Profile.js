@@ -9,7 +9,7 @@ export default function ProfileScreen({ navigation }) {
   const { user } = useUser();
   const { signOut } = useClerk();
   
-  const profilePic = require('../assets/Extreme_fit_new_logo-01.png');
+  const profilePic = require('../assets/Extreme_fit_new_logo-07.png');
 
   const gotoEditProfileSection = () => {
     navigation && navigation.navigate('EditProfile');
