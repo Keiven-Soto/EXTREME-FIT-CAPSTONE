@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useUser, useClerk } from '@clerk/clerk-expo';
 import Colors from '../colors';
+import CornerLogo from '../components/CornerLogo';
 
 export default function ProfileScreen({ navigation }) {
   const { user } = useUser();
@@ -62,6 +63,7 @@ export default function ProfileScreen({ navigation }) {
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
+          <CornerLogo></CornerLogo>
           <View style={styles.profileImageContainer}>
             <View style={styles.profileImage}>
               <Image source={profilePic} style={styles.profileImagePic} />

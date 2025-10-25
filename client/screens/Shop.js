@@ -16,7 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import ApiService from "../services/api";
 import { getCloudinaryImageUrl } from "../utils/cloudinary";
 import Colors from "../colors";
-
+import CornerLogo from "../components/CornerLogo";
 // dynamic adjustment to device screen width
 const { width } = Dimensions.get("window");
 
@@ -113,6 +113,7 @@ export default function ShopScreen({ navigation }) {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Shop</Text>
+          <CornerLogo></CornerLogo>
           <Text style={styles.headerSubtitle}>Find your athletic gear</Text>
         </View>
 

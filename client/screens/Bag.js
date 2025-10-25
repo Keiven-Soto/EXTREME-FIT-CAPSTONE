@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../colors';
 import ApiService from '../services/api';
+import CornerLogo from '../components/CornerLogo';
 
 // Only import PayPal on native platforms
 let PayPal = null;
@@ -252,6 +253,7 @@ export default function BagScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>🛒 My Cart</Text>
+          <CornerLogo></CornerLogo>
           <Text style={styles.headerSubtitle}>{totalItems} items</Text>
         </View>
 

@@ -15,6 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Colors from "../colors";
 import ApiService from "../services/api";
 import { getCloudinaryImageUrl } from "../utils/cloudinary";
+import CornerLogo from "../components/CornerLogo";
 
 export default function WishlistScreen( ) {
   const USER_ID = 1; // Placeholder for user ID
@@ -175,6 +176,7 @@ export default function WishlistScreen( ) {
         {/* Header Section */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Wishlist</Text>
+          <CornerLogo></CornerLogo>
           <Text style={styles.headerSubtitle}>Your favorite products</Text>
         </View>
 
