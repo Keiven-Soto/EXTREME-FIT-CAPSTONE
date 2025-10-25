@@ -15,6 +15,8 @@ import OrderHistoryScreen from './screens/edit_sections/OrderHistory';
 import OrderDetailsSection from './screens/edit_sections/OrderDetails';
 import SignOutButton from './components/SignOutButton';
 import ProfileScreen from './screens/Profile.js';
+import TermsScreen from './screens/profile_sections/TermsScreen.js';
+import HelpSupportScreen from './screens/profile_sections/HelpSupportScreen.js';
 
 //neW IMPORTS
 import HomeScreen from "./screens/Home";
@@ -45,6 +47,8 @@ export default function App() {
           <Stack.Screen name="EditProfile" component={EditProfileSection} />
           <Stack.Screen name="EditAddress" component={EditAddressSection} />
           <Stack.Screen name="ProductDetails" component={ProductDetails} options={{ headerShown: false }}/>
+          <Stack.Screen name= "TermsScreen" component={TermsScreen} />
+          <Stack.Screen name = "HelpSupportScreen" component={HelpSupportScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </ClerkProvider>

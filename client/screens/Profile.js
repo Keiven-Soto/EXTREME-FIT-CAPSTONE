@@ -5,22 +5,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { useUser, useClerk } from '@clerk/clerk-expo';
 import Colors from '../colors';
 import CornerLogo from '../components/CornerLogo';
+import NotificationDropdown from '../components/Notification';
 
 export default function ProfileScreen({ navigation }) {
   const { user } = useUser();
   const { signOut } = useClerk();
-  
+
   const profilePic = require('../assets/Extreme_fit_new_logo-07.png');
 
-  const gotoEditProfileSection = () => {
-    navigation && navigation.navigate('EditProfile');
-  };
+  const gotoEditProfileSection = () => navigation && navigation.navigate('EditProfile');
+  const gotoOrderHistory = () => navigation && navigation.navigate('OrderHistory');
 
-  const gotoOrderHistory = () => {
-    navigation && navigation.navigate('OrderHistory');
-  };
+  const gotoHelpSupport = () => navigation && navigation.navigate('HelpSupportScreen');
+  const gotoTerms = () => navigation && navigation.navigate('TermsScreen');
 
-  // DEBUG: Show Clerk ID
   const showClerkId = () => {
     Alert.alert(
       'Your Clerk ID',
@@ -34,44 +32,38 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const handleLogOut = async () => {
-    Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
+    Alert.alert('Log Out', 'Are you sure you want to log out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Log Out',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await signOut();
+            navigation.replace('Welcome');
+          } catch (err) {
+            Alert.alert('Error', 'Failed to log out');
+            console.error(JSON.stringify(err, null, 2));
+          }
         },
-        {
-          text: 'Log Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await signOut();
-              navigation.replace('Welcome');
-            } catch (err) {
-              Alert.alert('Error', 'Failed to log out');
-              console.error(JSON.stringify(err, null, 2));
-            }
-          },
-        },
-      ]
-    );
+      },
+    ]);
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header Section */}
         <View style={styles.header}>
-          <CornerLogo></CornerLogo>
+          <CornerLogo />
           <View style={styles.profileImageContainer}>
             <View style={styles.profileImage}>
               <Image source={profilePic} style={styles.profileImagePic} />
             </View>
           </View>
           <Text style={styles.userName}>
-            {user?.firstName && user?.lastName 
-              ? `${user.firstName} ${user.lastName}` 
+            {user?.firstName && user?.lastName
+              ? `${user.firstName} ${user.lastName}`
               : user?.username || 'User'}
           </Text>
           <Text style={styles.userEmail}>
@@ -79,6 +71,7 @@ export default function ProfileScreen({ navigation }) {
           </Text>
         </View>
 
+        {/* Account Settings */}
         <View style={styles.menuSection}>
           <TouchableOpacity style={styles.menuItem} onPress={gotoEditProfileSection}>
             <View style={styles.menuItemLeft}>
@@ -96,26 +89,23 @@ export default function ProfileScreen({ navigation }) {
             <Ionicons name="chevron-forward" size={20} color={Colors.mutedText} />
           </TouchableOpacity>
 
-          {/* DEBUG BUTTON - Remove after getting clerk_id */}
+          {/* Debug Button */}
           <TouchableOpacity style={styles.menuItem} onPress={showClerkId}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="bug-outline" size={24} color="#FF6B00" />
-              <Text style={[styles.menuItemText, { color: '#FF6B00' }]}>Show Clerk ID (Debug)</Text>
+              <Text style={[styles.menuItemText, { color: '#FF6B00' }]}>
+                Show Clerk ID (Debug)
+              </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#FF6B00" />
           </TouchableOpacity>
         </View>
 
+        {/* Notification Dropdown from Old Version */}
         <View style={styles.menuSection}>
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuItemLeft}>
-              <Ionicons name="notifications-outline" size={24} color={Colors.mutedText} />
-              <Text style={styles.menuItemText}>Notifications</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={Colors.mutedText} />
-          </TouchableOpacity>
+          <NotificationDropdown />
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} onPress={gotoHelpSupport}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="help-circle-outline" size={24} color={Colors.mutedText} />
               <Text style={styles.menuItemText}>Help & Support</Text>
@@ -123,7 +113,7 @@ export default function ProfileScreen({ navigation }) {
             <Ionicons name="chevron-forward" size={20} color={Colors.mutedText} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} onPress={gotoTerms}>
             <View style={styles.menuItemLeft}>
               <Ionicons name="document-text-outline" size={24} color={Colors.mutedText} />
               <Text style={styles.menuItemText}>Terms & Conditions</Text>
@@ -132,8 +122,9 @@ export default function ProfileScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
+        {/* Log Out */}
         <View style={styles.menuSection}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.menuItem, styles.logoutItem]}
             onPress={handleLogOut}
           >
@@ -144,6 +135,7 @@ export default function ProfileScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
+        {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>Extreme Fit v1.0.0</Text>
         </View>
