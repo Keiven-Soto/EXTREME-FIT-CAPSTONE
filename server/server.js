@@ -52,10 +52,10 @@ app.get('/api/test-db', async (req, res) => {
 
 // 🔐 Protected routes - Apply requireAuth() here
 console.log('📍 Registering /api/addresses');
-app.use('/api/addresses', requireAuth(), addressRoutes);
+app.use('/api/addresses', addressRoutes);
 
 console.log('📍 Registering /api/orders');
-app.use('/api/orders', requireAuth(), ordersRoute);
+app.use('/api/orders', ordersRoute);
 
 // Public routes (no auth required)
 console.log('📍 Registering /api/products (public)');
@@ -66,8 +66,7 @@ app.use('/api', cartItemsRoute);
 app.use('/api/wishlist', wishlistRoute);
 
 // 🔐 Important: /api routes must be AFTER specific routes to avoid conflicts
-console.log('📍 Registering /api (generic)');
-app.use('/api', requireAuth(), routes);
+app.use('/api', routes);
 
 if (require.main === module) {
   app.listen(PORT, () => {

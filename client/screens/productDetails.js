@@ -11,12 +11,16 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useUser } from "@clerk/clerk-expo";
 import Colors from "../colors";
 import { getCloudinaryImageUrl } from "../utils/cloudinary";
 import ApiService from "../services/api";
+import { useCurrentUser } from "../hooks/useAuthenticatedApi";
 
 export default function ProductDetailScreen({ route, navigation }) {
   const { productId } = route.params;
+  const { user: clerkUser } = useUser();
+  const { getCurrentUser } = useCurrentUser();
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -24,12 +28,28 @@ export default function ProductDetailScreen({ route, navigation }) {
   const [selectedColor, setSelectedColor] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [userId, setUserId] = useState(null);
 
-  const USER_ID = 1; // TODO: hardcoded dummy ID for authentication
+  // Fetch authenticated user's database ID
+  useEffect(() => {
+    const fetchUserId = async () => {
+      if (clerkUser) {
+        try {
+          const userData = await getCurrentUser();
+          if (userData && userData.user_id) {
+            setUserId(userData.user_id);
+          }
+        } catch (error) {
+          console.error("Error fetching user ID:", error);
+        }
+      }
+    };
+    fetchUserId();
+  }, [clerkUser]);
 
   useEffect(() => {
     loadProduct();
-  }, [productId]);
+  }, [productId, userId]);
 
   const loadProduct = async () => {
     try {
@@ -52,19 +72,21 @@ export default function ProductDetailScreen({ route, navigation }) {
           setSelectedColor(productData.colors[0]);
         }
 
-        // Check wishlist
-        try {
-          const wishlistCheck = await ApiService.wishlist.getById(
-            USER_ID,
-            productId
-          );
+        // Check wishlist (only if user is logged in)
+        if (userId) {
+          try {
+            const wishlistCheck = await ApiService.wishlist.getById(
+              userId,
+              productId
+            );
 
-          setIsWishlisted(
-            Array.isArray(wishlistCheck.data) && wishlistCheck.data.length > 0
-          );
-        } catch (err) {
-          console.error("Failed to fetch wishlist status", err);
-          setIsWishlisted(false);
+            setIsWishlisted(
+              Array.isArray(wishlistCheck.data) && wishlistCheck.data.length > 0
+            );
+          } catch (err) {
+            console.error("Failed to fetch wishlist status", err);
+            setIsWishlisted(false);
+          }
         }
       } else {
         Alert.alert("Error", "Failed to load product");
@@ -80,6 +102,10 @@ export default function ProductDetailScreen({ route, navigation }) {
   };
 
   const handleAddToCart = async () => {
+    if (!userId) {
+      Alert.alert("Sign In Required", "Please sign in to add items to your cart");
+      return;
+    }
     if (!selectedSize) {
       Alert.alert("Select Size", "Please select a size before adding to cart");
       return;
@@ -93,10 +119,10 @@ export default function ProductDetailScreen({ route, navigation }) {
     }
 
     try {
-      const result = await ApiService.cart.addItem(USER_ID, product.product_id, quantity, selectedSize, selectedColor);
+      const result = await ApiService.cart.addItem(userId, product.product_id, quantity, selectedSize, selectedColor);
       if (result.success) {
         // Fetch cart to update data after adding item
-        await ApiService.cart.get(USER_ID);
+        await ApiService.cart.get(userId);
         Alert.alert('Added to Cart', `${product.name}\nSize: ${selectedSize}\nColor: ${selectedColor}\nQuantity: ${quantity}`);
       } else {
         Alert.alert('Error', result.error || 'Could not add to cart');
@@ -107,9 +133,14 @@ export default function ProductDetailScreen({ route, navigation }) {
   };
 
   const handleWishlistToggle = async (productId) => {
+    if (!userId) {
+      Alert.alert("Sign In Required", "Please sign in to manage your wishlist");
+      return;
+    }
+
     if (!isWishlisted) {
-      console.log("Sent User ID and Product ID: ", USER_ID, ", ", productId);
-      await ApiService.wishlist.add(USER_ID, productId);
+      console.log("Sent User ID and Product ID: ", userId, ", ", productId);
+      await ApiService.wishlist.add(userId, productId);
       Alert.alert(
         "Added to Wishlist",
         `${product.name}\nSize: ${selectedSize}\nColor: ${selectedColor}\nQuantity: ${quantity}`,
@@ -129,10 +160,10 @@ export default function ProductDetailScreen({ route, navigation }) {
               // call API to remove and refresh list
               console.log(
                 "Sent User ID and Product ID: ",
-                USER_ID,
+                userId,
                 product.product_id
               );
-              await ApiService.wishlist.remove(USER_ID, product.product_id);
+              await ApiService.wishlist.remove(userId, product.product_id);
               setIsWishlisted(false);
             },
           },
