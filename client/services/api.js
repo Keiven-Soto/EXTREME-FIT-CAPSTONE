@@ -9,7 +9,7 @@ export const setGlobalAuthToken = (token) => {
   console.log('🎫 Global token set:', !!token);
 };
 
-const USE_NGROK = false;
+const USE_NGROK = true;
 const FORCE_PRODUCTION = false; 
 
 const getApiUrl = () => {
@@ -20,7 +20,7 @@ const getApiUrl = () => {
 
   if (__DEV__) {
     if (USE_NGROK) {
-      return 'https://unpaining-cris-scorningly.ngrok-free.dev'; //TODO: replace with your ngrok URL
+      return 'https://uncompanioned-querulous-kenna.ngrok-free.dev'; //TODO: replace with your ngrok URL
     }
 
     const debuggerHost = Constants.expoConfig?.hostUri?.split(':')[0];

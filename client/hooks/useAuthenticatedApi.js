@@ -6,7 +6,7 @@ const USE_NGROK = true;
 const getApiUrl = () => {
   if (__DEV__) {
     if (USE_NGROK) {
-      return ' https://uncompanioned-querulous-kenna.ngrok-free.dev';
+      return 'https://uncompanioned-querulous-kenna.ngrok-free.dev';
     }
 
     const debuggerHost = Constants.expoConfig?.hostUri?.split(':')[0];
