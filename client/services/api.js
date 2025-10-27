@@ -80,14 +80,25 @@ const apiRequest = async (endpoint, options = {}) => {
     try {
       data = JSON.parse(responseText);
     } catch (parseError) {
+      // Return a structured error when server responds with non-JSON
       console.error('❌ Failed to parse JSON response:', parseError.message);
-      console.error('Response received:', responseText.substring(0, 200));
-      throw new Error(`Server returned non-JSON response: ${responseText.substring(0, 100)}`);
+      console.error('Response received (truncated):', responseText.substring(0, 200));
+      return {
+        success: false,
+        error: `Server returned non-JSON response: ${responseText.substring(0, 200)}`,
+        originalResponse: responseText,
+        status: response.status,
+      };
     }
 
     if (!response.ok) {
       console.error(`❌ API Error (${response.status}):`, data.error || data);
-      throw new Error(data.error || `HTTP error! status: ${response.status}`);
+      return {
+        success: false,
+        error: data.error || `HTTP error! status: ${response.status}`,
+        status: response.status,
+        originalResponse: responseText,
+      };
     }
 
     // Backend returns {success: true, data: ...}, so just return it as-is
