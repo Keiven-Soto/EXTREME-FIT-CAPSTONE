@@ -95,10 +95,21 @@ if (summary.counters['errors.ECONNREFUSED'] || summary.counters['errors.ETIMEDOU
   }
 }
 
-// Overall Status
+// Overall Status with colors
 console.log('\n' + '='.repeat(60));
 const allPass = p99Pass === '✅' && p95Pass === '✅' && errPass === '✅';
-console.log(allPass ? '✅ ALL TESTS PASSED' : '❌ SOME TESTS FAILED');
+
+// ANSI color codes
+const green = '\x1b[32m';
+const red = '\x1b[31m';
+const reset = '\x1b[0m';
+const bold = '\x1b[1m';
+
+if (allPass) {
+  console.log(green + bold + '✅ ALL TESTS PASSED' + reset);
+} else {
+  console.log(red + bold + '❌ SOME TESTS FAILED' + reset);
+}
 console.log('='.repeat(60) + '\n');
 
 // Generate simplified JSON output
