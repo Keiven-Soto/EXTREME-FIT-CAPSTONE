@@ -13,8 +13,7 @@
     "test:load-ramp": "artillery run test/LOAD_TESTING/load-ramp.yml --output test/LOAD_TESTING/results/load-ramp-latest.json && node test/LOAD_TESTING/parse-results.js test/LOAD_TESTING/results/load-ramp-latest.json",
     "test:spike": "artillery run test/LOAD_TESTING/spike.yml --output test/LOAD_TESTING/results/spike-latest.json && node test/LOAD_TESTING/parse-results.js test/LOAD_TESTING/results/spike-latest.json",
     "test:pool-stress": "artillery run test/LOAD_TESTING/pool-stress.yml --output test/LOAD_TESTING/results/pool-stress-latest.json && node test/LOAD_TESTING/parse-results.js test/LOAD_TESTING/results/pool-stress-latest.json",
-    "test:soak": "artillery run test/LOAD_TESTING/soak.yml --output test/LOAD_TESTING/results/soak-latest.json && node test/LOAD_TESTING/parse-results.js test/LOAD_TESTING/results/soak-latest.json",
-
+    "test:soak": "artillery run test/LOAD_TESTING/soak.yml --output test/LOAD_TESTING/results/soak-latest.json && node test/LOAD_TESTING/parse-results.js test/LOAD_TESTING/results/soak-latest.json"
   },
   "dependencies": {
     "@clerk/express": "^1.7.37",
@@ -26,19 +25,15 @@
     "svix": "^1.76.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10",
-    "jest": "^29.6.1",
-    "supertest": "^6.3.3"
-  }
-  ,
-  "jest": {
-    "testEnvironment": "node",
-    "setupFiles": ["<rootDir>/test/setupRequireMocks.js"],
-    "setupFilesAfterEnv": ["<rootDir>/test/setupTests.js"],
-    "testMatch": ["<rootDir>/test/backend_tests/**/*.test.js"],
     "artillery": "^2.0.26",
     "jest": "^30.2.0",
     "nodemon": "^3.1.10",
     "supertest": "^7.1.4"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "setupFiles": ["<rootDir>/test/setupRequireMocks.js"],
+    "setupFilesAfterEnv": ["<rootDir>/test/setupTests.js"],
+    "testMatch": ["<rootDir>/test/backend_tests/**/*.test.js"]
   }
 }

@@ -1,20 +1,44 @@
 const request = require('supertest');
-const app = require('../../server'); // Your Express app
-const db = require('../../config/database');
+const { Pool } = require('pg');
 
 /**
- * @file orders.test.js
- * @description Test suite for Order Details API endpoints
+ * @file order.test.js
+ * @description Test suite for Order Details API endpoints - Integration Tests
  * @tests Business logic validation: tax calculations, totals, inventory rules
+ * @note This is an integration test that uses a real database connection
  */
 
+// Create a real database pool for integration testing
+const realDb = new Pool(
+  process.env.DATABASE_URL
+    ? {
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false },
+      }
+    : {
+        host: process.env.DB_HOST || 'localhost',
+        port: process.env.DB_PORT || 5433,
+        database: process.env.DB_NAME || 'extremefit_dev',
+        user: process.env.DB_USER || 'postgres',
+        password: process.env.DB_PASSWORD || 'extremefit123',
+      }
+);
+
 // Mock Clerk authentication for testing
-jest.mock('../../middleware/clerkUser', () => ({
-  getClerkUser: (req, res, next) => {
+jest.mock('@clerk/express', () => ({
+  clerkMiddleware: () => (req, res, next) => {
     req.auth = () => ({
       userId: 'test_clerk_id',
-      isAuthenticated: true
+      sessionId: 'test_session_id'
     });
+    next();
+  },
+  requireAuth: () => (req, res, next) => next(),
+}));
+
+// Mock the getClerkUser middleware to bypass database lookup
+jest.mock('../../middleware/clerkUser', () => ({
+  getClerkUser: (req, res, next) => {
     req.user = {
       user_id: 1,
       clerk_id: 'test_clerk_id',
@@ -25,6 +49,18 @@ jest.mock('../../middleware/clerkUser', () => ({
     next();
   }
 }));
+
+let app;
+let db;
+
+beforeAll(() => {
+  // Set the real database as the global mock so getDb() returns it
+  global.__DB_MOCK__ = realDb;
+  db = realDb;
+
+  // Load app after setting up the database mock
+  app = require('../../server');
+});
 
 describe('Order Details API - Business Logic Tests', () => {
   let testUserId;
@@ -112,8 +148,13 @@ describe('Order Details API - Business Logic Tests', () => {
 
     test('should calculate tax on order subtotal from API', async () => {
       const response = await request(app)
-        .get(`/api/orders/${testOrderId}`)
-        .expect(200);
+        .get(`/api/orders/${testOrderId}`);
+
+      if (response.status !== 200) {
+        console.log('Response status:', response.status);
+        console.log('Response body:', response.body);
+      }
+      expect(response.status).toBe(200);
 
       const order = response.body.data;
       
@@ -492,7 +533,7 @@ describe('Order Details - Full Integration Test', () => {
     await db.query('DELETE FROM addresses WHERE address_id = $1', [integrationTestAddressId]);
     await db.query('DELETE FROM users WHERE user_id = $1', [integrationTestUserId]);
     // Close database connection at the end of ALL tests
-    await db.end();
+    await realDb.end();
   });
 
   test('should fetch complete order with items and calculate totals correctly', async () => {
