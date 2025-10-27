@@ -128,7 +128,6 @@ export default function WishlistScreen({ navigation }) {
     }, [userId, tokenReady])
   );
 
-  // Remove item from wishlist
   const removeFromWishlist = async (productId) => {
     try {
       const result = await ApiService.wishlist.remove(userId, productId);
@@ -145,12 +144,11 @@ export default function WishlistScreen({ navigation }) {
     }
   };
 
-  // Navigate to product details
   const goToProduct = (productId) => {
     navigation.navigate('ProductDetails', { productId });
   };
 
-  // Add to cart
+  // Add to cart and remove from wishlist
   const addToCart = async (product) => {
     if (!userId) {
       Alert.alert('Sign In Required', 'Please sign in to add items to cart');
@@ -158,11 +156,19 @@ export default function WishlistScreen({ navigation }) {
     }
 
     try {
-      const result = await ApiService.cart.addItem(userId, product.product_id, 1, '', '');
-      if (result.success) {
-        Alert.alert('Success', 'Item added to cart');
+      // First, add the item to the cart
+      const cartResult = await ApiService.cart.addItem(userId, product.product_id, 1, '', '');
+
+      if (cartResult.success) {
+        const wishlistResult = await ApiService.wishlist.remove(userId, product.product_id);
+
+        if (wishlistResult.success) {
+          Alert.alert('Success!', 'Item added to cart.');
+          // Refresh the wishlist to show updated list
+          await fetchWishlist();
+        } 
       } else {
-        Alert.alert('Error', result.error || 'Could not add to cart');
+        Alert.alert('Error', cartResult.error || 'Could not add to cart');
       }
     } catch (error) {
       console.error('Error adding to cart:', error);
