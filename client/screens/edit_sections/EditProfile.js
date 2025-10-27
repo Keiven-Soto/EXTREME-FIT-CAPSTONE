@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useIsFocused } from '@react-navigation/native';
 import { useAuth } from '@clerk/clerk-expo';
 import ApiService, { setGlobalAuthToken, API_BASE_URL } from '../../services/api';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator} from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../../colors';
@@ -125,9 +125,13 @@ export default function EditProfileSection({navigation}) {
         setAddresses(updated.success ? updated.data : []);
       } else {
         console.log('Error deleting address:', result.message || result);
+        // show friendly alert to the user if API returned an error
+        Alert.alert('Cannot delete address', result.error || result.message || 'This address may be used by an existing order.');
       }
     } catch (err) {
       console.log('Delete address error:', err);
+      // Display friendly error to user
+      Alert.alert('Delete failed', err?.message || String(err));
     }
     setLoading(false);
   };
