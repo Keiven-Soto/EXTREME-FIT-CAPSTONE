@@ -8,11 +8,14 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@clerk/clerk-expo';
 import Colors from '../colors';
+import {ProductDetailScreen} from '../screens/productDetails';
 import ApiService, { setGlobalAuthToken } from '../services/api';
 import { useCurrentUser } from '../hooks/useAuthenticatedApi';
 import { getCloudinaryImageUrl } from '../utils/cloudinary';
@@ -26,6 +29,12 @@ export default function WishlistScreen({ navigation }) {
   const [wishlistItems, setWishlistItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [tokenReady, setTokenReady] = useState(false);
+
+  // Size/Color selection modal state
+  const [showSizeModal, setShowSizeModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedSize, setSelectedSize] = useState('');
+  const [selectedColor, setSelectedColor] = useState('');
 
   // Fetch authenticated user's database ID AND set the global token
   useEffect(() => {
@@ -80,11 +89,37 @@ export default function WishlistScreen({ navigation }) {
             try {
               const productResult = await ApiService.products.getById(item.product_id);
               if (productResult.success) {
+                const productData = productResult.data;
+
+                // Parse sizes if it's a string
+                let sizes = productData.sizes;
+                if (typeof sizes === 'string') {
+                  try {
+                    sizes = JSON.parse(sizes);
+                  } catch (e) {
+                    console.error('Error parsing sizes:', e);
+                    sizes = {};
+                  }
+                }
+
+                // Parse colors if it's a string
+                let colors = productData.colors;
+                if (typeof colors === 'string') {
+                  try {
+                    colors = JSON.parse(colors);
+                  } catch (e) {
+                    console.error('Error parsing colors:', e);
+                    colors = [];
+                  }
+                }
+
                 return {
                   wishlist_id: item.wishlist_id,
                   product_id: item.product_id,
                   added_at: item.added_at,
-                  ...productResult.data,
+                  ...productData,
+                  sizes,
+                  colors,
                 };
               }
               return null;
@@ -148,25 +183,58 @@ export default function WishlistScreen({ navigation }) {
     navigation.navigate('ProductDetails', { productId });
   };
 
-  // Add to cart and remove from wishlist
-  const addToCart = async (product) => {
-    if (!userId) {
-      Alert.alert('Sign In Required', 'Please sign in to add items to cart');
+  // Open size selection modal
+  const openSizeSelectionModal = (product) => {
+    setSelectedProduct(product);
+    setSelectedSize('');
+    setSelectedColor('');
+    setShowSizeModal(true);
+  };
+
+  // Close modal and reset selections
+  const closeSizeModal = () => {
+    setShowSizeModal(false);
+    setSelectedProduct(null);
+    setSelectedSize('');
+    setSelectedColor('');
+  };
+
+  // Confirm and add to cart with selected size/color
+  const confirmAddToCart = async () => {
+    // Check if product has sizes defined
+    const hasSizes = selectedProduct?.sizes && Object.keys(selectedProduct.sizes).length > 0;
+    const hasColors = selectedProduct?.colors && selectedProduct.colors.length > 0;
+
+    if (hasSizes && !selectedSize) {
+      Alert.alert('Size Required', 'Please select a size before adding to cart');
+      return;
+    }
+
+    if (hasColors && !selectedColor) {
+      Alert.alert('Color Required', 'Please select a color before adding to cart');
       return;
     }
 
     try {
-      // First, add the item to the cart
-      const cartResult = await ApiService.cart.addItem(userId, product.product_id, 1, '', '');
+      // Add the item to the cart with selected size and color
+      const cartResult = await ApiService.cart.addItem(
+        userId,
+        selectedProduct.product_id,
+        1,
+        selectedSize,
+        selectedColor
+      );
 
       if (cartResult.success) {
-        const wishlistResult = await ApiService.wishlist.remove(userId, product.product_id);
+        // Remove from wishlist
+        const wishlistResult = await ApiService.wishlist.remove(userId, selectedProduct.product_id);
 
         if (wishlistResult.success) {
-          Alert.alert('Success!', 'Item added to cart.');
+          Alert.alert('Success!', `Item added to cart (Size: ${selectedSize}, Color: ${selectedColor})`);
+          closeSizeModal();
           // Refresh the wishlist to show updated list
           await fetchWishlist();
-        } 
+        }
       } else {
         Alert.alert('Error', cartResult.error || 'Could not add to cart');
       }
@@ -174,6 +242,17 @@ export default function WishlistScreen({ navigation }) {
       console.error('Error adding to cart:', error);
       Alert.alert('Error', 'Could not add to cart');
     }
+  };
+
+  // Add to cart and remove from wishlist
+  const addToCart = async (product) => {
+    if (!userId) {
+      Alert.alert('Sign In Required', 'Please sign in to add items to cart');
+      return;
+    }
+
+    // Open modal for size/color selection
+    openSizeSelectionModal(product);
   };
 
   const renderItem = ({ item }) => (
@@ -295,6 +374,151 @@ export default function WishlistScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      {/* Size and Color Selection Modal */}
+      <Modal
+        visible={showSizeModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeSizeModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Size & Color</Text>
+              <TouchableOpacity onPress={closeSizeModal} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color={Colors.darkText} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Product Info */}
+              {selectedProduct && (
+                <View style={styles.modalProductInfo}>
+                  <Image
+                    source={{ uri: getCloudinaryImageUrl(selectedProduct.cloudinary_public_id) }}
+                    style={styles.modalProductImage}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.modalProductDetails}>
+                    <Text style={styles.modalProductName}>{selectedProduct.name}</Text>
+                    <Text style={styles.modalProductPrice}>
+                      ${Number(selectedProduct.price).toFixed(2)}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Size Selection */}
+              {selectedProduct?.sizes && Object.keys(selectedProduct.sizes).length > 0 && (
+                <View style={styles.selectionSection}>
+                  <Text style={styles.selectionLabel}>Size *</Text>
+                  <View style={styles.optionsGrid}>
+                    {Object.keys(selectedProduct.sizes).length === 1 && selectedProduct.sizes["OS"] !== undefined ? (
+                      // One Size (OS) only
+                      <TouchableOpacity
+                        key="OS"
+                        style={[
+                          styles.optionButton,
+                          selectedSize === "OS" && styles.optionButtonSelected,
+                          selectedProduct.sizes["OS"] === 0 && styles.optionButtonDisabled,
+                        ]}
+                        onPress={() => setSelectedSize("OS")}
+                        disabled={selectedProduct.sizes["OS"] === 0}
+                      >
+                        <Text
+                          style={[
+                            styles.optionText,
+                            selectedSize === "OS" && styles.optionTextSelected,
+                            selectedProduct.sizes["OS"] === 0 && styles.optionTextDisabled,
+                          ]}
+                        >
+                          OS {selectedProduct.sizes["OS"] === 0 ? '(Out of Stock)' : ''}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : (
+                      // Regular sizes (S, M, L, XL)
+                      ["S", "M", "L", "XL"].filter(size => selectedProduct.sizes[size] !== undefined).map((size) => {
+                        const qty = selectedProduct.sizes[size] ?? 0;
+                        return (
+                          <TouchableOpacity
+                            key={size}
+                            style={[
+                              styles.optionButton,
+                              selectedSize === size && styles.optionButtonSelected,
+                              qty === 0 && styles.optionButtonDisabled,
+                            ]}
+                            onPress={() => setSelectedSize(size)}
+                            disabled={qty === 0}
+                          >
+                            <Text
+                              style={[
+                                styles.optionText,
+                                selectedSize === size && styles.optionTextSelected,
+                                qty === 0 && styles.optionTextDisabled,
+                              ]}
+                            >
+                              {size} {qty === 0 ? '(Out of Stock)' : ''}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })
+                    )}
+                  </View>
+                </View>
+              )}
+
+              {/* Color Selection */}
+              {selectedProduct?.colors && selectedProduct.colors.length > 0 && (
+                <View style={styles.selectionSection}>
+                  <Text style={styles.selectionLabel}>Color *</Text>
+                  <View style={styles.optionsGrid}>
+                    {selectedProduct.colors.map((color) => (
+                      <TouchableOpacity
+                        key={color}
+                        style={[
+                          styles.optionButton,
+                          selectedColor === color && styles.optionButtonSelected,
+                        ]}
+                        onPress={() => setSelectedColor(color)}
+                      >
+                        <Text
+                          style={[
+                            styles.optionText,
+                            selectedColor === color && styles.optionTextSelected,
+                          ]}
+                        >
+                          {color}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* Add to Cart Button */}
+              <TouchableOpacity
+                style={[
+                  styles.confirmButton,
+                  (
+                    (selectedProduct?.sizes && Object.keys(selectedProduct.sizes).length > 0 && !selectedSize) ||
+                    (selectedProduct?.colors && selectedProduct.colors.length > 0 && !selectedColor)
+                  ) && styles.confirmButtonDisabled,
+                ]}
+                onPress={confirmAddToCart}
+                disabled={
+                  (selectedProduct?.sizes && Object.keys(selectedProduct.sizes).length > 0 && !selectedSize) ||
+                  (selectedProduct?.colors && selectedProduct.colors.length > 0 && !selectedColor)
+                }
+              >
+                <Ionicons name="cart" size={20} color={Colors.whiteText} />
+                <Text style={styles.confirmButtonText}>Add to Cart</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -456,5 +680,132 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 15,
     right: 15,
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: Colors.whiteBackground || '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 20,
+    paddingBottom: 40,
+    paddingHorizontal: 20,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightBorder || '#e5e5e5',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.darkText || '#000',
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalProductInfo: {
+    flexDirection: 'row',
+    marginBottom: 25,
+    padding: 15,
+    backgroundColor: Colors.lightBackground || '#f5f5f5',
+    borderRadius: 12,
+  },
+  modalProductImage: {
+    width: 80,
+    height: 100,
+    borderRadius: 8,
+    marginRight: 15,
+  },
+  modalProductDetails: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  modalProductName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.darkText || '#000',
+    marginBottom: 8,
+  },
+  modalProductPrice: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.mainColor || '#000',
+  },
+  selectionSection: {
+    marginBottom: 25,
+  },
+  selectionLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.darkText || '#000',
+    marginBottom: 12,
+  },
+  optionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  optionButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: Colors.lightBorder || '#e5e5e5',
+    backgroundColor: Colors.whiteBackground || '#fff',
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  optionButtonSelected: {
+    backgroundColor: Colors.mainColor || '#000',
+    borderColor: Colors.mainColor || '#000',
+  },
+  optionButtonDisabled: {
+    backgroundColor: Colors.lightBackground || '#f5f5f5',
+    borderColor: Colors.lightBorder || '#e5e5e5',
+    opacity: 0.5,
+  },
+  optionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.darkText || '#000',
+  },
+  optionTextSelected: {
+    color: Colors.whiteText || '#fff',
+  },
+  optionTextDisabled: {
+    color: Colors.mutedText || '#999',
+  },
+  confirmButton: {
+    flexDirection: 'row',
+    backgroundColor: Colors.mainColor || '#000',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    gap: 10,
+  },
+  confirmButtonDisabled: {
+    backgroundColor: Colors.mutedText || '#999',
+    opacity: 0.5,
+  },
+  confirmButtonText: {
+    color: Colors.whiteText || '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

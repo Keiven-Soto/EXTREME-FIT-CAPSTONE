@@ -1,11 +1,15 @@
 const express = require("express");
 const router = express.Router();
+const { requireAuth } = require("@clerk/express");
 const {
   getWishlistItem,
   getWishlistItemById,
   deleteWishlistItem,
   addWishlistItem,
 } = require("../controllers/wishlist_handler");
+
+// 🔐 All wishlist routes require authentication
+router.use(requireAuth());
 
 // Route to get wishlist items for a specific user
 router.get("/:user_id", getWishlistItem);

@@ -5,17 +5,16 @@ const getDb = () => (global && global.__DB_MOCK__) ? global.__DB_MOCK__ : requir
  * Requires clerkMiddleware to be set up first in server.js
  */
 const getClerkUser = async (req, res, next) => {
-  console.log('🔍 getClerkUser middleware called');
-
   try {
     // req.auth may not be present in some test environments; guard carefully.
     const authResult = typeof req.auth === 'function' ? req.auth() : undefined;
     const clerkId = authResult?.userId;
 
-    console.log('🔍 Extracted clerkId:', clerkId);
-
     // If no clerkId, do not block tests — continue to next middleware.
-    if (!clerkId) return next();
+    if (!clerkId) {
+      console.log('⚠️ No clerkId found in request');
+      return next();
+    }
 
     console.log('🔍 Querying database for clerk_id:', clerkId);
     const result = await getDb().query(

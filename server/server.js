@@ -50,22 +50,29 @@ app.get('/api/test-db', async (req, res) => {
   }
 });
 
-// 🔐 Protected routes - Apply requireAuth() here
-console.log('📍 Registering /api/addresses');
-app.use('/api/addresses', addressRoutes);
-
-console.log('📍 Registering /api/orders');
-app.use('/api/orders', ordersRoute);
-
-// Public routes (no auth required)
+// Public routes (no auth required) - Register FIRST
 console.log('📍 Registering /api/products (public)');
 app.use('/api/products', productRoute);
-app.use('/api/', ordersRoute);
+
+console.log('📍 Registering /api/categories (public)');
 app.use('/api/categories', categoriesRoute);
+
+// 🔐 Protected routes (requireAuth() applied inside route files)
+console.log('📍 Registering /api/addresses (protected)');
+app.use('/api/addresses', addressRoutes);
+
+console.log('📍 Registering /api/orders (protected)');
+app.use('/api/orders', ordersRoute);
+
+console.log('📍 Registering /api/cart (protected)');
 app.use('/api', cartItemsRoute);
+
+console.log('📍 Registering /api/wishlist (protected)');
 app.use('/api/wishlist', wishlistRoute);
 
-// 🔐 Important: /api routes must be AFTER specific routes to avoid conflicts
+// General user routes (has both public and protected endpoints)
+// Must be LAST to avoid conflicts with more specific routes
+console.log('📍 Registering /api general routes');
 app.use('/api', routes);
 
 if (require.main === module) {
