@@ -136,11 +136,16 @@ export default function WishlistScreen({ navigation }) {
         setWishlistItems(validItems);
       } else {
         console.error('❌ Error loading wishlist:', result.error);
+
+        // Handle authentication errors specifically
+        if (result.status === 401) {
+          Alert.alert('Session Expired', 'Please sign in again to view your wishlist');
+        }
         setWishlistItems([]);
       }
     } catch (error) {
       console.error('❌ Exception loading wishlist:', error);
-      Alert.alert('Error', 'Could not load wishlist');
+      Alert.alert('Error', 'Could not load wishlist. Please try again.');
       setWishlistItems([]);
     } finally {
       setLoading(false);
