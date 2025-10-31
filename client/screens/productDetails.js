@@ -18,7 +18,7 @@ import ApiService from "../services/api";
 import { useCurrentUser } from "../hooks/useAuthenticatedApi";
 
 export default function ProductDetailScreen({ route, navigation }) {
-  const { productId } = route.params;
+  const { productId, isFromWishlist } = route.params;
   const { user: clerkUser } = useUser();
   const { getCurrentUser } = useCurrentUser();
 
@@ -27,7 +27,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   const [selectedSize, setSelectedSize] = useState(null);
   const [selectedColor, setSelectedColor] = useState(null);
   const [quantity, setQuantity] = useState(1);
-  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [isWishlisted, setIsWishlisted] = useState(isFromWishlist || false);
   const [userId, setUserId] = useState(null);
 
   // Fetch authenticated user's database ID
@@ -76,8 +76,7 @@ export default function ProductDetailScreen({ route, navigation }) {
           setSelectedColor(null);
         }
 
-        // Check wishlist (only if user is logged in)
-        if (userId) {
+        if (userId && !isFromWishlist) {
           try {
             const wishlistCheck = await ApiService.wishlist.getById(
               userId,

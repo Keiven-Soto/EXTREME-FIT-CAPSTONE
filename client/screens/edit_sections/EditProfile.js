@@ -113,28 +113,6 @@ export default function EditProfileSection({navigation}) {
   }
 
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-  
-  const onDeleteAddress = async (addr) => {
-    if (!addr?.address_id || !currentUser?.user_id) return;
-    try {
-      setLoading(true);
-      const result = await ApiService.addresses.delete(addr.address_id);
-      await sleep(500);
-      if (result.success) {
-        const updated = await ApiService.addresses.getByUser(currentUser.user_id);
-        setAddresses(updated.success ? updated.data : []);
-      } else {
-        console.log('Error deleting address:', result.message || result);
-        // show friendly alert to the user if API returned an error
-        Alert.alert('Cannot delete address', result.error || result.message || 'This address may be used by an existing order.');
-      }
-    } catch (err) {
-      console.log('Delete address error:', err);
-      // Display friendly error to user
-      Alert.alert('Delete failed', err?.message || String(err));
-    }
-    setLoading(false);
-  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -202,9 +180,6 @@ export default function EditProfileSection({navigation}) {
                 <View style={styles.addressActions}>
                   <TouchableOpacity style={styles.iconBtn} onPress={() => gotoEditAddressSection(addr)}>
                     <Text>Edit</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.trashBtn} onPress={() => onDeleteAddress(addr)}>
-                    <Ionicons name="trash" size={20} color={Colors.darkText } />
                   </TouchableOpacity>
                   {!addr.is_default ? (
                     <TouchableOpacity onPress={() => onSetDefault(addr)}>
@@ -363,10 +338,6 @@ const styles = StyleSheet.create({
   },
   iconBtn: {
     padding: 6,
-  },
-  trashBtn: {
-    padding: 6,
-    marginLeft: 4,
   },
   setDefaultText: {
     fontSize: 13,

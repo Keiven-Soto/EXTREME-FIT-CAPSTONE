@@ -185,7 +185,10 @@ export default function WishlistScreen({ navigation }) {
   };
 
   const goToProduct = (productId) => {
-    navigation.navigate('ProductDetails', { productId });
+    navigation.navigate('ProductDetails', {
+      productId,
+      isFromWishlist: true 
+    });
   };
 
   // Open size selection modal
@@ -683,8 +686,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     position: 'absolute',
-    top: 15,
-    right: 15,
+    top: 8,
+    right: 8,
   },
   // Modal Styles
   modalOverlay: {
