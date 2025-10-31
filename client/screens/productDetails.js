@@ -48,10 +48,12 @@ export default function ProductDetailScreen({ route, navigation }) {
   }, [clerkUser]);
 
   useEffect(() => {
+    console.log('🔄 ProductDetails useEffect triggered - productId:', productId);
     loadProduct();
-  }, [productId, userId]);
+  }, [productId]); // Only re-run when productId changes, not userId
 
   const loadProduct = async () => {
+    console.log('📦 loadProduct called for productId:', productId);
     try {
       setLoading(true);
       const result = await ApiService.products.getById(productId);
@@ -60,16 +62,18 @@ export default function ProductDetailScreen({ route, navigation }) {
         const productData = result.data.data || result.data;
         setProduct(productData);
 
-        // No seleccionar talla por defecto
-        setSelectedSize(null);
-        // Mantener color predeterminado si existe
-
-        // Set default selections
-        if (productData.sizes && productData.sizes.length > 0) {
-          setSelectedSize(productData.sizes[0]);
+        // Set default selections only if they exist
+        if (productData.sizes && Object.keys(productData.sizes).length > 0) {
+          const availableSizes = Object.keys(productData.sizes);
+          setSelectedSize(availableSizes[0]);
+        } else {
+          setSelectedSize(null);
         }
+
         if (productData.colors && productData.colors.length > 0) {
           setSelectedColor(productData.colors[0]);
+        } else {
+          setSelectedColor(null);
         }
 
         // Check wishlist (only if user is logged in)
