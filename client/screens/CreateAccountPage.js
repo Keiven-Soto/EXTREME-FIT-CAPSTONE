@@ -1,351 +1,315 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, Image, TouchableOpacity, SafeAreaView, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSignUp } from '@clerk/clerk-expo';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import Colors from '../colors';
-import logo from '../assets/Extreme_fit_new_logo-10.png';
-import ApiService, { API_BASE_URL } from '../services/api';
 
 export default function CreateAccountPage({ navigation }) {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const { isLoaded, signUp, setActive } = useSignUp();
+  
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [emailAddress, setEmailAddress] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [pendingVerification, setPendingVerification] = useState(false);
+  const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const validateForm = () => {
-    if (!name || !email || !phone || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields.');
-      return false;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      Alert.alert('Error', 'Please enter a valid email address.');
-      return false;
-    }
-
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match.');
-      return false;
-    }
-
-    if (password.length < 8) {
-      Alert.alert('Error', 'Password must be at least 8 characters long.');
-      return false;
-    }
-
-    const [first_name = ''] = name.trim().split(' ');
-    if (!first_name) {
-      Alert.alert('Error', 'Please enter your full name.');
-      return false;
-    }
-
-    return true;
-  };
-
-  const clearForm = () => {
-    setName('');
-    setEmail('');
-    setPhone('');
-    setPassword('');
-    setConfirmPassword('');
-  };
-
-  const handleCreateAccount = async () => {
-    if (!validateForm()) return;
-
-    const [first_name = '', ...rest] = name.trim().split(' ');
-    const last_name = rest.join(' ');
-
+  const onSignUpPress = async () => {
+    if (!isLoaded) return;
     setLoading(true);
 
     try {
-      const userData = {
-        first_name,
-        last_name: last_name || '',
-        email: email.trim().toLowerCase(),
-        password_hash: password,
-        phone: phone.trim(),
-      };
+      await signUp.create({
+        firstName,
+        lastName,
+        emailAddress,
+        password,
+      });
 
-      const result = await ApiService.users.create(userData);
-
-      if (result.success) {
-        Alert.alert(
-          'Account Created Successfully!', 
-          `Welcome to Extreme Fit, ${result.data.user.first_name}!`,
-          [
-            {
-              text: 'Get Started',
-              onPress: () => {
-                clearForm();
-                navigation?.navigate('Main');
-              }
-            }
-          ]
-        );
-      } else {
-        Alert.alert('Registration Failed', result.error || 'Unable to create account. Please try again.');
-      }
-    } catch (error) {
-      console.error('Registration error:', error);
-      Alert.alert(
-        'Connection Error', 
-        'Unable to connect to server. Please check your internet connection and try again.'
-      );
+      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+      setPendingVerification(true);
+    } catch (err) {
+      Alert.alert('Error', err.errors?.[0]?.message || 'Failed to sign up');
+      console.error(JSON.stringify(err, null, 2));
     } finally {
       setLoading(false);
     }
   };
 
-  const testConnection = async () => {
+  const onVerifyPress = async () => {
+    if (!isLoaded) return;
     setLoading(true);
-    
+
     try {
-      const result = await ApiService.testConnection();
-      
-      if (result.success) {
-        Alert.alert(
-          'Connection Successful', 
-          `Server is running and database is connected.\n\nAPI: ${API_BASE_URL}\nDatabase: ${result.data.database}\nStatus: ${result.data.status}`
-        );
+      const signUpAttempt = await signUp.attemptEmailAddressVerification({
+        code,
+      });
+
+      if (signUpAttempt.status === 'complete') {
+        await setActive({ session: signUpAttempt.createdSessionId });
+        navigation.replace('Main');
       } else {
-        Alert.alert(
-          'Connection Failed', 
-          `Cannot connect to server.\n\nAPI: ${API_BASE_URL}\n\nMake sure:\n• Backend server is running\n• You're on the same WiFi network\n• Server is on port 5001\n\nError: ${result.error}`
-        );
+        Alert.alert('Error', 'Verification incomplete');
+        console.error(JSON.stringify(signUpAttempt, null, 2));
       }
-    } catch (error) {
-      Alert.alert(
-        'Connection Error', 
-        `Failed to reach server at: ${API_BASE_URL}\n\nTroubleshooting:\n• Restart your backend server\n• Restart Expo dev server\n• Check WiFi connection\n\nError: ${error.message}`
-      );
+    } catch (err) {
+      Alert.alert('Error', err.errors?.[0]?.message || 'Failed to verify');
+      console.error(JSON.stringify(err, null, 2));
     } finally {
       setLoading(false);
     }
   };
+
+  if (pendingVerification) {
+    return (
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.header}>
+            <Text style={styles.title}>VERIFY EMAIL</Text>
+            <Text style={styles.subtitle}>
+              We sent a verification code to{'\n'}{emailAddress}
+            </Text>
+          </View>
+
+          <View style={styles.formContainer}>
+            <TextInput
+              style={styles.input}
+              value={code}
+              placeholder="Enter verification code"
+              placeholderTextColor="#666"
+              onChangeText={setCode}
+              keyboardType="number-pad"
+              autoFocus
+            />
+            
+            <TouchableOpacity 
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={onVerifyPress}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#000" />
+              ) : (
+                <Text style={styles.buttonText}>VERIFY EMAIL</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    );
+  }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView 
-        contentContainerStyle={styles.container} 
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <Image source={logo} style={styles.logo} resizeMode="contain" />
-        
-        <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Join Extreme Fit and start your fitness journey</Text>
-        
-        <TouchableOpacity 
-          style={styles.testButton} 
-          onPress={testConnection}
-          disabled={loading}
-        >
-          <Text style={styles.testButtonText}>
-            {loading ? 'Testing...' : 'Test Server Connection'}
-          </Text>
-        </TouchableOpacity>
-
-        <View style={styles.form}>
-          <TextInput
-            style={styles.input}
-            placeholder="Full Name"
-            placeholderTextColor={Colors.mutedText}
-            value={name}
-            onChangeText={setName}
-            editable={!loading}
-            autoCapitalize="words"
-            returnKeyType="next"
-          />
-          
-          <TextInput
-            style={styles.input}
-            placeholder="Email Address"
-            placeholderTextColor={Colors.mutedText}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            editable={!loading}
-            returnKeyType="next"
-          />
-          
-          <TextInput
-            style={styles.input}
-            placeholder="Phone Number"
-            placeholderTextColor={Colors.mutedText}
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-            editable={!loading}
-            returnKeyType="next"
-          />
-          
-          <TextInput
-            style={styles.input}
-            placeholder="Password (8+ characters)"
-            placeholderTextColor={Colors.mutedText}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            editable={!loading}
-            returnKeyType="next"
-          />
-          
-          <TextInput
-            style={styles.input}
-            placeholder="Confirm Password"
-            placeholderTextColor={Colors.mutedText}
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-            editable={!loading}
-            returnKeyType="done"
-            onSubmitEditing={handleCreateAccount}
-          />
-        </View>
-        
-        <TouchableOpacity 
-          style={[styles.createButton, loading && styles.buttonDisabled]} 
-          onPress={handleCreateAccount}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color={Colors.whiteText} size="small" />
-          ) : (
-            <Text style={styles.createButtonText}>Create Account</Text>
-          )}
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation?.goBack()}
-          disabled={loading}
+          onPress={() => navigation.navigate('Welcome')}
         >
-          <Text style={styles.backButtonText}>Back to Welcome</Text>
+          <Ionicons name="arrow-back" size={28} color="#fff" />
         </TouchableOpacity>
 
-        <Text style={styles.apiInfo}>Server: {API_BASE_URL}</Text>
+        <View style={styles.header}>
+          <Text style={styles.title}>CREATE ACCOUNT</Text>
+          <Text style={styles.subtitle}>Join Extreme Fit today</Text>
+        </View>
+
+        <View style={styles.formContainer}>
+          <TextInput
+            style={styles.input}
+            autoCapitalize="words"
+            value={firstName}
+            placeholder="First name"
+            placeholderTextColor="#666"
+            onChangeText={setFirstName}
+            autoComplete="name-given"
+          />
+
+          <TextInput
+            style={styles.input}
+            autoCapitalize="words"
+            value={lastName}
+            placeholder="Last name"
+            placeholderTextColor="#666"
+            onChangeText={setLastName}
+            autoComplete="name-family"
+          />
+
+          <TextInput
+            style={styles.input}
+            autoCapitalize="none"
+            value={emailAddress}
+            placeholder="Email address"
+            placeholderTextColor="#666"
+            onChangeText={setEmailAddress}
+            keyboardType="email-address"
+            autoComplete="email"
+          />
+
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              value={password}
+              placeholder="Password"
+              placeholderTextColor="#666"
+              secureTextEntry={!showPassword}
+              onChangeText={setPassword}
+              autoComplete="password"
+            />
+            <TouchableOpacity
+              style={styles.eyeIcon}
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              <Ionicons
+                name={showPassword ? 'eye-off' : 'eye'}
+                size={22}
+                color="#666"
+              />
+            </TouchableOpacity>
+          </View>
+          
+          <TouchableOpacity 
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={onSignUpPress}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#000" />
+            ) : (
+              <Text style={styles.buttonText}>CONTINUE</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('LogInPage')}
+            style={styles.linkButton}
+          >
+            <Text style={styles.linkText}>
+              Already have an account? <Text style={styles.linkTextBold}>Log in</Text>
+            </Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: Colors.lightBackground,
-  },
-  scrollView: {
-    flex: 1,
-  },
   container: {
-    flexGrow: 1,
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    padding: 24,
-    paddingTop: 40,
-    paddingBottom: 40,
-    minHeight: '100%',
+    flex: 1,
+    backgroundColor: Colors.darkBackground || '#000',
   },
-  logo: {
-    width: 150,
-    height: 150,
-    marginBottom: 20,
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 30,
+    paddingTop: 60,
+  },
+  backButton: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    zIndex: 10,
+    padding: 10,
+  },
+  header: {
+    marginBottom: 40,
+    alignItems: 'center',
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: Colors.mainColor,
-    marginBottom: 8,
-    textAlign: 'center',
+    color: '#fff',
+    letterSpacing: 2,
+    marginBottom: 10,
   },
   subtitle: {
     fontSize: 16,
-    color: Colors.mutedText,
+    color: '#fff',
+    opacity: 0.8,
     textAlign: 'center',
-    marginBottom: 25,
   },
-  testButton: {
-    backgroundColor: Colors.whiteBackground,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 25,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: Colors.mainColor,
-    shadowColor: Colors.shadowColor,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  testButtonText: {
-    color: Colors.mainColor,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  form: {
+  formContainer: {
     width: '100%',
-    maxWidth: 350,
-    marginBottom: 20,
   },
   input: {
-    backgroundColor: Colors.whiteBackground,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    marginBottom: 16,
+    backgroundColor: '#1a1a1a',
     borderWidth: 1,
-    borderColor: Colors.lightBorder,
-    color: Colors.darkText,
-    shadowColor: Colors.shadowColor,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  createButton: {
-    backgroundColor: Colors.mainColor,
-    paddingVertical: 16,
-    paddingHorizontal: 60,
-    borderRadius: 30,
-    marginTop: 10,
+    borderColor: '#333',
+    padding: 15,
+    borderRadius: 10,
     marginBottom: 15,
-    minWidth: 200,
+    fontSize: 16,
+    color: '#fff',
+  },
+  passwordContainer: {
+    position: 'relative',
+    marginBottom: 15,
+  },
+  passwordInput: {
+    backgroundColor: '#1a1a1a',
+    borderWidth: 1,
+    borderColor: '#333',
+    padding: 15,
+    paddingRight: 50,
+    borderRadius: 10,
+    fontSize: 16,
+    color: '#fff',
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 15,
+    top: 15,
+    padding: 5,
+  },
+  button: {
+    backgroundColor: '#fff',
+    paddingVertical: 15,
+    borderRadius: 25,
     alignItems: 'center',
-    shadowColor: Colors.shadowColor,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    marginTop: 10,
+    marginBottom: 20,
   },
   buttonDisabled: {
-    backgroundColor: Colors.mutedText,
-    shadowOpacity: 0.1,
+    opacity: 0.6,
   },
-  createButtonText: {
-    color: Colors.whiteText,
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  backButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    marginBottom: 10,
-  },
-  backButtonText: {
-    color: Colors.mainColor,
+  buttonText: {
+    color: '#000',
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
-  apiInfo: {
-    fontSize: 10,
-    color: Colors.mutedText,
-    marginTop: 10,
-    textAlign: 'center',
-    opacity: 0.7,
+  linkButton: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  linkText: {
+    color: '#fff',
+    fontSize: 14,
+    opacity: 0.8,
+  },
+  linkTextBold: {
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 });
