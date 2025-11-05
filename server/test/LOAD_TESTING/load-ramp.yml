@@ -1,0 +1,49 @@
+config:
+  target: "http://localhost:5001"
+
+  plugins:
+    metrics-by-endpoint: {}
+
+  phases:
+    # Ramp up to 15 concurrent users
+    - duration: 15
+      arrivalRate: 10
+      rampTo: 15
+      name: "Ramp-up"
+
+    # Sustained load - 15 concurrent transactions
+    - duration: 30
+      arrivalRate: 15
+      name: "Sustained load"
+
+  # Performance thresholds - <2s response time requirement
+  ensure:
+    maxErrorRate: 1     # Max 1% error rate
+    p99: 2000           # 99th percentile < 2 seconds
+    p95: 1500           # 95th percentile < 1.5 seconds
+
+scenarios:
+  # Database health check scenario
+  - name: "Database Health Check"
+    weight: 2
+    flow:
+      - get:
+          url: "/api/test-db"
+
+  # Product catalog browsing
+  - name: "Browse Products"
+    weight: 5
+    flow:
+      - get:
+          url: "/api/products"
+      - get:
+          url: "/api/products?page={{ $randomNumber(1,3) }}&limit=10"
+
+  # Category browsing
+  - name: "Browse Categories"
+    weight: 3
+    flow:
+      - get:
+          url: "/api/categories"
+      - get:
+          url: "/api/products"

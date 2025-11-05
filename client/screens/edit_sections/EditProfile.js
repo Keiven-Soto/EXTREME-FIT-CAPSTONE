@@ -1,58 +1,92 @@
 import React, { useEffect, useState } from 'react';
 import { useIsFocused } from '@react-navigation/native';
-import ApiService from '../../services/api';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator} from 'react-native';
+import { useAuth } from '@clerk/clerk-expo';
+import ApiService, { setGlobalAuthToken, API_BASE_URL } from '../../services/api';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../../colors';
 
 export default function EditProfileSection({navigation}) {
+  const { getToken, isSignedIn } = useAuth();
 
-const gotoEditAddressSection = (address) => {
-  navigation && navigation.navigate('EditAddress', { address });
-};
-
-  // Simulación: obtén el userId real de tu auth/contexto
-  const userId = '1'; // <-- reemplaza por el id real
-  const user = {
-    name: 'William Rodríguez',
-    email: 'rodriguez.m.warm@gmail.com',
+  const gotoEditAddressSection = (address) => {
+    navigation && navigation.navigate('EditAddress', { address });
   };
 
-  // Estado para direcciones y loading
+  // Estado para usuario autenticado, direcciones y loading
+  const [currentUser, setCurrentUser] = useState(null);
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
   const isFocused = useIsFocused();
 
   useEffect(() => {
-    const fetchAddresses = async () => {
+    const fetchUserAndAddresses = async () => {
       setLoading(true);
-      const result = await ApiService.addresses.getByUser(userId);
-      console.log('Direcciones API result:', result); // <-- Aquí ves la estructura
-      if (result.success) {
-        setAddresses(result.data); // Ajusta según tu backend
-      } else {
+      try {
+        // Debug: Check auth status
+        console.log('🔐 Auth Status:', { isSignedIn });
+
+        // Try to get token
+        const token = await getToken();
+        console.log('🎫 Token present:', !!token);
+
+        if (!token) {
+          console.error('❌ No token available - user not authenticated');
+          setLoading(false);
+          return;
+        }
+
+        // Set token globally for API calls
+        setGlobalAuthToken(token);
+
+        // Get authenticated user from database
+        console.log('🔍 Full API URL:', `${API_BASE_URL}/api/users/me`);
+
+        const user = await ApiService.users.getCurrentUser();
+        console.log('👤 Raw response:', JSON.stringify(user, null, 2));
+        console.log('👤 User response:', user);
+
+        if (!user || !user.user_id) {
+          console.error('❌ User not authenticated - no user_id in response');
+          setLoading(false);
+          return;
+        }
+
+        setCurrentUser(user);
+
+        // Fetch addresses for the authenticated user
+        const result = await ApiService.addresses.getByUser(user.user_id);
+        console.log('Direcciones API result:', result);
+        if (result.success) {
+          setAddresses(result.data);
+        } else {
+          setAddresses([]);
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
         setAddresses([]);
       }
       setLoading(false);
     };
     if (isFocused) {
-      fetchAddresses();
+      fetchUserAndAddresses();
     }
-  }, [userId, isFocused]);
+  }, [isFocused]);
 
-  // Handlers (conéctalos a navegación o modales)
+  // Handlers
   const onEditContact = () => {};
-  const onResetPassword = () => {};
+  const onResetPassword = () => {
+    navigation && navigation.navigate('ChangePassword');
+  };
   const onAddAddress = () => {
-    // Navega a EditAddress, para crear uno nuevo
     navigation && navigation.navigate('EditAddress');
   };
   const onEditAddress = (addr) => {};
-const onSetDefault = async (addr) => {
-  if (!addr?.address_id) return;
-  try {
-      // Construye el payload completo de la dirección
+  
+  const onSetDefault = async (addr) => {
+    if (!addr?.address_id || !currentUser?.user_id) return;
+    try {
       const payload = {
         street_address: addr.street_address,
         city: addr.city,
@@ -62,59 +96,37 @@ const onSetDefault = async (addr) => {
         address_type: addr.address_type,
         is_default: true
       };
-    const result = await ApiService.addresses.update(addr.address_id, payload);
-    console.log('Set default response:', result);
-    await sleep(500);
-    if (result.success) {
-      const updated = await ApiService.addresses.getByUser(userId);
-      setAddresses(updated.success ? updated.data : []);
-    } else {
-      console.log('Error setting default address:', result.message || result);
+      const result = await ApiService.addresses.update(addr.address_id, payload);
+      console.log('Set default response:', result);
+      await sleep(500);
+      if (result.success) {
+        const updated = await ApiService.addresses.getByUser(currentUser.user_id);
+        setAddresses(updated.success ? updated.data : []);
+      } else {
+        console.log('Error setting default address:', result.message || result);
+      }
+    } catch (err) {
+      console.log('Default address error:', err);
     }
-  } catch (err) {
-    console.log('Default address error:', err);
-  }
-  // setLoading(false);
-};
-
+  };
 
   const goBack = () => {
     navigation && navigation.goBack();
   }
 
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-  const onDeleteAddress = async (addr) => {
-    if (!addr?.address_id) return;
-    try {
-      setLoading(true);
-      const result = await ApiService.addresses.delete(addr.address_id);
-      await sleep(500);
-      if (result.success) {
-        // Refresca la lista de direcciones
-        const updated = await ApiService.addresses.getByUser(userId);
-        setAddresses(updated.success ? updated.data : []);
-      } else {
-        // Maneja error si lo deseas
-        console.log('Error deleting address:', result.message || result);
-      }
-    } catch (err) {
-      console.log('Delete address error:', err);
-    }
-    setLoading(false);
-  };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Static Header con arrow back alineado a la izquierda */}
+      {/* Static Header */}
       <View style={styles.staticHeader}>
         <TouchableOpacity style={styles.headerBackBtn} onPress={goBack}>
           <Ionicons name="arrow-back" size={24} color={Colors.mainColor} />
         </TouchableOpacity>
         <Text style={styles.staticHeaderTitle}>Edit Profile</Text>
       </View>
+      
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }}>
-
-        
         {/* CONTACT DETAILS */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>CONTACT DETAILS</Text>
@@ -122,7 +134,9 @@ const onSetDefault = async (addr) => {
           <View style={styles.fieldRow}>
             <View style={styles.fieldCol}>
               <Text style={styles.fieldLabel}>Your Name</Text>
-              <Text style={styles.fieldValue}>{user.name}</Text>
+              <Text style={styles.fieldValue}>
+                {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : 'Loading...'}
+              </Text>
             </View>
             <TouchableOpacity onPress={onEditContact} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Ionicons name="pencil" size={18} color={Colors.mutedText} />
@@ -132,12 +146,12 @@ const onSetDefault = async (addr) => {
           <View style={[styles.fieldRow, styles.fieldRowDivider]}>
             <View style={styles.fieldCol}>
               <Text style={styles.fieldLabel}>Email Address</Text>
-              <Text style={styles.fieldValue}>{user.email}</Text>
+              <Text style={styles.fieldValue}>{currentUser?.email || 'Loading...'}</Text>
             </View>
           </View>
-          {/* Reset Password Link */}
+          {/* Change Password Link */}
           <TouchableOpacity style={styles.linkRow} onPress={onResetPassword}>
-            <Text style={styles.linkText}>Reset your password</Text>
+            <Text style={styles.linkText}>Change password</Text>
             <Ionicons name="chevron-forward" size={18} color={Colors.mutedText} />
           </TouchableOpacity>
         </View>
@@ -169,9 +183,6 @@ const onSetDefault = async (addr) => {
                   <TouchableOpacity style={styles.iconBtn} onPress={() => gotoEditAddressSection(addr)}>
                     <Text>Edit</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.trashBtn} onPress={() => onDeleteAddress(addr)}>
-                    <Ionicons name="trash" size={20} color={Colors.darkText } />
-                  </TouchableOpacity>
                   {!addr.is_default ? (
                     <TouchableOpacity onPress={() => onSetDefault(addr)}>
                       <Text style={styles.setDefaultText}>Set as default</Text>
@@ -187,7 +198,6 @@ const onSetDefault = async (addr) => {
         <View style={styles.footer}>
           <Text style={styles.footerText}>Extreme Fit v1.0.0</Text>
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -200,17 +210,28 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingTop: 18,
     paddingBottom: 12,
-    backgroundColor: Colors.whiteBackground,
-    alignItems: 'center',
+    backgroundColor: Colors.lightBackground,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.grayBorder,
+    borderBottomColor: Colors.lightBackground,
     zIndex: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   staticHeaderTitle: {
     fontSize: 22,
     fontWeight: 'bold',
     color: Colors.mainColor,
     letterSpacing: 0.5,
+    textAlign: 'center',
+    flex: 1,
+  },
+  headerBackBtn: {
+    position: 'absolute',
+    left: 12,
+    top: 18,
+    padding: 4,
+    zIndex: 20,
   },
   container: {
     flex: 1,
@@ -320,10 +341,6 @@ const styles = StyleSheet.create({
   iconBtn: {
     padding: 6,
   },
-  trashBtn: {
-    padding: 6,
-    marginLeft: 4,
-  },
   setDefaultText: {
     fontSize: 13,
     color: Colors.mainColor,
@@ -336,32 +353,5 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 14,
     color: Colors.mutedText,
-  },
-  headerBackBtn: {
-    position: 'absolute',
-    left: 12,
-    top: 18,
-    padding: 4,
-    zIndex: 20,
-  },
-  staticHeader: {
-    width: '100%',
-    paddingTop: 18,
-    paddingBottom: 12,
-    backgroundColor: Colors.lightBackground,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.lightBackground,
-    zIndex: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  staticHeaderTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: Colors.mainColor,
-    letterSpacing: 0.5,
-    textAlign: 'center',
-    flex: 1,
   },
 });

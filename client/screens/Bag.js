@@ -1,7 +1,12 @@
-import React, { useState, useMemo } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView, Alert, Platform } from 'react-native';
+import React, { useState, useMemo, useEffect } from 'react';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Platform, Image, ActivityIndicator } from 'react-native';
+import { getCloudinaryImageUrl } from '../utils/cloudinary';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@clerk/clerk-expo';
 import Colors from '../colors';
+import ApiService, { setGlobalAuthToken } from '../services/api';
+import { useCurrentUser } from '../hooks/useAuthenticatedApi';
 
 // Only import PayPal on native platforms
 let PayPal = null;
@@ -14,30 +19,227 @@ if (Platform.OS !== 'web') {
 }
 
 export default function BagScreen() {
-  const SHIPPING_COST = 15.00;
+  const { getToken, isSignedIn } = useAuth();
+  const { getCurrentUser } = useCurrentUser();
+  const [userId, setUserId] = useState(null);
 
-  const [cartItems, setCartItems] = useState([
-    { id: 1, name: 'Athletic Gear 1', details: 'Size L - Black', price: 45.99, quantity: 2 },
-    { id: 2, name: 'Athletic Gear 2', details: 'Size M - Red', price: 52.99, quantity: 1 },
-    { id: 3, name: 'Athletic Gear 3', details: 'Size XL - Blue', price: 38.95, quantity: 3 },
-  ]);
+  // Simulated payment
+  const handleSimulatedPayment = async () => {
+    if (!cartItems || cartItems.length === 0) {
+      Alert.alert('Error', 'Your cart is empty. Add products before checking out.');
+      return;
+    }
 
-  const incrementQuantity = (id) => {
-    setCartItems(items => 
-      items.map(item => 
-        item.id === id ? { ...item, quantity: item.quantity + 1 } : item
-      )
-    );
+    try {
+      // 1. Find user's default address
+      const addressResult = await ApiService.addresses.getByUser(userId);
+      let defaultAddress = null;
+      if (addressResult.success && Array.isArray(addressResult.data)) {
+        defaultAddress = addressResult.data.find(addr => addr.is_default);
+      }
+      if (!defaultAddress) {
+        Alert.alert('Error', 'You don\'t have a default shipping address. Please add one in your profile.');
+        return;
+      }
+
+      // 2. Create order in backend with shipping_address_id
+      const orderPayload = {
+        user_id: userId,
+        total_amount: subtotal + SHIPPING_COST,
+        shipping_cost: SHIPPING_COST,
+        payment_method: 'simulated',
+        payment_status: 'paid',
+        order_status: 'confirmed',
+        shipping_address_id: defaultAddress.address_id,
+      };
+      const orderResult = await ApiService.orders.create(orderPayload);
+      if (!orderResult || !orderResult.order_id) {
+        Alert.alert('Error', 'Could not create order.');
+        return;
+      }
+      const orderId = orderResult.order_id;
+
+      // 3. Create order items
+      let allItemsOk = true;
+      for (const item of cartItems) {
+        const itemPayload = {
+          product_id: item.id,
+          quantity: item.quantity,
+          unit_price: item.price,
+          size: item.size || '',
+          color: item.color || '',
+        };
+        const itemResult = await ApiService.orders.addOrderItem(orderId, itemPayload);
+        if (!itemResult || !itemResult.order_item_id) {
+          allItemsOk = false;
+          break;
+        }
+      }
+      if (!allItemsOk) {
+        Alert.alert('Error', 'Could not save all products in the order.');
+        return;
+      }
+
+      // 4. Clear cart in backend and frontend ALWAYS after payment
+      await ApiService.cart.clear(userId);
+      setCartItems([]);
+      Alert.alert(
+        'Payment Successful',
+        'Simulated payment completed successfully!',
+        [
+          {
+            text: 'View Order',
+            onPress: () => {
+              navigation.navigate('OrderDetails', { orderId });
+            }
+          }
+        ]
+      );
+    } catch (err) {
+      console.error('Error in handleSimulatedPayment:', err);
+      Alert.alert('Error', 'There was a problem processing the order.');
+    }
+  };
+  
+  // Import useNavigation and useFocusEffect
+  const navigation = require('@react-navigation/native').useNavigation();
+  const useFocusEffect = require('@react-navigation/native').useFocusEffect;
+  const SHIPPING_COST = 15.00; // TODO: Adjust shipping cost as needed
+
+  const [cartItems, setCartItems] = useState([]);
+  const [loadingItems, setLoadingItems] = useState(false);
+  const [tokenReady, setTokenReady] = useState(false);
+
+  // Fetch authenticated user's database ID AND set the global token
+  useEffect(() => {
+    const fetchUserIdAndSetToken = async () => {
+      if (isSignedIn) {
+        try {
+          // CRITICAL: Get and set the token FIRST
+          const token = await getToken();
+          console.log('🎫 Setting global token in BagScreen:', !!token);
+          setGlobalAuthToken(token);
+          setTokenReady(true);
+          
+          // Then get user data
+          const userData = await getCurrentUser();
+          if (userData && userData.user_id) {
+            console.log('User ID obtained:', userData.user_id);
+            setUserId(userData.user_id);
+          } else {
+            console.log('Could not get user_id');
+          }
+        } catch (error) {
+          console.error("Error fetching user ID:", error);
+        }
+      }
+    };
+    fetchUserIdAndSetToken();
+  }, [isSignedIn]);
+
+  // Function to get cart from backend
+  const fetchCart = async () => {
+    if (!userId) {
+      console.log('No userId available, skipping cart fetch');
+      return;
+    }
+
+    if (!tokenReady) {
+      console.log('Token not ready yet, skipping cart fetch');
+      return;
+    }
+
+    console.log('Fetching cart for userId:', userId);
+    setLoadingItems(true);
+    
+    try {
+      const result = await ApiService.cart.get(userId);
+      console.log('Cart API result:', result);
+      
+      if (result.success) {
+        // Wait half a second before showing items
+        setTimeout(() => {
+          const mappedItems = result.data.map(item => ({
+            id: item.product_id,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+            size: item.size,
+            color: item.color,
+            image_url: item.cloudinary_public_id ? getCloudinaryImageUrl(item.cloudinary_public_id) : null,
+          }));
+          console.log('Cart items loaded:', mappedItems.length);
+          setCartItems(mappedItems);
+          setLoadingItems(false);
+        }, 500);
+      } else {
+        console.error('Error loading cart:', result.error);
+        Alert.alert('Error', result.error || 'Could not load cart');
+        setLoadingItems(false);
+        setCartItems([]); // Set empty cart to avoid infinite loading
+      }
+    } catch (error) {
+      console.error('Exception loading cart:', error);
+      Alert.alert('Error', 'Could not load cart. Check your connection.');
+      setLoadingItems(false);
+      setCartItems([]); // Set empty cart to avoid infinite loading
+    }
   };
 
-  const decrementQuantity = (id) => {
-    setCartItems(items => 
-      items.map(item => 
-        item.id === id && item.quantity > 1 ? { ...item, quantity: item.quantity - 1 } : item
-      )
-    );
+  // Only fetch cart when BOTH userId AND token are ready
+  useEffect(() => {
+    if (userId && tokenReady) {
+      fetchCart();
+    }
+  }, [userId, tokenReady]);
+
+  // Refresh cart every time the screen receives focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (userId && tokenReady) {
+        fetchCart();
+      }
+    }, [userId, tokenReady])
+  );
+
+  // Update quantity in backend and refresh cart
+  const incrementQuantity = async (id) => {
+    const item = cartItems.find(i => i.id === id);
+    if (!item) return;
+    const newQty = item.quantity + 1;
+    const result = await ApiService.cart.updateQuantity(userId, id, newQty);
+    if (result.success) {
+      await fetchCart();
+    } else {
+      Alert.alert('Error', result.error || 'Could not update quantity');
+    }
   };
 
+  const decrementQuantity = async (id) => {
+    const item = cartItems.find(i => i.id === id);
+    if (!item || item.quantity <= 1) return;
+    const newQty = item.quantity - 1;
+    const result = await ApiService.cart.updateQuantity(userId, id, newQty);
+    if (result.success) {
+      await fetchCart();
+    } else {
+      Alert.alert('Error', result.error || 'Could not update quantity');
+    }
+  };
+
+  // Remove product from cart and refresh
+  const removeItem = async (id) => {
+    const item = cartItems.find(i => i.id === id);
+    if (!item) return;
+    const result = await ApiService.cart.removeItem(userId, id);
+    if (result.success) {
+      await fetchCart();
+    } else {
+      Alert.alert('Error', result.error || 'Could not remove product');
+    }
+  };
+
+  // PayPal payment handler
   const handlePayPalPayment = () => {
     if (Platform.OS === 'web') {
       // For web platform, show a demo success message
@@ -102,49 +304,82 @@ export default function BagScreen() {
   };
 
   const { subtotal, totalItems } = useMemo(() => {
-    const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-    return { subtotal, totalItems };
+    const sub = cartItems.reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
+    const count = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+    return { subtotal: sub, totalItems: count };
   }, [cartItems]);
 
   const total = subtotal + SHIPPING_COST;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>🛒 My Cart</Text>
-          <Text style={styles.headerSubtitle}>{totalItems} items</Text>
+          <Text style={styles.headerTitle}>My Bag</Text>
+          <Text style={styles.headerSubtitle}>{totalItems} {totalItems === 1 ? 'item' : 'items'}</Text>
         </View>
 
         <View style={styles.cartItems}>
-          {cartItems.map((item) => (
-            <View key={item.id} style={styles.cartItem}>
-              <View style={styles.productImage}>
-                <Text style={styles.productImageText}>📦</Text>
-              </View>
-              <View style={styles.productInfo}>
-                <Text style={styles.productName}>{item.name}</Text>
-                <Text style={styles.productDetails}>{item.details}</Text>
-                <Text style={styles.productPrice}>${item.price.toFixed(2)}</Text>
-              </View>
-              <View style={styles.quantityControls}>
-                <TouchableOpacity 
-                  style={styles.quantityButton}
-                  onPress={() => decrementQuantity(item.id)}
-                >
-                  <Ionicons name="remove" size={16} color={Colors.mainColor} />
-                </TouchableOpacity>
-                <Text style={styles.quantityText}>{item.quantity}</Text>
-                <TouchableOpacity 
-                  style={styles.quantityButton}
-                  onPress={() => incrementQuantity(item.id)}
-                >
-                  <Ionicons name="add" size={16} color={Colors.mainColor} />
-                </TouchableOpacity>
-              </View>
+          {loadingItems ? (
+            <View style={styles.loadingItemsContainer}>
+              <ActivityIndicator size="large" color={Colors.mainColor} />
+              <Text style={styles.loadingText}>Loading cart...</Text>
             </View>
-          ))}
+          ) : cartItems.length === 0 ? (
+            <View style={{ padding: 40, alignItems: 'center' }}>
+              <Ionicons name="cart-outline" size={64} color={Colors.mutedText} />
+              <Text style={{ fontSize: 18, color: Colors.mutedText, marginTop: 16 }}>
+                Your cart is empty
+              </Text>
+            </View>
+          ) : (
+            cartItems.map((item) => (
+              <View key={item.id} style={styles.cartItem}>
+                <View style={styles.productImageWrap}>
+                  <View style={styles.productImageInner}>
+                    {item.image_url ? (
+                      <Image source={{ uri: item.image_url }} style={styles.productImageReal} />
+                    ) : (
+                      <View style={styles.productImagePlaceholder}>
+                        <Ionicons name="image-outline" size={20} color="#9ca3af" />
+                      </View>
+                    )}
+                  </View>
+                </View>
+                <View style={styles.productInfo}>
+                  <View style={styles.namePriceRow}>
+                    <Text style={styles.productName}>{item.name}</Text>
+                    <Text style={styles.productPrice}>${Number(item.price).toFixed(2)}</Text>
+                  </View>
+                  <Text style={styles.productDetails}>
+                    {item.size ? `Size: ${item.size}` : ''}
+                    {item.color ? `  Color: ${item.color}` : ''}
+                  </Text>
+                  <View style={styles.quantityControlsRow}>
+                    <TouchableOpacity 
+                      style={styles.quantityButton}
+                      onPress={() => decrementQuantity(item.id)}
+                    >
+                      <Ionicons name="remove" size={16} color={Colors.mainColor} />
+                    </TouchableOpacity>
+                    <Text style={styles.quantityText}>{item.quantity}</Text>
+                    <TouchableOpacity 
+                      style={styles.quantityButton}
+                      onPress={() => incrementQuantity(item.id)}
+                    >
+                      <Ionicons name="add" size={16} color={Colors.mainColor} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={() => removeItem(item.id)}
+                    >
+                      <Ionicons name="trash" size={18} color={Colors.errorColor || 'black'} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            ))
+          )}
         </View>
 
         <View style={styles.summary}>
@@ -166,12 +401,32 @@ export default function BagScreen() {
           <Text style={styles.checkoutButtonText}>Pay with PayPal</Text>
           <Ionicons name="logo-paypal" size={20} color={Colors.whiteText} />
         </TouchableOpacity>
+        <TouchableOpacity style={styles.testingcheckoutButton} onPress={handleSimulatedPayment}>
+          <Text style={styles.checkoutButtonText}>Pay Now</Text>
+          <Ionicons name="card-outline" size={20} color={Colors.whiteText} />
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  namePriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  loadingItemsContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: Colors.mutedText,
+  },
   container: {
     flex: 1,
     backgroundColor: Colors.lightBackground,
@@ -183,6 +438,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
+    textAlign: 'center',
     color: Colors.darkText,
     marginBottom: 5,
   },
@@ -206,17 +462,29 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  productImage: {
+  productImageWrap: {
+    width: 90,
+    height: 90,
+    borderRadius: 16,
+    position: 'relative',
+    overflow: 'visible',
     backgroundColor: Colors.lightBackground,
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
+    marginRight: 18,
   },
-  productImageText: {
-    fontSize: 20,
+  productImageInner: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: Colors.lightBackground,
+  },
+  productImageReal: {
+    width: '100%',
+    height: '100%',
+  },
+  productImagePlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   productInfo: {
     flex: 1,
@@ -237,10 +505,22 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: Colors.mainColor,
   },
-  quantityControls: {
+  quantityControlsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    marginTop: 8,
+  },
+  deleteButton: {
+    backgroundColor: Colors.lightBackground,
+    width: 50,
+    height: 30,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.errorColor || 'black',
+    margin: 10,
   },
   quantityButton: {
     backgroundColor: Colors.lightBackground,
@@ -312,9 +592,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
+  testingcheckoutButton: {
+    backgroundColor: 'black',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    padding: 18,
+    borderRadius: 100,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 10,
+  },
   checkoutButtonText: {
     color: Colors.whiteText,
     fontSize: 18,
     fontWeight: 'bold',
   },
+
 });
