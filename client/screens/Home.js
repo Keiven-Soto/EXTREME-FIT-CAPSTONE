@@ -6,6 +6,7 @@ import {
   Text,
   View,
   Image,
+  ImageBackground,
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
@@ -16,7 +17,7 @@ import {
 } from "react-native";
 import ApiService from "../services/api";
 import { SafeAreaView } from "react-native-safe-area-context";
-// import { ScrollView } from "react-native-web";
+import Carousel, { Pagination } from "react-native-x-carousel";
 
 // dynamic adjustment to device screen width
 const { width } = Dimensions.get("window");
@@ -27,12 +28,37 @@ export default function HomeScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState("");
 
+  // HARDCODED BANNERS FOR DEMO PURPOSES
+  const BANNERS = [
+    {
+      id: 1,
+      image: require("../assets/banners/banner1.png"),
+      title: "Summer Sale",
+      subtitle: "Up to 50% Off!",
+      description: "Get Ready for Your Fitness Journey",
+    },
+    {
+      id: 2,
+      image: require("../assets/banners/banner2.png"),
+      title: "New Arrivals",
+      subtitle: "Latest Fitness Apparel",
+      description: "Upgrade Your Workout Wardrobe",
+    },
+    {
+      id: 3,
+      image: require("../assets/banners/banner3.png"),
+      title: "Exclusive Deals on Fitness Gear",
+      subtitle: "Limited Time Offers",
+      description: "Upgrade Your Workout Wardrobe",
+    },
+  ];
+
   useEffect(() => {
     loadGenders();
   }, []);
 
   useEffect(() => {
-    if (selected) loadCategories(selected);
+    loadCategories(selected);
   }, [selected]);
 
   const loadGenders = async () => {
@@ -74,11 +100,23 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
+  const renderBanner = (data) => (
+    <View key={data.id} style={styles.bannerItem}>
+      <ImageBackground source={data.image} style={styles.bannerImage}>
+        <View style={styles.bannerText}>
+          <Text style={styles.bannerTitle}>{data.title}</Text>
+          <Text style={styles.bannerSubtitle}>{data.subtitle}</Text>
+          <Text style={styles.bannerDesc}>{data.description}</Text>
+        </View>
+      </ImageBackground>
+    </View>
+  );
+
   const renderCategory = (category) => {
     if (!category) {
       return (
         <View key={category.category_id} style={styles.categoryCard}>
-          <Text>Loading cateogry data...</Text>
+          <Text>Loading category data...</Text>
         </View>
       );
     }
@@ -154,6 +192,25 @@ export default function HomeScreen({ navigation }) {
           />
         </View>
 
+        {/* Promotional Banner */}
+        <View style={styles.bannerContainer}>
+          <Carousel
+            testID={"carousel"}
+            loop={true}
+            width={width}
+            data={BANNERS}
+            autoplay={true}
+            autoplayInterval={4000}
+            pagination={Pagination}
+            renderItem={renderBanner}
+          />
+        </View>
+
+        {/* Categories Section Title */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Shop by Category</Text>
+        </View>
+
         {/* Categories Grid */}
         <View style={styles.catalogContainer}>
           {loading ? (
@@ -193,18 +250,33 @@ const styles = StyleSheet.create({
   gendersContainer: {
     marginBottom: 20,
     alignItems: "center",
+    backgroundColor: "#000",
+    borderRadius: 50,
+    padding: 10,
+    margin: 18,
   },
 
   gender: {
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 20,
-    backgroundColor: Colors.lightBackground,
     marginRight: 8,
   },
 
+  genderText: {
+    fontSize: 16,
+    fontWeight: "2000",
+    color: Colors.whiteText,
+    textTransform: "capitalize",
+  },
+
   activeGender: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.whiteBackground,
+  },
+
+  activeGenderText: {
+    color: "#000",
+    fontWeight: "600",
   },
 
   pressedGender: {
@@ -212,15 +284,66 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.96 }],
   },
 
-  genderText: {
-    fontSize: 16,
-    color: "#333",
-    textTransform: "capitalize",
+  bannerContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    height: 320,
   },
 
-  activeGenderText: {
-    color: "#fff",
-    fontWeight: "600",
+  bannerItem: {
+    flex: 1,
+    width: width - 40,
+    height: 320,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 4,
+    borderRadius: 12,
+  },
+
+  bannerImage: {
+    flex: 1,
+    width: "100%",
+    resizeMode: "contain",
+  },
+
+  bannerText: {
+    flex: 1,
+    padding: 16,
+    justifyContent: "flex-start",
+    alignItems: "left",
+    backgroundColor: "#00000082",
+  },
+
+  bannerTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: Colors.whiteText,
+    paddingBottom: 4,
+  },
+
+  bannerSubtitle: {
+    fontSize: 19,
+    fontWeight: "semi-bold",
+    color: Colors.whiteText,
+    paddingBottom: 4,
+  },
+
+  bannerDesc: {
+    fontSize: 16,
+    fontWeight: "thin",
+    color: Colors.whiteText,
+  },
+
+  section: {
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+  },
+
+  sectionTitle: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: Colors.darkText,
   },
 
   catalogContainer: {
