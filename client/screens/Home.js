@@ -29,7 +29,6 @@ export default function HomeScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState("");
 
-  // HARDCODED BANNERS FOR DEMO PURPOSES
   const BANNERS = [
     {
       id: 1,
@@ -51,6 +50,24 @@ export default function HomeScreen({ navigation }) {
       title: "Exclusive Deals on Fitness Gear",
       subtitle: "Limited Time Offers",
       description: "Upgrade Your Workout Wardrobe",
+    },
+  ];
+
+  const DEALS = [
+    {
+      id: 1,
+      name: "Leggings",
+      discount: 20,
+    },
+    {
+      id: 2,
+      name: "Hoodies",
+      discount: 15,
+    },
+    {
+      id: 3,
+      name: "Running Shoes",
+      discount: 25,
     },
   ];
 
@@ -148,17 +165,17 @@ export default function HomeScreen({ navigation }) {
           })
         }
       >
-        {/* Category Image */}
-        <Image
-          source={require("../assets/adaptive-icon.png")}
-          style={styles.categoryImage}
-          resizeMode="contain"
-        />
-
         {/* Category Name */}
-        <View style={styles.categoryInfo}>
+        <View style={styles.categoryTitle}>
           <Text style={styles.categoryName}>{category.name}</Text>
           <Ionicons name="chevron-forward" style={styles.categoryIcon} />
+        </View>
+
+        {/* Category Count */}
+        <View style={styles.categorySubtitle}>
+          <Text style={styles.categoryCount}>
+            {category.product_count}+ items
+          </Text>
         </View>
       </TouchableOpacity>
     );
@@ -240,6 +257,40 @@ export default function HomeScreen({ navigation }) {
           ) : (
             <Text style={styles.noResults}>No categories found 😢</Text>
           )}
+        </View>
+
+        {/* Deals Section Title */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Limited Time Deals</Text>
+        </View>
+
+        {/* Deals */}
+        <View style={styles.dealContainer}>
+          <FlatList
+            data={DEALS}
+            keyExtractor={(item) => item.id}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            ListEmptyComponent={<Text>No running deals</Text>}
+            renderItem={({ item }) => {
+              const isActive = selected === item.gender;
+              return (
+                <View style={styles.dealCard}>
+                  <ImageBackground
+                    source={require("../assets/adaptive-icon.png")}
+                    style={styles.dealImage}
+                  >
+                    <Text style={styles.dealDiscount}>
+                      {item.discount}% OFF
+                    </Text>
+                  </ImageBackground>
+                  <View style={styles.dealCaption}>
+                    <Text style={styles.dealName}>{item.name}</Text>
+                  </View>
+                </View>
+              );
+            }}
+          />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -356,7 +407,7 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "bold",
     color: Colors.darkText,
   },
@@ -378,25 +429,33 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
 
-  categoryImage: {
-    width: "100%",
-    height: 150,
-    resizeMode: "cover",
-  },
-
-  categoryInfo: {
+  categoryTitle: {
     width: "100%",
     padding: 10,
+    paddingBottom: 0,
     flex: 1,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
 
+  categorySubtitle: {
+    width: "100%",
+    padding: 10,
+    paddingTop: 5,
+    flex: 1,
+  },
+
   categoryName: {
     fontSize: 16,
     fontWeight: "700",
     color: Colors.darkText,
+  },
+
+  categoryCount: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: Colors.mutedText,
   },
 
   categoryIcon: {
@@ -408,6 +467,68 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 15,
+  },
+
+  dealContainer: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+
+  dealCard: {
+    width: width - 180,
+    backgroundColor: Colors.whiteBackground,
+    shadowColor: Colors.shadowColor,
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    borderRadius: 8,
+    elevation: 4,
+    marginRight: 15,
+  },
+
+  dealImage: {
+    width: "100%",
+    height: 150,
+    resizeMode: "contain",
+  },
+
+  dealCaption: {
+    width: "100%",
+    padding: 10,
+    flex: 1,
+  },
+
+  dealName: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: Colors.darkText,
+  },
+
+  dealDiscount: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    fontSize: 14,
+    fontWeight: "600",
+    backgroundColor: "#000",
+    borderRadius: 50,
+    padding: 10,
+    fontWeight: "2000",
+    color: Colors.whiteText,
+    textTransform: "capitalize",
+  },
+
+  dealPrice: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: Colors.mutedText,
+  },
+
+  dealRealPrice: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: Colors.darkText,
+    textDecorationLine: "line-through",
   },
 
   loadingContainer: {
