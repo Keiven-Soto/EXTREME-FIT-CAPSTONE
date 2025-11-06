@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import ApiService from "../services/api";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { getCloudinaryImageUrl } from "../utils/cloudinary";
 import Carousel, { Pagination } from "react-native-x-carousel";
 
 // dynamic adjustment to device screen width
@@ -32,21 +33,21 @@ export default function HomeScreen({ navigation }) {
   const BANNERS = [
     {
       id: 1,
-      image: require("../assets/banners/banner1.png"),
+      cloudinary_public_id: "banner1",
       title: "Summer Sale",
       subtitle: "Up to 50% Off!",
       description: "Get Ready for Your Fitness Journey",
     },
     {
       id: 2,
-      image: require("../assets/banners/banner2.png"),
+      cloudinary_public_id: "banner2",
       title: "New Arrivals",
       subtitle: "Latest Fitness Apparel",
       description: "Upgrade Your Workout Wardrobe",
     },
     {
       id: 3,
-      image: require("../assets/banners/banner3.png"),
+      cloudinary_public_id: "banner3",
       title: "Exclusive Deals on Fitness Gear",
       subtitle: "Limited Time Offers",
       description: "Upgrade Your Workout Wardrobe",
@@ -100,17 +101,31 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  const renderBanner = (data) => (
-    <View key={data.id} style={styles.bannerItem}>
-      <ImageBackground source={data.image} style={styles.bannerImage}>
-        <View style={styles.bannerText}>
-          <Text style={styles.bannerTitle}>{data.title}</Text>
-          <Text style={styles.bannerSubtitle}>{data.subtitle}</Text>
-          <Text style={styles.bannerDesc}>{data.description}</Text>
-        </View>
-      </ImageBackground>
-    </View>
-  );
+  const renderBanner = (data) => {
+    const getImageSource = () => {
+      if (data.cloudinary_public_id) {
+        const imageUrl = getCloudinaryImageUrl(data.cloudinary_public_id, {
+          format: "auto",
+        });
+        return { uri: imageUrl };
+      }
+      return null;
+    };
+
+    const imageSource = getImageSource();
+
+    return (
+      <View key={data.id} style={styles.bannerItem}>
+        <ImageBackground source={imageSource} style={styles.bannerImage}>
+          <View style={styles.bannerText}>
+            <Text style={styles.bannerTitle}>{data.title}</Text>
+            <Text style={styles.bannerSubtitle}>{data.subtitle}</Text>
+            <Text style={styles.bannerDesc}>{data.description}</Text>
+          </View>
+        </ImageBackground>
+      </View>
+    );
+  };
 
   const renderCategory = (category) => {
     if (!category) {
