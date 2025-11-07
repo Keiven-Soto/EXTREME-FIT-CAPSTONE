@@ -371,6 +371,30 @@ export const ApiService = {
       return await apiRequest(`/api/categories/${gender}`);
     },
   },
+
+  // Payments Management
+
+payments: {
+  // Create PaymentIntent for mobile Payment Sheet
+  createPaymentIntent: async (orderId) => {
+    return await apiRequest('/api/payments/create-payment-intent', {
+      method: 'POST',
+      body: { order_id: orderId },
+    });
+  },
+
+  // Create Checkout Session (for web, kept for reference)
+  createCheckoutSession: async (orderId, cancelUrl, successUrl) => {
+    return await apiRequest('/api/payments/create-checkout-session', {
+      method: 'POST',
+      body: {
+        order_id: orderId,
+        cancel_url: cancelUrl,
+        success_url: successUrl,
+      },
+    });
+  },
+},
 };
 
 // Export base URL for direct access if needed

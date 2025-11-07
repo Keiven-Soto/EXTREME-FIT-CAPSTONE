@@ -62,19 +62,9 @@ export default function ProductDetailScreen({ route, navigation }) {
         const productData = result.data.data || result.data;
         setProduct(productData);
 
-        // Set default selections only if they exist
-        if (productData.sizes && Object.keys(productData.sizes).length > 0) {
-          const availableSizes = Object.keys(productData.sizes);
-          setSelectedSize(availableSizes[0]);
-        } else {
-          setSelectedSize(null);
-        }
-
-        if (productData.colors && productData.colors.length > 0) {
-          setSelectedColor(productData.colors[0]);
-        } else {
-          setSelectedColor(null);
-        }
+        // Don't auto-select size or color - let user choose
+        setSelectedSize(null);
+        setSelectedColor(null);
 
         if (userId && !isFromWishlist) {
           try {
