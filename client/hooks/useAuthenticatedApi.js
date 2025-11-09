@@ -6,7 +6,7 @@ const USE_NGROK = true;
 const getApiUrl = () => {
   if (__DEV__) {
     if (USE_NGROK) {
-      return 'https://unpaining-cris-scorningly.ngrok-free.dev';
+      return 'https://unpaining-cris-scorningly.ngrok-free.devv';
     }
 
     const debuggerHost = Constants.expoConfig?.hostUri?.split(':')[0];
@@ -16,7 +16,7 @@ const getApiUrl = () => {
 
     return 'http://localhost:5001';
   }
-  return 'https://your-production-api.com';
+  return 'https://extreme-fit-capstone-backend.vercel.app';
 };
 
 const API_BASE_URL = getApiUrl();

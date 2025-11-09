@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useIsFocused } from '@react-navigation/native';
 import { useAuth } from '@clerk/clerk-expo';
 import ApiService, { setGlobalAuthToken, API_BASE_URL } from '../../services/api';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator} from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../../colors';
@@ -113,24 +113,6 @@ export default function EditProfileSection({navigation}) {
   }
 
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-  
-  const onDeleteAddress = async (addr) => {
-    if (!addr?.address_id || !currentUser?.user_id) return;
-    try {
-      setLoading(true);
-      const result = await ApiService.addresses.delete(addr.address_id);
-      await sleep(500);
-      if (result.success) {
-        const updated = await ApiService.addresses.getByUser(currentUser.user_id);
-        setAddresses(updated.success ? updated.data : []);
-      } else {
-        console.log('Error deleting address:', result.message || result);
-      }
-    } catch (err) {
-      console.log('Delete address error:', err);
-    }
-    setLoading(false);
-  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -198,9 +180,6 @@ export default function EditProfileSection({navigation}) {
                 <View style={styles.addressActions}>
                   <TouchableOpacity style={styles.iconBtn} onPress={() => gotoEditAddressSection(addr)}>
                     <Text>Edit</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.trashBtn} onPress={() => onDeleteAddress(addr)}>
-                    <Ionicons name="trash" size={20} color={Colors.darkText } />
                   </TouchableOpacity>
                   {!addr.is_default ? (
                     <TouchableOpacity onPress={() => onSetDefault(addr)}>
@@ -359,10 +338,6 @@ const styles = StyleSheet.create({
   },
   iconBtn: {
     padding: 6,
-  },
-  trashBtn: {
-    padding: 6,
-    marginLeft: 4,
   },
   setDefaultText: {
     fontSize: 13,

@@ -125,6 +125,16 @@ router.delete('/:addressId', getClerkUser, async (req, res) => {
       data: { message: 'Address deleted' } 
     });
   } catch (error) {
+    // Handle foreign key constraint violation (address referenced by orders)
+    // Postgres uses SQLSTATE error code '23503' for foreign_key_violation
+    if (error && error.code === '23503') {
+      return res.status(400).json({
+        success: false,
+        error: 'Address cannot be deleted because it is referenced by existing orders.',
+        originalError: error.message
+      });
+    }
+
     res.status(500).json({ 
       success: false, 
       error: error.message 
@@ -132,4 +142,4 @@ router.delete('/:addressId', getClerkUser, async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = router; 

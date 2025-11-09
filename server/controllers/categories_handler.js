@@ -1,9 +1,9 @@
-const db = require("../config/database");
+const getDb = () => (global && global.__DB_MOCK__) ? global.__DB_MOCK__ : require("../config/database");
 
 // GET all categories
 const getCategories = async (req, res) => {
   try {
-    const result = await db.query(`
+  const result = await getDb().query(`
       SELECT
       category_id,
       name,
@@ -34,7 +34,7 @@ const getCategoriesByGender = async (req, res) => {
       return res.status(400).json({ error: "Invalid gender" });
     }
 
-    const result = await db.query(
+  const result = await getDb().query(
       `
       SELECT DISTINCT
       T2.category_id,

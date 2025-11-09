@@ -1,10 +1,11 @@
-const db = require('../config/database');
+// Lazily resolve DB so tests can inject a mock into global.__DB_MOCK__
+const getDb = () => (global && global.__DB_MOCK__) ? global.__DB_MOCK__ : require('../config/database');
 
 // GET cart items by user ID
 const getCart = async (req, res) => {
     const { userId } = req.params;
     try {
-        const result = await db.query(
+    const result = await getDb().query(
             `SELECT c.cart_id, c.product_id, c.quantity, c.added_at,
                     p.name, p.price, p.cloudinary_public_id,
                     c.size, c.color
@@ -25,20 +26,20 @@ const addItemToCart = async (req, res) => {
     const { userId, productId, quantity, size, color } = req.body;
     try {
         // Verifica si el producto con la talla y color ya existe en el carrito
-        const exists = await db.query(
+    const exists = await getDb().query(
             'SELECT * FROM cart WHERE user_id = $1 AND product_id = $2 AND size = $3 AND color = $4',
             [userId, productId, size, color]
         );
         if (exists.rows.length > 0) {
             const newQty = (exists.rows[0].quantity || 0) + (quantity || 1);
-            await db.query(
+            await getDb().query(
                 'UPDATE cart SET quantity = $1 WHERE user_id = $2 AND product_id = $3 AND size = $4 AND color = $5',
                 [newQty, userId, productId, size, color]
             );
             return res.json({ success: true, message: 'Cantidad actualizada en el carrito' });
         }
         // Si no existe, lo agrega
-        await db.query(
+    await getDb().query(
             'INSERT INTO cart (user_id, product_id, quantity, size, color) VALUES ($1, $2, $3, $4, $5)',
             [userId, productId, quantity || 1, size, color]
         );
@@ -52,7 +53,7 @@ const addItemToCart = async (req, res) => {
 const removeItemFromCart = async (req, res) => {
 	const { userId, productId } = req.body;
 	try {
-		await db.query(
+    await getDb().query(
 			'DELETE FROM cart WHERE user_id = $1 AND product_id = $2',
 			[userId, productId]
 		);
@@ -81,7 +82,7 @@ const updateCartItemQuantity = async (req, res) => {
 const clearCart = async (req, res) => {
     const { userId } = req.params;
     try {
-        await db.query('DELETE FROM cart WHERE user_id = $1', [userId]);
+    await getDb().query('DELETE FROM cart WHERE user_id = $1', [userId]);
         res.json({ success: true, message: 'Carrito vaciado correctamente' });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });

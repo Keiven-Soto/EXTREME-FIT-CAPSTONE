@@ -69,7 +69,7 @@ router.post('/clerk', express.raw({ type: 'application/json' }), async (req, res
         await db.query('DELETE FROM users WHERE clerk_id = $1', [
           data.id
         ]);
-        console.log('✅ User deleted:', data.email_addresses[0]?.email_address, 'Clerk ID:', data.id);
+        console.log('✅ User deleted, Clerk ID:', data.id);
         break;
 
       default:
