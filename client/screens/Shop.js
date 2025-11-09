@@ -30,6 +30,19 @@ export default function ShopScreen({ navigation }) {
     loadProducts();
   }, []);
 
+  // NEW: Search products whenever searchText changes (with debounce)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchText.trim()) {
+        searchProducts(searchText);
+      } else {
+        loadProducts();
+      }
+    }, 400); // Wait 400ms after user stops typing
+
+    return () => clearTimeout(timeoutId);
+  }, [searchText]);
+
   const loadProducts = async () => {
     try {
       setLoading(true);
@@ -48,9 +61,28 @@ export default function ShopScreen({ navigation }) {
     }
   };
 
+  // NEW: Search products function
+  const searchProducts = async (query) => {
+    try {
+      setLoading(true);
+      const result = await ApiService.products.search(query);
+
+      if (result.success) {
+        setProducts(result.data);
+      } else {
+        Alert.alert("Error", "Failed to search products");
+      }
+    } catch (error) {
+      console.error("Error searching products:", error);
+      Alert.alert("Error", "Failed to search products");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const clearSearch = () => {
     setSearchText("");
-    loadProducts();
+    // No need to call loadProducts() - useEffect will handle it
   };
 
   const renderProduct = (product) => {
@@ -147,6 +179,16 @@ export default function ShopScreen({ navigation }) {
           </View>
         </View>
 
+        {/* NEW: Search Results Info */}
+        {searchText.trim() && !loading && products.length > 0 && (
+          <View style={styles.searchResultsInfo}>
+            <Text style={styles.searchResultsText}>
+              Found {products.length} product{products.length !== 1 ? "s" : ""}{" "}
+              for "{searchText}"
+            </Text>
+          </View>
+        )}
+
         {/* Products */}
         <View style={styles.productsContainer}>
           <Text style={styles.sectionTitle}>Products</Text>
@@ -154,14 +196,33 @@ export default function ShopScreen({ navigation }) {
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={Colors.mainColor} />
-              <Text style={styles.loadingText}>Loading products...</Text>
+              <Text style={styles.loadingText}>
+                {searchText ? "Searching..." : "Loading products..."}
+              </Text>
             </View>
           ) : products.length > 0 ? (
             <View style={styles.productsGrid}>
               {products.map(renderProduct)}
             </View>
           ) : (
-            <Text style={styles.noResults}>No products available</Text>
+            // UPDATED: Enhanced no results section
+            <View style={styles.noResultsContainer}>
+              <Text style={styles.noResults}>
+                {searchText
+                  ? `No products found for "${searchText}"`
+                  : "No products available"}
+              </Text>
+              {searchText && (
+                <TouchableOpacity
+                  style={styles.clearSearchButton}
+                  onPress={clearSearch}
+                >
+                  <Text style={styles.clearSearchButtonText}>
+                    View all products
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
           )}
         </View>
       </ScrollView>
@@ -225,6 +286,18 @@ const styles = StyleSheet.create({
 
   clearButton: {
     padding: 5,
+  },
+
+  // NEW: Search results info styles
+  searchResultsInfo: {
+    paddingHorizontal: 20,
+    marginBottom: 15,
+    alignItems: "center",
+  },
+
+  searchResultsText: {
+    fontSize: 14,
+    color: Colors.mutedText,
   },
 
   productsContainer: {
@@ -317,6 +390,12 @@ const styles = StyleSheet.create({
     color: Colors.mutedText,
   },
 
+  // UPDATED: Enhanced no results styles
+  noResultsContainer: {
+    alignItems: "center",
+    paddingVertical: 40,
+  },
+
   noResults: {
     textAlign: "center",
     fontSize: 16,
@@ -324,4 +403,20 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     paddingVertical: 20,
   },
-});
+
+clearSearchButton: {
+    backgroundColor: Colors.mainColor,
+    paddingHorizontal: 28,    
+    paddingVertical: 14,       
+    borderRadius: 50,          
+    marginTop: 10,
+    alignSelf: 'center',       
+  },
+
+  clearSearchButtonText: {
+    color: Colors.whiteBackground,
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center'
+  },
+  });

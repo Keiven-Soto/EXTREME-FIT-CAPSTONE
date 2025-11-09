@@ -222,10 +222,30 @@ export const ApiService = {
       });
     },
 
-    search: async (query) => {
-      return await apiRequest(
-        `/api/products/search?q=${encodeURIComponent(query)}`
-      );
+    // UPGRADED: Search products with fuzzy matching and optional filters
+    search: async (query, options = {}) => {
+      // Build query parameters
+      const params = new URLSearchParams();
+      
+      // Required: search query
+      params.append('q', query);
+      
+      // Optional: gender filter
+      if (options.gender) {
+        params.append('gender', options.gender);
+      }
+      
+      // Optional: color filter
+      if (options.color) {
+        params.append('color', options.color);
+      }
+      
+      // Optional: threshold (default is 0.5 in backend)
+      if (options.threshold !== undefined) {
+        params.append('threshold', options.threshold);
+      }
+      
+      return await apiRequest(`/api/products/search?${params.toString()}`);
     },
 
     // Get products by category
