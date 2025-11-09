@@ -1,0 +1,79 @@
+# test/pool-stress.yml
+# Tests for database connection pool exhaustion and recovery
+# Purpose: Detect if your DB pool (default 10 connections) can handle concurrent load
+
+config:
+  target: "http://localhost:5001"
+  http:
+    timeout: 30  # Longer timeout to detect pool exhaustion delays
+    pool: 50     # HTTP connections (more than DB pool to stress it)
+  plugins:
+    metrics-by-endpoint: {}
+    expect: {}
+
+  phases:
+    # Phase 1: Burst to exhaust pool
+    - duration: 30
+      arrivalRate: 20    # 20 req/sec for 30 seconds
+      name: "Burst - Test Pool Limits"
+
+    # Phase 2: Sustain to detect leaks
+    - duration: 60
+      arrivalRate: 15    # Sustained load
+      name: "Sustain - Detect Connection Leaks"
+
+    # Phase 3: Recovery
+    - duration: 30
+      arrivalRate: 5     # Light load to test recovery
+      name: "Recovery - Pool Should Stabilize"
+
+  # Pool stress thresholds - STRICTER than normal tests
+  ensure:
+    maxErrorRate: 2      # Allow 2% errors (pool exhaustion may cause some)
+    p99: 5000            # p99 < 5s (pool wait time included)
+    p95: 3000            # p95 < 3s
+
+  defaults:
+    headers:
+      Content-Type: application/json
+
+scenarios:
+  # Focus on database-heavy operations
+  - name: "Database Connection Test"
+    weight: 10
+    flow:
+      - get:
+          url: "/api/test-db"
+          expect:
+            - statusCode: 200
+          capture:
+            - json: "$.status"
+              as: dbStatus
+      - think: 0.1  # Very short think time to stress pool
+
+  - name: "Product Query (DB Heavy)"
+    weight: 8
+    flow:
+      - get:
+          url: "/api/products"
+          expect:
+            - statusCode: 200
+      - think: 0.1
+
+  - name: "Paginated Product Query"
+    weight: 5
+    flow:
+      - get:
+          url: "/api/products?page={{ $randomNumber(1,20) }}&limit=50"
+          expect:
+            - statusCode: 200
+      - think: 0.1
+
+  - name: "Category Query (DB Heavy)"
+    weight: 3
+    flow:
+      - get:
+          url: "/api/categories"
+          expect:
+            - statusCode: 200
+      - think: 0.1

@@ -16,7 +16,7 @@ const getApiUrl = () => {
 
     return 'http://localhost:5001';
   }
-  return 'https://your-production-api.com';
+  return 'https://extreme-fit-capstone-backend.vercel.app';
 };
 
 const API_BASE_URL = getApiUrl();

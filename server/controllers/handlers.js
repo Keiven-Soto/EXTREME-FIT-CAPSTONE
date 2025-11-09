@@ -1,9 +1,25 @@
-const db = require("../config/database");
+// Lazily resolve DB so tests can inject a mock into global.__DB_MOCK__
+// after modules are loaded. Using a getter avoids require-order issues
+// where modules import the real DB before Jest's setupFiles can inject
+// mocks into require.cache.
+let _dbOverride = null;
+const setDb = (db) => {
+  _dbOverride = db;
+};
+const resetDb = () => {
+  _dbOverride = null;
+};
+
+const getDb = () => {
+  if (_dbOverride) return _dbOverride;
+  if (global && global.__DB_MOCK__) return global.__DB_MOCK__;
+  return require("../config/database");
+};
 
 // GET all users
 const getUsers = async (req, res) => {
   try {
-    const result = await db.query(`
+        const result = await getDb().query(`
       SELECT 
         user_id, 
         first_name, 
@@ -33,7 +49,7 @@ const getUserById = async (req, res) => {
       return res.status(400).json({ error: "Invalid user ID" });
     }
 
-    const result = await db.query(
+        const result = await getDb().query(
       `
       SELECT 
         user_id, 
@@ -81,7 +97,7 @@ const postUser = async (req, res) => {
       });
     }
 
-    const result = await db.query(
+        const result = await getDb().query(
       `
       INSERT INTO users (first_name, last_name, email, password_hash, phone) 
       VALUES ($1, $2, $3, $4, $5) 
@@ -125,7 +141,7 @@ const updateUser = async (req, res) => {
     }
 
     // Check if user exists
-    const checkUser = await db.query(
+        const checkUser = await getDb().query(
       "SELECT user_id FROM users WHERE user_id = $1",
       [id]
     );
@@ -170,7 +186,7 @@ const updateUser = async (req, res) => {
       RETURNING user_id, first_name, last_name, email, phone, updated_at
     `;
 
-    const result = await db.query(query, values);
+        const result = await getDb().query(query, values);
 
     res.json({
       message: "User updated successfully",
@@ -192,7 +208,7 @@ const deleteUser = async (req, res) => {
       return res.status(400).json({ error: "Invalid user ID" });
     }
 
-    const result = await db.query(
+        const result = await getDb().query(
       `
       DELETE FROM users 
       WHERE user_id = $1 
@@ -224,4 +240,4 @@ const deleteUser = async (req, res) => {
   }
 };
 
-module.exports = { getUsers, getUserById, postUser, updateUser, deleteUser };
+module.exports = { getUsers, getUserById, postUser, updateUser, deleteUser, setDb, resetDb };

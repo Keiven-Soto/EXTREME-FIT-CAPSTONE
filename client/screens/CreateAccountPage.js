@@ -19,8 +19,11 @@ import Colors from '../colors';
 export default function CreateAccountPage({ navigation }) {
   const { isLoaded, signUp, setActive } = useSignUp();
   
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [emailAddress, setEmailAddress] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [pendingVerification, setPendingVerification] = useState(false);
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -31,6 +34,8 @@ export default function CreateAccountPage({ navigation }) {
 
     try {
       await signUp.create({
+        firstName,
+        lastName,
         emailAddress,
         password,
       });
@@ -132,6 +137,26 @@ export default function CreateAccountPage({ navigation }) {
         <View style={styles.formContainer}>
           <TextInput
             style={styles.input}
+            autoCapitalize="words"
+            value={firstName}
+            placeholder="First name"
+            placeholderTextColor="#666"
+            onChangeText={setFirstName}
+            autoComplete="name-given"
+          />
+
+          <TextInput
+            style={styles.input}
+            autoCapitalize="words"
+            value={lastName}
+            placeholder="Last name"
+            placeholderTextColor="#666"
+            onChangeText={setLastName}
+            autoComplete="name-family"
+          />
+
+          <TextInput
+            style={styles.input}
             autoCapitalize="none"
             value={emailAddress}
             placeholder="Email address"
@@ -140,16 +165,28 @@ export default function CreateAccountPage({ navigation }) {
             keyboardType="email-address"
             autoComplete="email"
           />
-          
-          <TextInput
-            style={styles.input}
-            value={password}
-            placeholder="Password"
-            placeholderTextColor="#666"
-            secureTextEntry={true}
-            onChangeText={setPassword}
-            autoComplete="password"
-          />
+
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              value={password}
+              placeholder="Password"
+              placeholderTextColor="#666"
+              secureTextEntry={!showPassword}
+              onChangeText={setPassword}
+              autoComplete="password"
+            />
+            <TouchableOpacity
+              style={styles.eyeIcon}
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              <Ionicons
+                name={showPassword ? 'eye-off' : 'eye'}
+                size={22}
+                color="#666"
+              />
+            </TouchableOpacity>
+          </View>
           
           <TouchableOpacity 
             style={[styles.button, loading && styles.buttonDisabled]}
@@ -224,6 +261,26 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     fontSize: 16,
     color: '#fff',
+  },
+  passwordContainer: {
+    position: 'relative',
+    marginBottom: 15,
+  },
+  passwordInput: {
+    backgroundColor: '#1a1a1a',
+    borderWidth: 1,
+    borderColor: '#333',
+    padding: 15,
+    paddingRight: 50,
+    borderRadius: 10,
+    fontSize: 16,
+    color: '#fff',
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 15,
+    top: 15,
+    padding: 5,
   },
   button: {
     backgroundColor: '#fff',

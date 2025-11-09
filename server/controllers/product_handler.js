@@ -1,9 +1,9 @@
-const db = require("../config/database");
-
+// Lazily resolve DB so tests can inject a mock into global.__DB_MOCK__
+const getDb = () => (global && global.__DB_MOCK__) ? global.__DB_MOCK__ : require("../config/database");
 // GET all products
 const getProducts = async (req, res) => {
   try {
-    const result = await db.query("SELECT * FROM products ORDER BY product_id");
+    const result = await getDb().query("SELECT * FROM products ORDER BY product_id");
 
     res.json({
       success: true,
@@ -30,7 +30,7 @@ const getProductById = async (req, res) => {
       });
     }
 
-    const result = await db.query(
+    const result = await getDb().query(
         `SELECT * FROM products WHERE product_id = $1`,
       [id]
     );
@@ -59,7 +59,7 @@ const getProductById = async (req, res) => {
 
 const getGenders = async (req, res) => {
   try {
-    const result = await db.query(`
+    const result = await getDb().query(`
       SELECT DISTINCT
         gender
       FROM products
@@ -103,7 +103,7 @@ const createProduct = async (req, res) => {
       });
     }
 
-    const result = await db.query(
+    const result = await getDb().query(
       `
       INSERT INTO products (name, description, price, sizes, colors, gender, stock_quantity, category_id, cloudinary_public_id)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -215,7 +215,7 @@ const updateProduct = async (req, res) => {
       RETURNING *
     `;
 
-    const result = await db.query(query, values);
+    const result = await getDb().query(query, values);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -249,7 +249,7 @@ const deleteProduct = async (req, res) => {
       });
     }
 
-    const result = await db.query(
+    const result = await getDb().query(
       "DELETE FROM products WHERE product_id = $1 RETURNING *",
       [id]
     );
@@ -286,7 +286,7 @@ const searchProducts = async (req, res) => {
       });
     }
 
-    const result = await db.query(
+    const result = await getDb().query(
       `
       SELECT * FROM products 
       WHERE name ILIKE $1 OR description ILIKE $1
@@ -320,7 +320,7 @@ const getProductsByCategory = async (req, res) => {
       });
     }
 
-    const result = await db.query(
+    const result = await getDb().query(
       "SELECT * FROM products WHERE category_id = $1 ORDER BY product_id",
       [category_id]
     );
