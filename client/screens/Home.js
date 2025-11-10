@@ -58,16 +58,19 @@ export default function HomeScreen({ navigation }) {
       id: 1,
       name: "Leggings",
       discount: 20,
+      price: 30.0,
     },
     {
       id: 2,
       name: "Hoodies",
       discount: 15,
+      price: 50.0,
     },
     {
       id: 3,
       name: "Running Shoes",
       discount: 25,
+      price: 120.0,
     },
   ];
 
@@ -132,7 +135,7 @@ export default function HomeScreen({ navigation }) {
     const imageSource = getImageSource();
 
     return (
-      <View key={data.id} style={styles.bannerItem}>
+      <View id="bannerItem" key={data.id} style={styles.bannerItem}>
         <ImageBackground source={imageSource} style={styles.bannerImage}>
           <View style={styles.bannerText}>
             <Text style={styles.bannerTitle}>{data.title}</Text>
@@ -155,6 +158,7 @@ export default function HomeScreen({ navigation }) {
 
     return (
       <TouchableOpacity
+        id="categoryCard"
         key={category.category_id}
         style={styles.categoryCard}
         onPress={() =>
@@ -186,13 +190,14 @@ export default function HomeScreen({ navigation }) {
       <ScrollView showVerticalScrollIndicator={true}>
         {/* Logo */}
         <Image
+          id="logoImage"
           source={require("../assets/Extreme_fit_new_logo-10.png")}
           style={styles.logoImage}
           resizeMode="contain"
         />
 
         {/* Genders */}
-        <View style={styles.gendersContainer}>
+        <View id="genderBar" style={styles.gendersContainer}>
           <FlatList
             data={genders}
             keyExtractor={(item) => item.gender}
@@ -225,7 +230,7 @@ export default function HomeScreen({ navigation }) {
         </View>
 
         {/* Promotional Banner */}
-        <View style={styles.bannerContainer}>
+        <View id="promotionalBanner" style={styles.bannerContainer}>
           <Carousel
             testID={"carousel"}
             loop={true}
@@ -239,12 +244,12 @@ export default function HomeScreen({ navigation }) {
         </View>
 
         {/* Categories Section Title */}
-        <View style={styles.section}>
+        <View id="categorySectionTitle" style={styles.section}>
           <Text style={styles.sectionTitle}>Shop by Category</Text>
         </View>
 
         {/* Categories Grid */}
-        <View style={styles.catalogContainer}>
+        <View id="categoryGrid" style={styles.catalogContainer}>
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={Colors.mainColor} />
@@ -260,7 +265,7 @@ export default function HomeScreen({ navigation }) {
         </View>
 
         {/* Deals Section Title */}
-        <View style={styles.section}>
+        <View id="dealSectionTitle" style={styles.section}>
           <Text style={styles.sectionTitle}>Limited Time Deals</Text>
         </View>
 
@@ -277,15 +282,25 @@ export default function HomeScreen({ navigation }) {
               return (
                 <View style={styles.dealCard}>
                   <ImageBackground
+                    id="dealImage"
                     source={require("../assets/adaptive-icon.png")}
                     style={styles.dealImage}
                   >
-                    <Text style={styles.dealDiscount}>
+                    <Text id="dealDiscount" style={styles.dealDiscount}>
                       {item.discount}% OFF
                     </Text>
                   </ImageBackground>
-                  <View style={styles.dealCaption}>
+                  <View id="dealCaption" style={styles.dealCaption}>
                     <Text style={styles.dealName}>{item.name}</Text>
+                    <View
+                      id="priceContainer"
+                      style={{ flexDirection: "row", gap: 10, paddingTop: 2 }}
+                    >
+                      <Text style={styles.dealRealPrice}>${item.price}</Text>
+                      <Text style={styles.dealPrice}>
+                        ${item.price - (item.discount / 100) * item.price}{" "}
+                      </Text>
+                    </View>
                   </View>
                 </View>
               );
@@ -527,7 +542,7 @@ const styles = StyleSheet.create({
   dealRealPrice: {
     fontSize: 14,
     fontWeight: "500",
-    color: Colors.darkText,
+    color: "Colors.darkText",
     textDecorationLine: "line-through",
   },
 
