@@ -335,6 +335,14 @@ export default function BagScreen() {
     }
   };
 
+  // Navigate to product details from bag
+  const goToProduct = (productId) => {
+    navigation.navigate('ProductDetails', {
+      productId,
+      isFromCart: true,
+    });
+  };
+
   // PayPal payment handler
   const handlePayPalPayment = () => {
     if (Platform.OS === 'web') {
@@ -430,7 +438,12 @@ export default function BagScreen() {
             </View>
           ) : (
             cartItems.map((item) => (
-              <View key={item.id} style={styles.cartItem}>
+              <TouchableOpacity
+                key={item.id}
+                style={styles.cartItem}
+                activeOpacity={0.8}
+                onPress={() => goToProduct(item.id)}
+              >
                 <View style={styles.productImageWrap}>
                   <View style={styles.productImageInner}>
                     {item.image_url ? (
@@ -473,7 +486,7 @@ export default function BagScreen() {
                     </TouchableOpacity>
                   </View>
                 </View>
-              </View>
+              </TouchableOpacity>
             ))
           )}
         </View>
