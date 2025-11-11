@@ -153,6 +153,7 @@ export default function EditProfileSection({navigation}) {
         postal_code: addr.postal_code,
         country: addr.country,
         address_type: addr.address_type,
+        phone: addr.phone || null,
         is_default: true
       };
       const result = await ApiService.addresses.update(addr.address_id, payload);
@@ -270,6 +271,7 @@ export default function EditProfileSection({navigation}) {
                 <Text style={styles.addressLine}>{addr.street_address}</Text>
                 <Text style={styles.addressLine}>{addr.city}{addr.state ? `, ${addr.state}` : ''} {addr.postal_code}</Text>
                 <Text style={styles.addressLine}>{addr.country}</Text>
+                {addr.phone ? <Text style={styles.addressLine}>{addr.phone}</Text> : null}
                 <View style={styles.addressActions}>
                   <TouchableOpacity style={styles.iconBtn} onPress={() => gotoEditAddressSection(addr)}>
                     <Text>Edit</Text>
