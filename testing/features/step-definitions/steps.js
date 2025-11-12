@@ -4,8 +4,9 @@ const { expect, $ } = require('@wdio/globals');
 const TEST_EMAIL = "jose.quinones27@upr.edu";
 const TEST_PASSWORD = "JLQV@12345";
 
-
-
+//--------------------------------------------------------
+// LogIn Steps
+//--------------------------------------------------------
 Given(/^I open the app$/, async () => {
     await browser.pause(2000);
 });
@@ -86,4 +87,38 @@ Then(/^I should see the home screen$/, async () => {
     const homeText = await $('//*[contains(@text, "Loading categories") or contains(@text, "No categories") or contains(@text, "men") or contains(@text, "women")]');
     await homeText.waitForDisplayed({ timeout: 20000 });
     await expect(homeText).toBeDisplayed();
+});
+
+//--------------------------------------------------------
+// Shopping Steps
+//--------------------------------------------------------
+
+When(/^I navigate to Shop tab$/, async () => {
+    const shopTab = await $('//android.widget.FrameLayout[contains(@content-desc, "Shop")]');
+    await shopTab.waitForDisplayed({ timeout: 10000 });
+    await shopTab.click();
+    await browser.pause(3000);
+});
+
+Then(/^I should see the search bar$/, async () => {
+    const searchBar = await $('//*[@text="Search products..."]');
+    await searchBar.waitForDisplayed({ timeout: 10000 });
+    await expect(searchBar).toBeDisplayed();
+});
+
+When(/^I enter "([^"]*)" in the search bar$/, async (searchText) => {
+    const searchInput = await $('android=new UiSelector().text("Search products...")');
+    await searchInput.waitForDisplayed({ timeout: 10000 });
+    await searchInput.click();
+    await searchInput.setValue(searchText);
+});
+
+When(/^I wait for search results$/, async () => {
+    await browser.pause(2000);
+});
+
+Then(/^I should see product results$/, async () => {
+    const results = await $('//*[contains(@text, "Found") or contains(@text, "$")]');
+    await results.waitForDisplayed({ timeout: 10000 });
+    await expect(results).toBeDisplayed();
 });
