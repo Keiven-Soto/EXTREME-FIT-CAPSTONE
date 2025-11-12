@@ -16,6 +16,7 @@ const PORT = process.env.PORT || 5001;
 
 // ⚠️ Webhooks MUST be before express.json()
 app.use('/api/webhooks', require('./routes/webhooks'));
+app.use('/api/stripe-webhooks', require('./routes/stripe_webhook'));
 
 app.use(cors());
 app.use(express.json());
@@ -56,6 +57,9 @@ app.use('/api/products', productRoute);
 
 console.log('📍 Registering /api/categories (public)');
 app.use('/api/categories', categoriesRoute);
+
+console.log('📍 Registering /api/payments (public)');
+app.use('/api/payments', require('./routes/payments'));
 
 // 🔐 Protected routes (requireAuth() applied inside route files)
 console.log('📍 Registering /api/addresses (protected)');

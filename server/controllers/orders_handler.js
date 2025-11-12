@@ -42,7 +42,7 @@ const getOrderByIdWithDetails = async (req, res) => {
     const { id } = req.params;
   const result = await getDb().query(
       `SELECT o.*, 
-              a.street_address, a.city, a.state, a.postal_code, a.country,
+              a.street_address, a.city, a.state, a.postal_code, a.country, a.phone,
               u.first_name, u.last_name, u.email
        FROM orders o
        LEFT JOIN addresses a ON o.shipping_address_id = a.address_id
