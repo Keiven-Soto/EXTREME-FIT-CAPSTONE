@@ -6,7 +6,7 @@ const USE_NGROK = true;
 const getApiUrl = () => {
   if (__DEV__) {
     if (USE_NGROK) {
-      return 'https://unpaining-cris-scorningly.ngrok-free.devv';
+      return 'https://hyperorganically-butyryl-shaquita.ngrok-free.dev';
     }
 
     const debuggerHost = Constants.expoConfig?.hostUri?.split(':')[0];

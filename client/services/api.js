@@ -20,7 +20,7 @@ const getApiUrl = () => {
 
   if (__DEV__) {
     if (USE_NGROK) {
-      return 'https://unpaining-cris-scorningly.ngrok-free.dev'; //TODO: replace with your ngrok URL
+      return 'https://hyperorganically-butyryl-shaquita.ngrok-free.dev'; //TODO: replace with your ngrok URL
     }
 
     const debuggerHost = Constants.expoConfig?.hostUri?.split(':')[0];
