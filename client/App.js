@@ -20,6 +20,8 @@ import SignOutButton from './components/SignOutButton';
 import ProfileScreen from './screens/Profile.js';
 import CheckoutScreen from './screens/CheckoutScreen';
 import OrderSuccessScreen from './screens/OrderSuccessScreen';
+import TermsScreen from './screens/profile_sections/TermsScreen.js';
+import HelpSupportScreen from './screens/profile_sections/HelpSupportScreen.js';
 
 //neW IMPORTS
 import HomeScreen from "./screens/Home";
@@ -58,6 +60,8 @@ export default function App() {
           <Stack.Screen name="ProductDetails" component={ProductDetails} options={{ headerShown: false }}/>
           <Stack.Screen name="Checkout" component={CheckoutScreen} options={{ headerShown: false }}/>
           <Stack.Screen name="OrderSuccess" component={OrderSuccessScreen} options={{ headerShown: false }}/>
+          <Stack.Screen name= "TermsScreen" component={TermsScreen} />
+          <Stack.Screen name = "HelpSupportScreen" component={HelpSupportScreen} />
         </Stack.Navigator>
       </NavigationContainer>
       </StripeProvider>

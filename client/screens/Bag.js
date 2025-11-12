@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@clerk/clerk-expo';
 import Colors from '../colors';
+import CornerLogo from '../components/CornerLogo';
 import ApiService, { setGlobalAuthToken } from '../services/api';
 import { useCurrentUser } from '../hooks/useAuthenticatedApi';
 
@@ -419,8 +420,9 @@ export default function BagScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>My Bag</Text>
-          <Text style={styles.headerSubtitle}>{totalItems} {totalItems === 1 ? 'item' : 'items'}</Text>
+          <Text style={styles.headerTitle}>🛒 My Cart</Text>
+          <CornerLogo></CornerLogo>
+          <Text style={styles.headerSubtitle}>{totalItems} items</Text>
         </View>
 
         <View style={styles.cartItems}>
