@@ -27,6 +27,8 @@ import HelpSupportScreen from './screens/profile_sections/HelpSupportScreen.js';
 import HomeScreen from "./screens/Home";
 import ShopScreen from "./screens/Shop";
 import CategoryProducts from "./screens/CategoryProducts.js";
+import BagScreen from './screens/Bag.js';
+import WishlistScreen from './screens/Wishlist.js';
 const Stack = createStackNavigator();
 
 export default function App() {
@@ -46,6 +48,8 @@ export default function App() {
           <Stack.Screen name="Home" component={HomeScreen} /> 
           <Stack.Screen name="Shop" component={ShopScreen} />
           <Stack.Screen name="Profile" component={ProfileScreen} />
+          <Stack.Screen name="Bag" component={BagScreen} />
+          <Stack.Screen name="Wishlist" component={WishlistScreen} />
           {/* <Stack.Screen name="SignOut" component={SignOutButton} /> */}
           <Stack.Screen name="CategoryProducts" component={CategoryProducts} />
           <Stack.Screen name="CreateAccountPage" component={CreateAccountPage} />

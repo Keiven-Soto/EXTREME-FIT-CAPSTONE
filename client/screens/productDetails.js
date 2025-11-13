@@ -116,7 +116,22 @@ export default function ProductDetailScreen({ route, navigation }) {
       if (result.success) {
         // Fetch cart to update data after adding item
         await ApiService.cart.get(userId);
-        Alert.alert('Added to Cart', `${product.name}\nSize: ${selectedSize}\nColor: ${selectedColor}\nQuantity: ${quantity}`);
+        Alert.alert(
+          'Added to Cart',
+          `${product.name}\nSize: ${selectedSize}\nColor: ${selectedColor}\nQuantity: ${quantity}`,
+          [
+            {
+              text: 'Continue Shopping',
+              onPress: () => navigation.goBack(),
+              style: 'cancel',
+            },
+            {
+              text: 'View Cart',
+              onPress: () => navigation.navigate('Main', { screen: 'Bag' }),
+            },
+          ],
+          { cancelable: true }
+        );
       } else {
         Alert.alert('Error', result.error || 'Could not add to cart');
       }
