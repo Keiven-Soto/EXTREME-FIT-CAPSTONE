@@ -100,16 +100,11 @@ export default function CategoryProducts({ route, navigation }) {
           }));
           setProducts(merged);
         } else if (!prodRes || !prodRes.success) {
-          console.log(
-            "[Category] Failed to load products for category"
-          );
+          console.log("[Category] Failed to load products for category");
           setProducts([]);
         }
       } catch (err) {
-        console.error(
-          "[Category] Failed to load products or wishlist:",
-          err
-        );
+        console.error("[Category] Failed to load products or wishlist:", err);
         setProducts([]);
       } finally {
         if (mounted) setLoading(false);
@@ -158,23 +153,26 @@ export default function CategoryProducts({ route, navigation }) {
             )
           }
         />
-
         {/* Product Info */}
         <View style={styles.productInfo}>
           {/* Product Name & Price */}
           <Text style={styles.productName} numberOfLines={2}>
             {product.name}
           </Text>
-          <Text style={styles.productPrice}>
-            ${parseFloat(product.price).toFixed(2)}
-          </Text>
 
           {/* Product Info Footer */}
           <View style={styles.productInfoFooter}>
-            {/* Gender */}
-            {product.gender && (
-              <Text style={styles.productGender}>{product.gender}</Text>
-            )}
+            <View style={{ flexDirection: "column", gap: 3 }}>
+              {/* Gender */}
+              {product.gender && (
+                <Text style={styles.productGender}>{product.gender}</Text>
+              )}
+
+              {/* Price */}
+              <Text style={styles.productPrice}>
+                ${parseFloat(product.price).toFixed(2)}
+              </Text>
+            </View>
 
             {/* Wishlist Icon */}
             <TouchableOpacity
@@ -217,9 +215,7 @@ export default function CategoryProducts({ route, navigation }) {
       }
     } catch (err) {
       Alert.alert("Error", "Failed to connect to server");
-      console.log(
-        "[Category] Error connecting to server for wishlist add."
-      );
+      console.log("[Category] Error connecting to server for wishlist add.");
     }
   };
 
@@ -239,9 +235,7 @@ export default function CategoryProducts({ route, navigation }) {
       }
     } catch (err) {
       Alert.alert("Error", "Failed to connect to server");
-      console.log(
-        "[Category] Error connecting to server for wishlist remove."
-      );
+      console.log("[Category] Error connecting to server for wishlist remove.");
     }
   };
 
@@ -364,7 +358,6 @@ const styles = StyleSheet.create({
   productInfo: {
     width: "100%",
     padding: 8,
-    flex: 1,
     flexDirection: "column",
     justifyContent: "flex-start",
   },

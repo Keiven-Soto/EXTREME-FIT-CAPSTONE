@@ -13,40 +13,110 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import ApiService from "../services/api";
 import { getCloudinaryImageUrl } from "../utils/cloudinary";
+import { useUser, useAuth } from "@clerk/clerk-expo";
+import ApiService, { setGlobalAuthToken } from "../services/api";
+import { useCurrentUser } from "../hooks/useAuthenticatedApi";
 import Colors from "../colors";
 
 // dynamic adjustment to device screen width
 const { width } = Dimensions.get("window");
 
 export default function ShopScreen({ navigation }) {
+  const { user: clerkUser } = useUser();
+  const { getToken, isSignedIn } = useAuth();
+  const { getCurrentUser } = useCurrentUser();
+
+  const [userId, setUserId] = useState(null);
+  const [tokenReady, setTokenReady] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Load products when component mounts
+  // Get auth state
   useEffect(() => {
-    loadProducts();
-  }, []);
+    const fetchUserIdAndSetToken = async () => {
+      if (clerkUser && isSignedIn) {
+        try {
+          // Get and set the token
+          const token = await getToken();
+          console.log("[Shop] Setting global token:", !!token);
+          setGlobalAuthToken(token);
+          setTokenReady(true);
 
-  const loadProducts = async () => {
-    try {
-      setLoading(true);
-      const result = await ApiService.products.getAll();
-
-      if (result.success) {
-        setProducts(result.data);
-      } else {
-        Alert.alert("Error", "Failed to load products");
+          // Get user data
+          const userData = await getCurrentUser();
+          if (userData && userData.user_id) {
+            setUserId(userData.user_id);
+            console.log("[Shop] Obtained User ID");
+          } else {
+            console.log("[Shop] Could not get User ID");
+          }
+        } catch (error) {
+          console.error("[Shop] Error fetching  User ID:", error);
+        }
       }
-    } catch (error) {
-      console.error("Error loading products:", error);
-      Alert.alert("Error", "Failed to connect to server");
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    fetchUserIdAndSetToken();
+  }, [clerkUser, isSignedIn]);
+
+  // Fetch products + wishlist when userId changes
+  useEffect(() => {
+    let mounted = true;
+
+    const loadProducts = async () => {
+      try {
+        setLoading(true);
+
+        // JavaScript
+        const results = await Promise.allSettled([
+          await ApiService.products.getAll(),
+          userId
+            ? ApiService.wishlist.get(userId)
+            : Promise.resolve({
+                status: "fulfilled",
+                value: { success: true, data: [] },
+              }),
+        ]);
+
+        const prodRes =
+          results[0].status === "fulfilled" ? results[0].value : null;
+        const wishRes =
+          results[1].status === "fulfilled"
+            ? results[1].value
+            : { success: true, data: [] };
+
+        const wishlistIds = new Set(
+          (wishRes?.data || [])
+            .map((i) => i.product_id ?? i.productId ?? i.product)
+            .filter((id) => id != null)
+            .map((id) => String(id))
+        );
+
+        if (prodRes && prodRes.success && mounted) {
+          const merged = (prodRes.data || []).map((p) => ({
+            ...p,
+            isWishlisted: wishlistIds.has(String(p.product_id)),
+          }));
+          setProducts(merged);
+        } else if (!prodRes || !prodRes.success) {
+          console.log("[Shop] Failed to load products for category");
+          setProducts([]);
+        }
+      } catch (err) {
+        console.error("[Shop] Failed to load products or wishlist:", err);
+        setProducts([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    loadProducts();
+
+    return () => {
+      mounted = false;
+    };
+  }, [userId]);
 
   const clearSearch = () => {
     setSearchText("");
@@ -54,6 +124,7 @@ export default function ShopScreen({ navigation }) {
   };
 
   const renderProduct = (product) => {
+    const isProductWishlisted = !!product.isWishlisted;
     // Get image source
     const getImageSource = () => {
       if (product.cloudinary_public_id) {
@@ -77,34 +148,129 @@ export default function ShopScreen({ navigation }) {
           })
         }
       >
-        {imageSource ? (
-          <Image
-            source={imageSource}
-            style={styles.productImage}
-            onError={() =>
-              console.log("Image failed to load for product:", product.name)
-            }
-          />
-        ) : (
-          <View style={styles.productImagePlaceholder}>
-            <Text style={styles.placeholderText}>No Image</Text>
-          </View>
-        )}
+        <Image
+          source={imageSource}
+          style={styles.productImage}
+          onError={() =>
+            console.log(
+              "[Shop] Image failed to load for product:",
+              product.name
+            )
+          }
+        />
 
-        {/* Wrap text in a container */}
+        {/* Product Info */}
         <View style={styles.productInfo}>
+          {/* Product Name & Price */}
           <Text style={styles.productName} numberOfLines={2}>
             {product.name}
           </Text>
-          <Text style={styles.productPrice}>
-            ${parseFloat(product.price).toFixed(2)}
-          </Text>
-          {product.gender && (
-            <Text style={styles.productGender}>{product.gender}</Text>
-          )}
+
+          {/* Product Info Footer */}
+          <View style={styles.productInfoFooter}>
+            <View style={{ flexDirection: "column", gap: 3 }}>
+              {/* Gender */}
+              {product.gender && (
+                <Text style={styles.productGender}>{product.gender}</Text>
+              )}
+
+              {/* Price */}
+              <Text style={styles.productPrice}>
+                ${parseFloat(product.price).toFixed(2)}
+              </Text>
+            </View>
+
+            {/* Wishlist Icon */}
+            <TouchableOpacity
+              style={styles.productIcon}
+              onPress={() => handleWishlistToggle(product)}
+            >
+              <Ionicons
+                name={isProductWishlisted ? "heart" : "heart-outline"}
+                size={22}
+                color={isProductWishlisted ? Colors.mainColor : Colors.darkText}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
       </TouchableOpacity>
     );
+  };
+
+  const addToWishlist = async (product) => {
+    try {
+      const wishlistRes = await ApiService.wishlist.add(
+        userId,
+        product.product_id
+      );
+
+      if (wishlistRes.success) {
+        Alert.alert("Added to Wishlist", `${product.name}`, [{ text: "OK" }]);
+        console.log("[Shop] Successfully added to wishlist.");
+        // annotate product in products array
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.product_id === product.product_id
+              ? { ...p, isWishlisted: true }
+              : p
+          )
+        );
+      } else {
+        Alert.alert("Error", wishlistRes.error || "Could not add to wishlist");
+        console.log("[Shop] Failed to add to wishlist.");
+      }
+    } catch (err) {
+      Alert.alert("Error", "Failed to connect to server");
+      console.log("[Shop] Error connecting to server for wishlist add.");
+    }
+  };
+
+  const removeFromWishlist = async (productId) => {
+    try {
+      const wishlistRes = await ApiService.wishlist.remove(userId, productId);
+      if (wishlistRes.success) {
+        console.log("[Shop] Successfully removed from wishlist.");
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.product_id === productId ? { ...p, isWishlisted: false } : p
+          )
+        );
+      } else {
+        console.log("[Shop] Failed to remove from wishlist.");
+        // leave the set unchanged on failure
+      }
+    } catch (err) {
+      Alert.alert("Error", "Failed to connect to server");
+      console.log("[Shop] Error connecting to server for wishlist remove.");
+    }
+  };
+
+  const handleWishlistToggle = async (product) => {
+    if (!userId) {
+      Alert.alert("Sign In Required", "Please sign in to manage your wishlist");
+      return;
+    }
+
+    const productIsWishlisted = !!product.isWishlisted;
+
+    if (!productIsWishlisted) {
+      addToWishlist(product);
+    } else {
+      Alert.alert(
+        "Remove from wishlist?",
+        `Are you sure you want to remove "${product.name}" from your wishlist?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Remove",
+            style: "destructive",
+            onPress: async () => {
+              removeFromWishlist(product.product_id);
+            },
+          },
+        ]
+      );
+    }
   };
 
   return (
@@ -260,7 +426,6 @@ const styles = StyleSheet.create({
   productInfo: {
     width: "100%",
     padding: 8,
-    flex: 1,
     flexDirection: "column",
     justifyContent: "flex-start",
   },
@@ -269,21 +434,6 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 150,
     resizeMode: "cover",
-  },
-
-  productImagePlaceholder: {
-    width: "100%",
-    height: 120,
-    backgroundColor: Colors.lightBackground,
-    justifyContent: "center",
-    alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.grayBorder,
-  },
-
-  placeholderText: {
-    color: Colors.mutedText,
-    fontSize: 12,
   },
 
   productName: {
@@ -304,6 +454,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.mutedText,
     textTransform: "capitalize",
+  },
+
+  productIcon: {
+    fontSize: 12,
+    color: Colors.grayIcon,
+  },
+
+  productInfoFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  productsContainer: {
+    flex: 1,
+    paddingHorizontal: 16,
   },
 
   loadingContainer: {
