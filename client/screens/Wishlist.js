@@ -8,17 +8,16 @@ import {
   Image,
   ActivityIndicator,
   Alert,
-  Modal,
-  ScrollView,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { Modal, ScrollView } from 'react-native';
+import Colors from "../colors";
+import ApiService, { setGlobalAuthToken } from "../services/api";
 import { useAuth } from '@clerk/clerk-expo';
-import Colors from '../colors';
-import {ProductDetailScreen} from '../screens/productDetails';
-import ApiService, { setGlobalAuthToken } from '../services/api';
 import { useCurrentUser } from '../hooks/useAuthenticatedApi';
-import { getCloudinaryImageUrl } from '../utils/cloudinary';
+import { getCloudinaryImageUrl } from "../utils/cloudinary";
+import CornerLogo from "../components/CornerLogo";
 
 export default function WishlistScreen({ navigation }) {
   const { getToken, isSignedIn } = useAuth();
@@ -243,14 +242,12 @@ export default function WishlistScreen({ navigation }) {
           // Refresh the wishlist to show updated list
           await fetchWishlist();
         }
-      } else {
-        Alert.alert('Error', cartResult.error || 'Could not add to cart');
       }
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-      Alert.alert('Error', 'Could not add to cart');
-    }
-  };
+      } catch (error) {
+        console.error('❌ Error adding to cart:', error);
+        Alert.alert('Error', 'Could not add item to cart');
+      }
+    };
 
   // Add to cart and remove from wishlist
   const addToCart = async (product) => {

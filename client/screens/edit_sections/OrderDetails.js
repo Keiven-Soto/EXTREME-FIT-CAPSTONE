@@ -125,6 +125,7 @@ export default function OrderDetailsSection({ navigation, route }) {
           state: base?.state || '',
           postal_code: base?.postal_code || '',
           country: base?.country || '',
+          phone: base?.phone || '',
         },
       });
     } catch (e) {
@@ -278,6 +279,7 @@ export default function OrderDetailsSection({ navigation, route }) {
                 <InfoLine text={order?.address?.state} />
                 <InfoLine text={order?.address?.postal_code} />
                 <InfoLine text={order?.address?.country} />
+                <InfoLine text={order?.address?.phone} />
               </InfoSection>
 
               <InfoSection title="PAYMENT METHOD">
