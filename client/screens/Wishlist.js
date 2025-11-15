@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -8,21 +8,21 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  Modal,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { Modal, ScrollView } from 'react-native';
+import { useAuth } from "@clerk/clerk-expo";
 import Colors from "../colors";
 import ApiService, { setGlobalAuthToken } from "../services/api";
-import { useAuth } from '@clerk/clerk-expo';
-import { useCurrentUser } from '../hooks/useAuthenticatedApi';
+import { useCurrentUser } from "../hooks/useAuthenticatedApi";
 import { getCloudinaryImageUrl } from "../utils/cloudinary";
-import CornerLogo from "../components/CornerLogo";
 
 export default function WishlistScreen({ navigation }) {
   const { getToken, isSignedIn } = useAuth();
   const { getCurrentUser } = useCurrentUser();
-  const useFocusEffect = require('@react-navigation/native').useFocusEffect;
+  const useFocusEffect = require("@react-navigation/native").useFocusEffect;
 
   const [userId, setUserId] = useState(null);
   const [wishlistItems, setWishlistItems] = useState([]);
@@ -32,8 +32,8 @@ export default function WishlistScreen({ navigation }) {
   // Size/Color selection modal state
   const [showSizeModal, setShowSizeModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [selectedSize, setSelectedSize] = useState('');
-  const [selectedColor, setSelectedColor] = useState('');
+  const [selectedSize, setSelectedSize] = useState("");
+  const [selectedColor, setSelectedColor] = useState("");
 
   // Fetch authenticated user's database ID AND set the global token
   useEffect(() => {
@@ -42,20 +42,20 @@ export default function WishlistScreen({ navigation }) {
         try {
           // Get and set the token FIRST
           const token = await getToken();
-          console.log('🎫 Setting global token in WishlistScreen:', !!token);
+          console.log("🎫 Setting global token in WishlistScreen:", !!token);
           setGlobalAuthToken(token);
           setTokenReady(true);
 
           // Then get user data
           const userData = await getCurrentUser();
           if (userData && userData.user_id) {
-            console.log('✅ User ID obtained:', userData.user_id);
+            console.log("✅ User ID obtained:", userData.user_id);
             setUserId(userData.user_id);
           } else {
-            console.log('❌ Could not get user_id');
+            console.log("❌ Could not get user_id");
           }
         } catch (error) {
-          console.error('❌ Error fetching user ID:', error);
+          console.error("❌ Error fetching user ID:", error);
         }
       }
     };
@@ -65,49 +65,51 @@ export default function WishlistScreen({ navigation }) {
   // Fetch wishlist from backend
   const fetchWishlist = async () => {
     if (!userId) {
-      console.log('No userId available, skipping wishlist fetch');
+      console.log("No userId available, skipping wishlist fetch");
       return;
     }
 
     if (!tokenReady) {
-      console.log('Token not ready yet, skipping wishlist fetch');
+      console.log("Token not ready yet, skipping wishlist fetch");
       return;
     }
 
-    console.log('🛍️ Fetching wishlist for userId:', userId);
+    console.log("🛍️ Fetching wishlist for userId:", userId);
     setLoading(true);
 
     try {
       const result = await ApiService.wishlist.get(userId);
-      console.log('🛍️ Wishlist API result:', result);
+      console.log("🛍️ Wishlist API result:", result);
 
       if (result.success) {
         // Fetch product details for each wishlist item
         const itemsWithDetails = await Promise.all(
           result.data.map(async (item) => {
             try {
-              const productResult = await ApiService.products.getById(item.product_id);
+              const productResult = await ApiService.products.getById(
+                item.product_id
+              );
               if (productResult.success) {
                 const productData = productResult.data;
 
                 // Parse sizes if it's a string
                 let sizes = productData.sizes;
-                if (typeof sizes === 'string') {
+                if (typeof sizes === "string") {
                   try {
                     sizes = JSON.parse(sizes);
                   } catch (e) {
-                    console.error('Error parsing sizes:', e);
+                    console.error("Error parsing sizes:", e);
                     sizes = {};
                   }
                 }
 
                 // Parse colors if it's a string
                 let colors = productData.colors;
-                if (typeof colors === 'string') {
+                if (typeof colors === "string") {
                   try {
                     colors = JSON.parse(colors);
                   } catch (e) {
-                    console.error('Error parsing colors:', e);
+                    console.error("Error parsing colors:", e);
                     colors = [];
                   }
                 }
@@ -123,7 +125,7 @@ export default function WishlistScreen({ navigation }) {
               }
               return null;
             } catch (error) {
-              console.error('Error fetching product details:', error);
+              console.error("Error fetching product details:", error);
               return null;
             }
           })
@@ -131,21 +133,27 @@ export default function WishlistScreen({ navigation }) {
 
         // Filter out null values
         const validItems = itemsWithDetails.filter((item) => item !== null);
-        console.log('🛍️ Wishlist items loaded:', validItems.length);
+        console.log("🛍️ Wishlist items loaded:", validItems.length);
         setWishlistItems(validItems);
+        setEmpty(false);
       } else {
-        console.error('❌ Error loading wishlist:', result.error);
+        console.error("❌ Error loading wishlist:", result.error);
 
         // Handle authentication errors specifically
         if (result.status === 401) {
-          Alert.alert('Session Expired', 'Please sign in again to view your wishlist');
+          Alert.alert(
+            "Session Expired",
+            "Please sign in again to view your wishlist"
+          );
         }
         setWishlistItems([]);
+        setEmpty(true);
       }
     } catch (error) {
-      console.error('❌ Exception loading wishlist:', error);
-      Alert.alert('Error', 'Could not load wishlist. Please try again.');
+      console.error("❌ Exception loading wishlist:", error);
+      Alert.alert("Error", "Could not load wishlist. Please try again.");
       setWishlistItems([]);
+      setEmpty(true);
     } finally {
       setLoading(false);
     }
@@ -171,30 +179,30 @@ export default function WishlistScreen({ navigation }) {
     try {
       const result = await ApiService.wishlist.remove(userId, productId);
       if (result.success) {
-        console.log('✅ Removed from wishlist');
+        console.log("✅ Removed from wishlist");
         // Refresh wishlist
         await fetchWishlist();
       } else {
-        Alert.alert('Error', result.error || 'Could not remove from wishlist');
+        Alert.alert("Error", result.error || "Could not remove from wishlist");
       }
     } catch (error) {
-      console.error('❌ Error removing from wishlist:', error);
-      Alert.alert('Error', 'Could not remove from wishlist');
+      console.error("❌ Error removing from wishlist:", error);
+      Alert.alert("Error", "Could not remove from wishlist");
     }
   };
 
   const goToProduct = (productId) => {
-    navigation.navigate('ProductDetails', {
+    navigation.navigate("ProductDetails", {
       productId,
-      isFromWishlist: true 
+      isFromWishlist: true,
     });
   };
 
   // Open size selection modal
   const openSizeSelectionModal = (product) => {
     setSelectedProduct(product);
-    setSelectedSize('');
-    setSelectedColor('');
+    setSelectedSize("");
+    setSelectedColor("");
     setShowSizeModal(true);
   };
 
@@ -202,23 +210,31 @@ export default function WishlistScreen({ navigation }) {
   const closeSizeModal = () => {
     setShowSizeModal(false);
     setSelectedProduct(null);
-    setSelectedSize('');
-    setSelectedColor('');
+    setSelectedSize("");
+    setSelectedColor("");
   };
 
   // Confirm and add to cart with selected size/color
   const confirmAddToCart = async () => {
     // Check if product has sizes defined
-    const hasSizes = selectedProduct?.sizes && Object.keys(selectedProduct.sizes).length > 0;
-    const hasColors = selectedProduct?.colors && selectedProduct.colors.length > 0;
+    const hasSizes =
+      selectedProduct?.sizes && Object.keys(selectedProduct.sizes).length > 0;
+    const hasColors =
+      selectedProduct?.colors && selectedProduct.colors.length > 0;
 
     if (hasSizes && !selectedSize) {
-      Alert.alert('Size Required', 'Please select a size before adding to cart');
+      Alert.alert(
+        "Size Required",
+        "Please select a size before adding to cart"
+      );
       return;
     }
 
     if (hasColors && !selectedColor) {
-      Alert.alert('Color Required', 'Please select a color before adding to cart');
+      Alert.alert(
+        "Color Required",
+        "Please select a color before adding to cart"
+      );
       return;
     }
 
@@ -234,25 +250,31 @@ export default function WishlistScreen({ navigation }) {
 
       if (cartResult.success) {
         // Remove from wishlist
-        const wishlistResult = await ApiService.wishlist.remove(userId, selectedProduct.product_id);
+        const wishlistResult = await ApiService.wishlist.remove(
+          userId,
+          selectedProduct.product_id
+        );
 
         if (wishlistResult.success) {
-          Alert.alert('Success!', `Item added to cart (Size: ${selectedSize}, Color: ${selectedColor})`);
+          Alert.alert(
+            "Success!",
+            `Item added to cart (Size: ${selectedSize}, Color: ${selectedColor})`
+          );
           closeSizeModal();
           // Refresh the wishlist to show updated list
           await fetchWishlist();
         }
       }
-      } catch (error) {
-        console.error('❌ Error adding to cart:', error);
-        Alert.alert('Error', 'Could not add item to cart');
-      }
-    };
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      Alert.alert("Error", "Could not add to cart");
+    }
+  };
 
   // Add to cart and remove from wishlist
   const addToCart = async (product) => {
     if (!userId) {
-      Alert.alert('Sign In Required', 'Please sign in to add items to cart');
+      Alert.alert("Sign In Required", "Please sign in to add items to cart");
       return;
     }
 
@@ -276,7 +298,11 @@ export default function WishlistScreen({ navigation }) {
             />
           ) : (
             <View style={styles.imagePlaceholder}>
-              <Ionicons name="image-outline" size={40} color={Colors.mutedText} />
+              <Ionicons
+                name="image-outline"
+                size={40}
+                color={Colors.mutedText}
+              />
             </View>
           )}
         </View>
@@ -290,8 +316,10 @@ export default function WishlistScreen({ navigation }) {
               {item.description}
             </Text>
           )}
-          <Text style={styles.productPrice}>${Number(item.price).toFixed(2)}</Text>
-          
+          <Text style={styles.productPrice}>
+            ${Number(item.price).toFixed(2)}
+          </Text>
+
           {item.stock_quantity !== undefined && (
             <Text
               style={[
@@ -300,10 +328,10 @@ export default function WishlistScreen({ navigation }) {
               ]}
             >
               {item.stock_quantity === 0
-                ? 'Out of Stock'
+                ? "Out of Stock"
                 : item.stock_quantity < 10
                 ? `Only ${item.stock_quantity} left`
-                : 'In Stock'}
+                : "In Stock"}
             </Text>
           )}
 
@@ -317,7 +345,7 @@ export default function WishlistScreen({ navigation }) {
           >
             <Ionicons name="cart-outline" size={16} color={Colors.whiteText} />
             <Text style={styles.addToCartText}>
-              {item.stock_quantity === 0 ? 'Out of Stock' : 'Add to Cart'}
+              {item.stock_quantity === 0 ? "Out of Stock" : "Add to Cart"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -329,7 +357,11 @@ export default function WishlistScreen({ navigation }) {
             removeFromWishlist(item.product_id);
           }}
         >
-          <Ionicons name="heart" size={24} color={Colors.errorColor || '#ef4444'} />
+          <Ionicons
+            name="heart"
+            size={24}
+            color={Colors.errorColor || "#ef4444"}
+          />
         </TouchableOpacity>
       </TouchableOpacity>
     </View>
@@ -339,12 +371,10 @@ export default function WishlistScreen({ navigation }) {
     <View style={styles.emptyContainer}>
       <Ionicons name="heart-outline" size={80} color={Colors.mutedText} />
       <Text style={styles.emptyTitle}>Your Wishlist is Empty</Text>
-      <Text style={styles.emptySubtitle}>
-        Save your favorite items here
-      </Text>
+      <Text style={styles.emptySubtitle}>Save your favorite items here</Text>
       <TouchableOpacity
         style={styles.shopButton}
-        onPress={() => navigation.navigate('Home')}
+        onPress={() => navigation.navigate("Home")}
       >
         <Text style={styles.shopButtonText}>Start Shopping</Text>
       </TouchableOpacity>
@@ -352,11 +382,11 @@ export default function WishlistScreen({ navigation }) {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Wishlist</Text>
         <Text style={styles.headerSubtitle}>
-          {wishlistItems.length} {wishlistItems.length === 1 ? 'item' : 'items'}
+          {wishlistItems.length} {wishlistItems.length === 1 ? "item" : "items"}
         </Text>
       </View>
 
@@ -377,6 +407,14 @@ export default function WishlistScreen({ navigation }) {
           }
           ListEmptyComponent={renderEmpty}
           showsVerticalScrollIndicator={false}
+          ListFooterComponent={
+            <TouchableOpacity
+              style={styles.continueButton}
+              onPress={() => navigation.navigate("Shop")}
+            >
+              <Text style={styles.continueButtonText}>Continue Shopping</Text>
+            </TouchableOpacity>
+          }
         />
       )}
 
@@ -392,7 +430,10 @@ export default function WishlistScreen({ navigation }) {
             {/* Modal Header */}
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Size & Color</Text>
-              <TouchableOpacity onPress={closeSizeModal} style={styles.closeButton}>
+              <TouchableOpacity
+                onPress={closeSizeModal}
+                style={styles.closeButton}
+              >
                 <Ionicons name="close" size={24} color={Colors.darkText} />
               </TouchableOpacity>
             </View>
@@ -402,12 +443,18 @@ export default function WishlistScreen({ navigation }) {
               {selectedProduct && (
                 <View style={styles.modalProductInfo}>
                   <Image
-                    source={{ uri: getCloudinaryImageUrl(selectedProduct.cloudinary_public_id) }}
+                    source={{
+                      uri: getCloudinaryImageUrl(
+                        selectedProduct.cloudinary_public_id
+                      ),
+                    }}
                     style={styles.modalProductImage}
                     resizeMode="cover"
                   />
                   <View style={styles.modalProductDetails}>
-                    <Text style={styles.modalProductName}>{selectedProduct.name}</Text>
+                    <Text style={styles.modalProductName}>
+                      {selectedProduct.name}
+                    </Text>
                     <Text style={styles.modalProductPrice}>
                       ${Number(selectedProduct.price).toFixed(2)}
                     </Text>
@@ -416,63 +463,78 @@ export default function WishlistScreen({ navigation }) {
               )}
 
               {/* Size Selection */}
-              {selectedProduct?.sizes && Object.keys(selectedProduct.sizes).length > 0 && (
-                <View style={styles.selectionSection}>
-                  <Text style={styles.selectionLabel}>Size *</Text>
-                  <View style={styles.optionsGrid}>
-                    {Object.keys(selectedProduct.sizes).length === 1 && selectedProduct.sizes["OS"] !== undefined ? (
-                      // One Size (OS) only
-                      <TouchableOpacity
-                        key="OS"
-                        style={[
-                          styles.optionButton,
-                          selectedSize === "OS" && styles.optionButtonSelected,
-                          selectedProduct.sizes["OS"] === 0 && styles.optionButtonDisabled,
-                        ]}
-                        onPress={() => setSelectedSize("OS")}
-                        disabled={selectedProduct.sizes["OS"] === 0}
-                      >
-                        <Text
+              {selectedProduct?.sizes &&
+                Object.keys(selectedProduct.sizes).length > 0 && (
+                  <View style={styles.selectionSection}>
+                    <Text style={styles.selectionLabel}>Size *</Text>
+                    <View style={styles.optionsGrid}>
+                      {Object.keys(selectedProduct.sizes).length === 1 &&
+                      selectedProduct.sizes["OS"] !== undefined ? (
+                        // One Size (OS) only
+                        <TouchableOpacity
+                          key="OS"
                           style={[
-                            styles.optionText,
-                            selectedSize === "OS" && styles.optionTextSelected,
-                            selectedProduct.sizes["OS"] === 0 && styles.optionTextDisabled,
+                            styles.optionButton,
+                            selectedSize === "OS" &&
+                              styles.optionButtonSelected,
+                            selectedProduct.sizes["OS"] === 0 &&
+                              styles.optionButtonDisabled,
                           ]}
+                          onPress={() => setSelectedSize("OS")}
+                          disabled={selectedProduct.sizes["OS"] === 0}
                         >
-                          OS {selectedProduct.sizes["OS"] === 0 ? '(Out of Stock)' : ''}
-                        </Text>
-                      </TouchableOpacity>
-                    ) : (
-                      // Regular sizes (S, M, L, XL)
-                      ["S", "M", "L", "XL"].filter(size => selectedProduct.sizes[size] !== undefined).map((size) => {
-                        const qty = selectedProduct.sizes[size] ?? 0;
-                        return (
-                          <TouchableOpacity
-                            key={size}
+                          <Text
                             style={[
-                              styles.optionButton,
-                              selectedSize === size && styles.optionButtonSelected,
-                              qty === 0 && styles.optionButtonDisabled,
+                              styles.optionText,
+                              selectedSize === "OS" &&
+                                styles.optionTextSelected,
+                              selectedProduct.sizes["OS"] === 0 &&
+                                styles.optionTextDisabled,
                             ]}
-                            onPress={() => setSelectedSize(size)}
-                            disabled={qty === 0}
                           >
-                            <Text
-                              style={[
-                                styles.optionText,
-                                selectedSize === size && styles.optionTextSelected,
-                                qty === 0 && styles.optionTextDisabled,
-                              ]}
-                            >
-                              {size} {qty === 0 ? '(Out of Stock)' : ''}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })
-                    )}
+                            OS{" "}
+                            {selectedProduct.sizes["OS"] === 0
+                              ? "(Out of Stock)"
+                              : ""}
+                          </Text>
+                        </TouchableOpacity>
+                      ) : (
+                        // Regular sizes (S, M, L, XL)
+                        ["S", "M", "L", "XL"]
+                          .filter(
+                            (size) => selectedProduct.sizes[size] !== undefined
+                          )
+                          .map((size) => {
+                            const qty = selectedProduct.sizes[size] ?? 0;
+                            return (
+                              <TouchableOpacity
+                                key={size}
+                                style={[
+                                  styles.optionButton,
+                                  selectedSize === size &&
+                                    styles.optionButtonSelected,
+                                  qty === 0 && styles.optionButtonDisabled,
+                                ]}
+                                onPress={() => setSelectedSize(size)}
+                                disabled={qty === 0}
+                              >
+                                <Text
+                                  style={[
+                                    styles.optionText,
+                                    selectedSize === size &&
+                                      styles.optionTextSelected,
+                                    qty === 0 && styles.optionTextDisabled,
+                                  ]}
+                                >
+                                  {size} {qty === 0 ? "(Out of Stock)" : ""}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })
+                      )}
+                    </View>
                   </View>
-                </View>
-              )}
+                )}
 
               {/* Color Selection */}
               {selectedProduct?.colors && selectedProduct.colors.length > 0 && (
@@ -484,14 +546,16 @@ export default function WishlistScreen({ navigation }) {
                         key={color}
                         style={[
                           styles.optionButton,
-                          selectedColor === color && styles.optionButtonSelected,
+                          selectedColor === color &&
+                            styles.optionButtonSelected,
                         ]}
                         onPress={() => setSelectedColor(color)}
                       >
                         <Text
                           style={[
                             styles.optionText,
-                            selectedColor === color && styles.optionTextSelected,
+                            selectedColor === color &&
+                              styles.optionTextSelected,
                           ]}
                         >
                           {color}
@@ -506,15 +570,22 @@ export default function WishlistScreen({ navigation }) {
               <TouchableOpacity
                 style={[
                   styles.confirmButton,
-                  (
-                    (selectedProduct?.sizes && Object.keys(selectedProduct.sizes).length > 0 && !selectedSize) ||
-                    (selectedProduct?.colors && selectedProduct.colors.length > 0 && !selectedColor)
-                  ) && styles.confirmButtonDisabled,
+                  ((selectedProduct?.sizes &&
+                    Object.keys(selectedProduct.sizes).length > 0 &&
+                    !selectedSize) ||
+                    (selectedProduct?.colors &&
+                      selectedProduct.colors.length > 0 &&
+                      !selectedColor)) &&
+                    styles.confirmButtonDisabled,
                 ]}
                 onPress={confirmAddToCart}
                 disabled={
-                  (selectedProduct?.sizes && Object.keys(selectedProduct.sizes).length > 0 && !selectedSize) ||
-                  (selectedProduct?.colors && selectedProduct.colors.length > 0 && !selectedColor)
+                  (selectedProduct?.sizes &&
+                    Object.keys(selectedProduct.sizes).length > 0 &&
+                    !selectedSize) ||
+                  (selectedProduct?.colors &&
+                    selectedProduct.colors.length > 0 &&
+                    !selectedColor)
                 }
               >
                 <Ionicons name="cart" size={20} color={Colors.whiteText} />
@@ -531,201 +602,201 @@ export default function WishlistScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.lightBackground || '#f5f5f5',
+    backgroundColor: Colors.lightBackground || "#f5f5f5",
   },
   header: {
     padding: 20,
     paddingTop: 60,
-    backgroundColor: Colors.whiteBackground || '#fff',
+    backgroundColor: Colors.whiteBackground || "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: Colors.lightBorder || '#e5e5e5',
+    borderBottomColor: Colors.lightBorder || "#e5e5e5",
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    color: Colors.darkText || '#000',
+    fontWeight: "bold",
+    textAlign: "center",
+    color: Colors.darkText || "#000",
     marginBottom: 5,
   },
   headerSubtitle: {
     fontSize: 16,
-    textAlign: 'center',
-    color: Colors.mutedText || '#666',
+    textAlign: "center",
+    color: Colors.mutedText || "#666",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 40,
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: Colors.mutedText || '#666',
+    color: Colors.mutedText || "#666",
   },
   emptyListContainer: {
     flexGrow: 1,
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 40,
   },
   emptyTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: Colors.darkText || '#000',
+    fontWeight: "bold",
+    color: Colors.darkText || "#000",
     marginTop: 20,
     marginBottom: 10,
   },
   emptySubtitle: {
     fontSize: 16,
-    color: Colors.mutedText || '#666',
-    textAlign: 'center',
+    color: Colors.mutedText || "#666",
+    textAlign: "center",
     marginBottom: 30,
   },
   shopButton: {
-    backgroundColor: Colors.mainColor || '#000',
+    backgroundColor: Colors.mainColor || "#000",
     paddingHorizontal: 30,
     paddingVertical: 15,
     borderRadius: 25,
   },
   shopButtonText: {
-    color: Colors.whiteText || '#fff',
+    color: Colors.whiteText || "#fff",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   listContainer: {
     padding: 15,
   },
   wishlistItem: {
-    backgroundColor: Colors.whiteBackground || '#fff',
+    backgroundColor: Colors.whiteBackground || "#fff",
     borderRadius: 12,
     marginBottom: 15,
-    overflow: 'hidden',
-    shadowColor: Colors.shadowColor || '#000',
+    overflow: "hidden",
+    shadowColor: Colors.shadowColor || "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
   },
   itemContent: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: 15,
   },
   imageContainer: {
     width: 100,
     height: 120,
     borderRadius: 8,
-    overflow: 'hidden',
-    backgroundColor: Colors.lightBackground || '#f5f5f5',
+    overflow: "hidden",
+    backgroundColor: Colors.lightBackground || "#f5f5f5",
     marginRight: 15,
   },
   productImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   imagePlaceholder: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
   },
   itemDetails: {
     flex: 1,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   productName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: Colors.darkText || '#000',
+    fontWeight: "600",
+    color: Colors.darkText || "#000",
     marginBottom: 5,
   },
   productDescription: {
     fontSize: 14,
-    color: Colors.mutedText || '#666',
+    color: Colors.mutedText || "#666",
     marginBottom: 8,
   },
   productPrice: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.mainColor || '#000',
+    fontWeight: "bold",
+    color: Colors.mainColor || "#000",
     marginBottom: 5,
   },
   stockText: {
     fontSize: 12,
-    color: Colors.successColor || '#22c55e',
+    color: Colors.successColor || "#22c55e",
     marginBottom: 10,
   },
   outOfStock: {
-    color: Colors.errorColor || '#ef4444',
+    color: Colors.errorColor || "#ef4444",
   },
   addToCartButton: {
-    flexDirection: 'row',
-    backgroundColor: Colors.mainColor || '#000',
+    flexDirection: "row",
+    backgroundColor: Colors.mainColor || "#000",
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'flex-start',
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "flex-start",
     gap: 6,
   },
   addToCartText: {
-    color: Colors.whiteText || '#fff',
+    color: Colors.whiteText || "#fff",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   removeButton: {
     width: 44,
     height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'absolute',
+    justifyContent: "center",
+    alignItems: "center",
+    position: "absolute",
     top: 8,
     right: 8,
   },
   // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: Colors.whiteBackground || '#fff',
+    backgroundColor: Colors.whiteBackground || "#fff",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingTop: 20,
     paddingBottom: 40,
     paddingHorizontal: 20,
-    maxHeight: '80%',
+    maxHeight: "80%",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 20,
     paddingBottom: 15,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.lightBorder || '#e5e5e5',
+    borderBottomColor: Colors.lightBorder || "#e5e5e5",
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.darkText || '#000',
+    fontWeight: "bold",
+    color: Colors.darkText || "#000",
   },
   closeButton: {
     width: 32,
     height: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalProductInfo: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: 25,
     padding: 15,
-    backgroundColor: Colors.lightBackground || '#f5f5f5',
+    backgroundColor: Colors.lightBackground || "#f5f5f5",
     borderRadius: 12,
   },
   modalProductImage: {
@@ -736,31 +807,31 @@ const styles = StyleSheet.create({
   },
   modalProductDetails: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   modalProductName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: Colors.darkText || '#000',
+    fontWeight: "600",
+    color: Colors.darkText || "#000",
     marginBottom: 8,
   },
   modalProductPrice: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.mainColor || '#000',
+    fontWeight: "bold",
+    color: Colors.mainColor || "#000",
   },
   selectionSection: {
     marginBottom: 25,
   },
   selectionLabel: {
     fontSize: 16,
-    fontWeight: '600',
-    color: Colors.darkText || '#000',
+    fontWeight: "600",
+    color: Colors.darkText || "#000",
     marginBottom: 12,
   },
   optionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
   },
   optionButton: {
@@ -768,49 +839,62 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1.5,
-    borderColor: Colors.lightBorder || '#e5e5e5',
-    backgroundColor: Colors.whiteBackground || '#fff',
+    borderColor: Colors.lightBorder || "#e5e5e5",
+    backgroundColor: Colors.whiteBackground || "#fff",
     minWidth: 70,
-    alignItems: 'center',
+    alignItems: "center",
   },
   optionButtonSelected: {
-    backgroundColor: Colors.mainColor || '#000',
-    borderColor: Colors.mainColor || '#000',
+    backgroundColor: Colors.mainColor || "#000",
+    borderColor: Colors.mainColor || "#000",
   },
   optionButtonDisabled: {
-    backgroundColor: Colors.lightBackground || '#f5f5f5',
-    borderColor: Colors.lightBorder || '#e5e5e5',
+    backgroundColor: Colors.lightBackground || "#f5f5f5",
+    borderColor: Colors.lightBorder || "#e5e5e5",
     opacity: 0.5,
   },
   optionText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: Colors.darkText || '#000',
+    fontWeight: "600",
+    color: Colors.darkText || "#000",
   },
   optionTextSelected: {
-    color: Colors.whiteText || '#fff',
+    color: Colors.whiteText || "#fff",
   },
   optionTextDisabled: {
-    color: Colors.mutedText || '#999',
+    color: Colors.mutedText || "#999",
   },
   confirmButton: {
-    flexDirection: 'row',
-    backgroundColor: Colors.mainColor || '#000',
+    flexDirection: "row",
+    backgroundColor: Colors.mainColor || "#000",
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: 10,
     gap: 10,
   },
   confirmButtonDisabled: {
-    backgroundColor: Colors.mutedText || '#999',
+    backgroundColor: Colors.mutedText || "#999",
     opacity: 0.5,
   },
   confirmButtonText: {
-    color: Colors.whiteText || '#fff',
+    color: Colors.whiteText || "#fff",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
+  },
+  continueButton: {
+    alignItems: "center",
+    backgroundColor: Colors.mainColor || "#000",
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    marginHorizontal: 20,
+    borderRadius: 25,
+  },
+  continueButtonText: {
+    color: Colors.whiteText || "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
