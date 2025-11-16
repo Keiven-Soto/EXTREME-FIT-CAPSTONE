@@ -135,7 +135,6 @@ export default function WishlistScreen({ navigation }) {
         const validItems = itemsWithDetails.filter((item) => item !== null);
         console.log("🛍️ Wishlist items loaded:", validItems.length);
         setWishlistItems(validItems);
-        setEmpty(false);
       } else {
         console.error("❌ Error loading wishlist:", result.error);
 
@@ -147,13 +146,11 @@ export default function WishlistScreen({ navigation }) {
           );
         }
         setWishlistItems([]);
-        setEmpty(true);
       }
     } catch (error) {
       console.error("❌ Exception loading wishlist:", error);
       Alert.alert("Error", "Could not load wishlist. Please try again.");
       setWishlistItems([]);
-      setEmpty(true);
     } finally {
       setLoading(false);
     }
@@ -408,12 +405,14 @@ export default function WishlistScreen({ navigation }) {
           ListEmptyComponent={renderEmpty}
           showsVerticalScrollIndicator={false}
           ListFooterComponent={
-            <TouchableOpacity
-              style={styles.continueButton}
-              onPress={() => navigation.navigate("Shop")}
-            >
-              <Text style={styles.continueButtonText}>Continue Shopping</Text>
-            </TouchableOpacity>
+            wishlistItems.length > 0 && (
+              <TouchableOpacity
+                style={styles.continueButton}
+                onPress={() => navigation.navigate("Shop")}
+              >
+                <Text style={styles.continueButtonText}>Continue Shopping</Text>
+              </TouchableOpacity>
+            )
           }
         />
       )}
