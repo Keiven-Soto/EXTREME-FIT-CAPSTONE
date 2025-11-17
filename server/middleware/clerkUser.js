@@ -17,19 +17,43 @@ const getClerkUser = async (req, res, next) => {
     }
 
     console.log('🔍 Querying database for clerk_id:', clerkId);
-    const result = await getDb().query(
+    let result = await getDb().query(
       'SELECT * FROM users WHERE clerk_id = $1',
       [clerkId]
     );
 
-    console.log('🔍 Database query result:', result && result.rows);
-
+    // If user doesn't exist, create them automatically
     if (!result || result.rows.length === 0) {
-      console.error('❌ User not found in database for clerk_id:', clerkId);
-      return res.status(404).json({ error: 'User not found in database' });
+      console.log('⚠️  User not found in database for clerk_id:', clerkId);
+      console.log('🔄 Auto-creating user in database...');
+
+      try {
+        // Create user with minimal info (webhook will update later if needed)
+        await getDb().query(`
+          INSERT INTO users (clerk_id, email, first_name, last_name, created_at)
+          VALUES ($1, $2, $3, $4, NOW())
+        `, [
+          clerkId,
+          'pending@clerk.sync',  // Placeholder email
+          'User',                 // Placeholder first name
+          'Pending Sync',         // Placeholder last name
+        ]);
+
+        // Fetch the newly created user
+        result = await getDb().query(
+          'SELECT * FROM users WHERE clerk_id = $1',
+          [clerkId]
+        );
+
+        console.log('✅ User auto-created:', result.rows[0]);
+      } catch (createError) {
+        console.error('❌ Failed to auto-create user:', createError);
+        return res.status(500).json({ error: 'Could not create user in database' });
+      }
+    } else {
+      console.log('✅ User found:', result.rows[0]);
     }
 
-    console.log('✅ User found:', result.rows[0]);
     req.user = result.rows[0];
     next();
   } catch (error) {

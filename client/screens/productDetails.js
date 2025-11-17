@@ -62,19 +62,9 @@ export default function ProductDetailScreen({ route, navigation }) {
         const productData = result.data.data || result.data;
         setProduct(productData);
 
-        // Set default selections only if they exist
-        if (productData.sizes && Object.keys(productData.sizes).length > 0) {
-          const availableSizes = Object.keys(productData.sizes);
-          setSelectedSize(availableSizes[0]);
-        } else {
-          setSelectedSize(null);
-        }
-
-        if (productData.colors && productData.colors.length > 0) {
-          setSelectedColor(productData.colors[0]);
-        } else {
-          setSelectedColor(null);
-        }
+        // Don't auto-select size or color - let user choose
+        setSelectedSize(null);
+        setSelectedColor(null);
 
         if (userId && !isFromWishlist) {
           try {
@@ -126,7 +116,22 @@ export default function ProductDetailScreen({ route, navigation }) {
       if (result.success) {
         // Fetch cart to update data after adding item
         await ApiService.cart.get(userId);
-        Alert.alert('Added to Cart', `${product.name}\nSize: ${selectedSize}\nColor: ${selectedColor}\nQuantity: ${quantity}`);
+        Alert.alert(
+          'Added to Cart',
+          `${product.name}\nSize: ${selectedSize}\nColor: ${selectedColor}\nQuantity: ${quantity}`,
+          [
+            {
+              text: 'Continue Shopping',
+              onPress: () => navigation.goBack(),
+              style: 'cancel',
+            },
+            {
+              text: 'View Cart',
+              onPress: () => navigation.navigate('Main', { screen: 'Bag' }),
+            },
+          ],
+          { cancelable: true }
+        );
       } else {
         Alert.alert('Error', result.error || 'Could not add to cart');
       }
