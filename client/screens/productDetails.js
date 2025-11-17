@@ -48,12 +48,15 @@ export default function ProductDetailScreen({ route, navigation }) {
   }, [clerkUser]);
 
   useEffect(() => {
-    console.log('🔄 ProductDetails useEffect triggered - productId:', productId);
+    console.log(
+      "🔄 ProductDetails useEffect triggered - productId:",
+      productId
+    );
     loadProduct();
   }, [productId]); // Only re-run when productId changes, not userId
 
   const loadProduct = async () => {
-    console.log('📦 loadProduct called for productId:', productId);
+    console.log("📦 loadProduct called for productId:", productId);
     try {
       setLoading(true);
       const result = await ApiService.products.getById(productId);
@@ -96,7 +99,10 @@ export default function ProductDetailScreen({ route, navigation }) {
 
   const handleAddToCart = async () => {
     if (!userId) {
-      Alert.alert("Sign In Required", "Please sign in to add items to your cart");
+      Alert.alert(
+        "Sign In Required",
+        "Please sign in to add items to your cart"
+      );
       return;
     }
     if (!selectedSize) {
@@ -112,31 +118,37 @@ export default function ProductDetailScreen({ route, navigation }) {
     }
 
     try {
-      const result = await ApiService.cart.addItem(userId, product.product_id, quantity, selectedSize, selectedColor);
+      const result = await ApiService.cart.addItem(
+        userId,
+        product.product_id,
+        quantity,
+        selectedSize,
+        selectedColor
+      );
       if (result.success) {
         // Fetch cart to update data after adding item
         await ApiService.cart.get(userId);
         Alert.alert(
-          'Added to Cart',
+          "Added to Cart",
           `${product.name}\nSize: ${selectedSize}\nColor: ${selectedColor}\nQuantity: ${quantity}`,
           [
             {
-              text: 'Continue Shopping',
+              text: "Continue Shopping",
               onPress: () => navigation.goBack(),
-              style: 'cancel',
+              style: "cancel",
             },
             {
-              text: 'View Cart',
-              onPress: () => navigation.navigate('Main', { screen: 'Bag' }),
+              text: "View Cart",
+              onPress: () => navigation.navigate("Main", { screen: "Bag" }),
             },
           ],
           { cancelable: true }
         );
       } else {
-        Alert.alert('Error', result.error || 'Could not add to cart');
+        Alert.alert("Error", result.error || "Could not add to cart");
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to connect to server');
+      Alert.alert("Error", "Failed to connect to server");
     }
   };
 
@@ -149,11 +161,7 @@ export default function ProductDetailScreen({ route, navigation }) {
     if (!isWishlisted) {
       console.log("Sent User ID and Product ID: ", userId, ", ", productId);
       await ApiService.wishlist.add(userId, productId);
-      Alert.alert(
-        "Added to Wishlist",
-        `${product.name}\nSize: ${selectedSize}\nColor: ${selectedColor}\nQuantity: ${quantity}`,
-        [{ text: "OK" }]
-      );
+      Alert.alert("Added to Wishlist", `${product.name}`, [{ text: "OK" }]);
       setIsWishlisted(true);
     } else {
       Alert.alert(
@@ -298,7 +306,8 @@ export default function ProductDetailScreen({ route, navigation }) {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Select Size</Text>
               <View style={styles.optionsContainer}>
-                {Object.keys(product.sizes).length === 1 && product.sizes["OS"] !== undefined ? (
+                {Object.keys(product.sizes).length === 1 &&
+                product.sizes["OS"] !== undefined ? (
                   // Solo OS
                   <TouchableOpacity
                     key="OS"
@@ -314,39 +323,45 @@ export default function ProductDetailScreen({ route, navigation }) {
                       style={[
                         styles.optionText,
                         selectedSize === "OS" && styles.optionTextSelected,
-                        product.sizes["OS"] === 0 && { color: Colors.mutedText },
+                        product.sizes["OS"] === 0 && {
+                          color: Colors.mutedText,
+                        },
                       ]}
                     >
-                      OS {product.sizes["OS"] === 0 ? '(Agotado)' : ''}
+                      OS {product.sizes["OS"] === 0 ? "(Agotado)" : ""}
                     </Text>
                   </TouchableOpacity>
                 ) : (
                   // S, M, L, XL en orden si existen
-                  ["S", "M", "L", "XL"].filter(size => product.sizes[size] !== undefined).map((size) => {
-                    const qty = product.sizes[size] ?? 0;
-                    return (
-                      <TouchableOpacity
-                        key={size}
-                        style={[
-                          styles.optionButton,
-                          selectedSize === size && styles.optionButtonSelected,
-                          qty === 0 && styles.buttonDisabled,
-                        ]}
-                        onPress={() => setSelectedSize(size)}
-                        disabled={qty === 0}
-                      >
-                        <Text
+                  ["S", "M", "L", "XL"]
+                    .filter((size) => product.sizes[size] !== undefined)
+                    .map((size) => {
+                      const qty = product.sizes[size] ?? 0;
+                      return (
+                        <TouchableOpacity
+                          key={size}
                           style={[
-                            styles.optionText,
-                            selectedSize === size && styles.optionTextSelected,
-                            qty === 0 && { color: Colors.mutedText },
+                            styles.optionButton,
+                            selectedSize === size &&
+                              styles.optionButtonSelected,
+                            qty === 0 && styles.buttonDisabled,
                           ]}
+                          onPress={() => setSelectedSize(size)}
+                          disabled={qty === 0}
                         >
-                          {size} {qty === 0 ? '(Agotado)' : ''}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })
+                          <Text
+                            style={[
+                              styles.optionText,
+                              selectedSize === size &&
+                                styles.optionTextSelected,
+                              qty === 0 && { color: Colors.mutedText },
+                            ]}
+                          >
+                            {size} {qty === 0 ? "(Agotado)" : ""}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })
                 )}
               </View>
             </View>
@@ -438,11 +453,10 @@ export default function ProductDetailScreen({ route, navigation }) {
         <TouchableOpacity
           style={[
             styles.addToCartButton,
-            (
-              !selectedSize ||
+            (!selectedSize ||
               !product.sizes[selectedSize] ||
-              product.sizes[selectedSize] === 0
-            ) && styles.buttonDisabled,
+              product.sizes[selectedSize] === 0) &&
+              styles.buttonDisabled,
           ]}
           onPress={handleAddToCart}
           disabled={
