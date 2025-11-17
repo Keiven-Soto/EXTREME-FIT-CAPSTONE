@@ -142,6 +142,58 @@ export default function ShopScreen({ navigation }) {
     // No need to call loadProducts() - useEffect will handle it
   };
 
+  // NEW: Search products whenever searchText changes (with debounce)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      const q = searchText.trim();
+      if (q) {
+        searchProducts(q);
+        return;
+      }
+
+      // If search is cleared, reload all products + wishlist
+      (async () => {
+        try {
+          setLoading(true);
+
+          const results = await Promise.allSettled([
+            ApiService.products.getAll(),
+            userId
+              ? ApiService.wishlist.get(userId)
+              : Promise.resolve({ status: "fulfilled", value: { success: true, data: [] } }),
+          ]);
+
+          const prodRes = results[0].status === "fulfilled" ? results[0].value : null;
+          const wishRes = results[1].status === "fulfilled" ? results[1].value : { success: true, data: [] };
+
+          const wishlistIds = new Set(
+            (wishRes?.data || [])
+              .map((i) => i.product_id ?? i.productId ?? i.product)
+              .filter((id) => id != null)
+              .map((id) => String(id))
+          );
+
+          if (prodRes && prodRes.success) {
+            const merged = (prodRes.data || []).map((p) => ({
+              ...p,
+              isWishlisted: wishlistIds.has(String(p.product_id)),
+            }));
+            setProducts(merged);
+          } else {
+            setProducts([]);
+          }
+        } catch (err) {
+          console.error("[Shop] Failed to reload products:", err);
+          setProducts([]);
+        } finally {
+          setLoading(false);
+        }
+      })();
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [searchText, userId]);
+
   const renderProduct = (product) => {
     const isProductWishlisted = !!product.isWishlisted;
     // Get image source
