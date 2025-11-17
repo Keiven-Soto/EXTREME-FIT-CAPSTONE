@@ -1,0 +1,76 @@
+config:
+  target: "http://localhost:5001"
+  http:
+    timeout: 20
+    pool: 256
+  plugins:
+    metrics-by-endpoint: {}
+    expect: {}
+
+  # 15 minutes total with light variability (avoids flatline cache artifacts)
+  phases:
+    - duration: 225     # 3:45 min
+      arrivalRate: 8
+      rampTo: 10
+      name: "Soak block 1"
+    - duration: 225     # 3:45 min
+      arrivalRate: 10
+      rampTo: 12
+      name: "Soak block 2"
+    - duration: 225     # 3:45 min
+      arrivalRate: 12
+      rampTo: 9
+      name: "Soak block 3"
+    - duration: 225     # 3:45 min
+      arrivalRate: 9
+      rampTo: 8
+      name: "Soak block 4"
+
+  # Soak thresholds (steady but realistic)
+  ensure:
+    maxErrorRate: 1      # keep failures under 1%
+    p99: 3000            # p99 < 3s
+    p95: 2000            # p95 < 2s
+
+  defaults:
+    headers:
+      Content-Type: application/json
+
+scenarios:
+  # Keep the same realistic mix you used in load/spike
+  - name: "Database Health Check"
+    weight: 2
+    flow:
+      - get:
+          url: "/api/test-db"
+          expect:
+            - statusCode: 200
+      - think: 0.8
+
+  - name: "Browse Products"
+    weight: 5
+    flow:
+      - get:
+          url: "/api/products"
+          expect:
+            - statusCode: 200
+      - think: 0.6
+      - get:
+          url: "/api/products?page={{ $randomNumber(1,10) }}&limit=12"
+          expect:
+            - statusCode: 200
+      - think: 0.6
+
+  - name: "Browse Categories"
+    weight: 3
+    flow:
+      - get:
+          url: "/api/categories"
+          expect:
+            - statusCode: 200
+      - think: 0.6
+      - get:
+          url: "/api/products"
+          expect:
+            - statusCode: 200
+      - think: 0.6

@@ -1,10 +1,11 @@
-const db = require('../config/database');
+// Lazily resolve DB so tests can inject a mock into global.__DB_MOCK__
+const getDb = () => (global && global.__DB_MOCK__) ? global.__DB_MOCK__ : require('../config/database');
 
 // GET all orders
 const getOrders = async (req, res) => {
   try {
-    const result = await db.query('SELECT * FROM orders ORDER BY order_id DESC');
-    res.json(result.rows);
+  const result = await getDb().query('SELECT * FROM orders ORDER BY order_id DESC');
+  res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -14,7 +15,7 @@ const getOrders = async (req, res) => {
 const getOrdersByUserId = async (req, res) => {
   try {
     const { user_id } = req.params;
-    const result = await db.query('SELECT * FROM orders WHERE user_id = $1 ORDER BY order_id DESC', [user_id]);
+  const result = await getDb().query('SELECT * FROM orders WHERE user_id = $1 ORDER BY order_id DESC', [user_id]);
     res.json({ success: true, data: result.rows });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -25,7 +26,7 @@ const getOrdersByUserId = async (req, res) => {
 const getOrderById = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await db.query('SELECT * FROM orders WHERE order_id = $1', [id]);
+  const result = await getDb().query('SELECT * FROM orders WHERE order_id = $1', [id]);
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Order not found' });
     }
@@ -39,9 +40,9 @@ const getOrderById = async (req, res) => {
 const getOrderByIdWithDetails = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await db.query(
+  const result = await getDb().query(
       `SELECT o.*, 
-              a.street_address, a.city, a.state, a.postal_code, a.country,
+              a.street_address, a.city, a.state, a.postal_code, a.country, a.phone,
               u.first_name, u.last_name, u.email
        FROM orders o
        LEFT JOIN addresses a ON o.shipping_address_id = a.address_id
@@ -62,7 +63,7 @@ const getOrderByIdWithDetails = async (req, res) => {
 const createOrder = async (req, res) => {
   try {
     const { user_id, total_amount, shipping_cost, payment_method, payment_status, order_status, shipping_address_id } = req.body;
-    const result = await db.query(
+  const result = await getDb().query(
       `INSERT INTO orders (user_id, total_amount, shipping_cost, payment_method, payment_status, order_status, shipping_address_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
       [user_id, total_amount, shipping_cost, payment_method, payment_status, order_status, shipping_address_id]
@@ -77,7 +78,7 @@ const createOrder = async (req, res) => {
 const getOrderItems = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await db.query('SELECT * FROM order_items WHERE order_id = $1', [id]);
+  const result = await getDb().query('SELECT * FROM order_items WHERE order_id = $1', [id]);
     res.json({ success: true, data: result.rows });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -89,7 +90,7 @@ const createOrderItem = async (req, res) => {
   try {
     const { id } = req.params;
     const { product_id, quantity, unit_price, size, color } = req.body;
-    const result = await db.query(
+  const result = await getDb().query(
       `INSERT INTO order_items (order_id, product_id, quantity, unit_price, size, color)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
       [id, product_id, quantity, unit_price, size, color]

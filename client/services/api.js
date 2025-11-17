@@ -10,13 +10,19 @@ export const setGlobalAuthToken = (token) => {
 };
 
 const USE_NGROK = true;
-// API Configuration with improved network detection
+const FORCE_PRODUCTION = false; 
+
 const getApiUrl = () => {
+  if (FORCE_PRODUCTION) {
+    console.log('⚠️ FORCE_PRODUCTION enabled - using production API');
+    return "https://extreme-fit-capstone-backend.vercel.app";
+  }
+
   if (__DEV__) {
     if (USE_NGROK) {
       return 'https://unpaining-cris-scorningly.ngrok-free.dev'; //TODO: replace with your ngrok URL
     }
-    
+
     const debuggerHost = Constants.expoConfig?.hostUri?.split(':')[0];
     if (debuggerHost && debuggerHost !== 'localhost' && debuggerHost !== '127.0.0.1') {
       console.log('Using Expo debugger host:', debuggerHost);
@@ -26,7 +32,9 @@ const getApiUrl = () => {
     console.log("Falling back to localhost");
     return "http://localhost:5001";
   }
-  return "https://your-production-api.com";
+
+  console.log('🚀 Using production API');
+  return "https://extreme-fit-capstone-backend.vercel.app";
 };
 
 const API_BASE_URL = getApiUrl();
@@ -56,7 +64,6 @@ const apiRequest = async (endpoint, options = {}) => {
   }
 
   try {
-    console.log(`API Request: ${config.method || "GET"} ${url}`);
 
     const response = await Promise.race([
       fetch(url, config),
@@ -65,17 +72,39 @@ const apiRequest = async (endpoint, options = {}) => {
       ),
     ]);
 
-    const data = await response.json();
+    // Try to get response text first
+    const responseText = await response.text();
 
-    if (!response.ok) {
-      throw new Error(data.error || `HTTP error! status: ${response.status}`);
+    // Try to parse as JSON
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      // Return a structured error when server responds with non-JSON
+      console.error('❌ Failed to parse JSON response:', parseError.message);
+      console.error('Response received (truncated):', responseText.substring(0, 200));
+      return {
+        success: false,
+        error: `Server returned non-JSON response: ${responseText.substring(0, 200)}`,
+        originalResponse: responseText,
+        status: response.status,
+      };
     }
 
-    console.log(`API Success: ${endpoint}`);
+    if (!response.ok) {
+      console.error(`❌ API Error (${response.status}):`, data.error || data);
+      return {
+        success: false,
+        error: data.error || `HTTP error! status: ${response.status}`,
+        status: response.status,
+        originalResponse: responseText,
+      };
+    }
+
     // Backend returns {success: true, data: ...}, so just return it as-is
     return data;
   } catch (error) {
-    console.error(`API Error for ${endpoint}:`, error.message);
+    console.error(`❌ API Error for ${endpoint}:`, error.message);
 
     // Provide helpful error messages for common issues
     let userFriendlyMessage = error.message;
@@ -193,10 +222,30 @@ export const ApiService = {
       });
     },
 
-    search: async (query) => {
-      return await apiRequest(
-        `/api/products/search?q=${encodeURIComponent(query)}`
-      );
+    // UPGRADED: Search products with fuzzy matching and optional filters
+    search: async (query, options = {}) => {
+      // Build query parameters
+      const params = new URLSearchParams();
+      
+      // Required: search query
+      params.append('q', query);
+      
+      // Optional: gender filter
+      if (options.gender) {
+        params.append('gender', options.gender);
+      }
+      
+      // Optional: color filter
+      if (options.color) {
+        params.append('color', options.color);
+      }
+      
+      // Optional: threshold (default is 0.5 in backend)
+      if (options.threshold !== undefined) {
+        params.append('threshold', options.threshold);
+      }
+      
+      return await apiRequest(`/api/products/search?${params.toString()}`);
     },
 
     // Get products by category
@@ -342,6 +391,30 @@ export const ApiService = {
       return await apiRequest(`/api/categories/${gender}`);
     },
   },
+
+  // Payments Management
+
+payments: {
+  // Create PaymentIntent for mobile Payment Sheet
+  createPaymentIntent: async (orderId) => {
+    return await apiRequest('/api/payments/create-payment-intent', {
+      method: 'POST',
+      body: { order_id: orderId },
+    });
+  },
+
+  // Create Checkout Session (for web, kept for reference)
+  createCheckoutSession: async (orderId, cancelUrl, successUrl) => {
+    return await apiRequest('/api/payments/create-checkout-session', {
+      method: 'POST',
+      body: {
+        order_id: orderId,
+        cancel_url: cancelUrl,
+        success_url: successUrl,
+      },
+    });
+  },
+},
 };
 
 // Export base URL for direct access if needed
