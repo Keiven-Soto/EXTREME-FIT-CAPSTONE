@@ -337,38 +337,34 @@ const styles = StyleSheet.create({
   gendersContainer: {
     marginBottom: 20,
     alignItems: "center",
-    backgroundColor: "#000",
-    borderRadius: 50,
-    padding: 10,
-    margin: 18,
   },
 
   gender: {
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 20,
+    backgroundColor: Colors.lightBackground,
     marginRight: 8,
   },
 
-  genderText: {
-    fontSize: 16,
-    fontWeight: "2000",
-    color: Colors.whiteText,
-    textTransform: "capitalize",
-  },
-
   activeGender: {
-    backgroundColor: Colors.whiteBackground,
-  },
-
-  activeGenderText: {
-    color: "#000",
-    fontWeight: "600",
+    backgroundColor: "#000",
   },
 
   pressedGender: {
     opacity: 0.7,
     transform: [{ scale: 0.96 }],
+  },
+
+  genderText: {
+    fontSize: 16,
+    color: "#333",
+    textTransform: "capitalize",
+  },
+
+  activeGenderText: {
+    color: "#fff",
+    fontWeight: "600",
   },
 
   bannerContainer: {
