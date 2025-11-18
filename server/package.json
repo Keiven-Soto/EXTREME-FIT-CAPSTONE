@@ -27,7 +27,9 @@
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "node-fetch": "^3.3.2",
+    "nodemailer": "^7.0.10",
     "pg": "^8.16.3",
+    "stripe": "^19.3.0",
     "svix": "^1.76.1"
   },
   "devDependencies": {
@@ -38,8 +40,14 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "setupFiles": ["<rootDir>/test/setupRequireMocks.js"],
-    "setupFilesAfterEnv": ["<rootDir>/test/setupTests.js"],
-    "testMatch": ["<rootDir>/test/backend_tests/**/*.test.js"]
+    "setupFiles": [
+      "<rootDir>/test/setupRequireMocks.js"
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/test/setupTests.js"
+    ],
+    "testMatch": [
+      "<rootDir>/test/backend_tests/**/*.test.js"
+    ]
   }
 }

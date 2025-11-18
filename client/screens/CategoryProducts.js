@@ -122,36 +122,96 @@ export default function CategoryProducts({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.screenContainer}>
-      <ScrollView showVerticalScrollIndicator={true}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-          >
-            <Ionicons name="arrow-back" size={24} color={Colors.darkText} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>
-            {gender} - {category_name}
-          </Text>
-        </View>
+      <View style={styles.mainContent}>
+        <ScrollView showVerticalScrollIndicator={true}>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.backButton}
+            >
+              <Ionicons name="arrow-back" size={24} color={Colors.darkText} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>
+              {gender} - {category_name}
+            </Text>
+          </View>
 
-        {/* Products Grid */}
-        <View style={styles.productsContainer}>
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={Colors.mainColor} />
-              <Text style={styles.loadingText}>Loading products...</Text>
-            </View>
-          ) : products.length > 0 ? (
-            <View style={styles.productsGrid}>
-              {products.map(renderProduct)}
-            </View>
-          ) : (
-            <Text style={styles.noResults}>No products available 😢</Text>
-          )}
-        </View>
-      </ScrollView>
+          {/* Products Grid */}
+          <View style={styles.productsContainer}>
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={Colors.mainColor} />
+                <Text style={styles.loadingText}>Loading products...</Text>
+              </View>
+            ) : products.length > 0 ? (
+              <View style={styles.productsGrid}>
+                {products.map(renderProduct)}
+              </View>
+            ) : (
+              <Text style={styles.noResults}>No products available 😢</Text>
+            )}
+          </View>
+        </ScrollView>
+      </View>
+
+      {/* Bottom Navigation Bar */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("Main", { screen: "Home" })}
+        >
+          <Ionicons
+            name="home-outline"
+            size={24}
+            color={Colors.grayIcon}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("Main", { screen: "Shop" })}
+        >
+          <Ionicons
+            name="search-outline"
+            size={24}
+            color={Colors.grayIcon}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("Main", { screen: "Bag" })}
+        >
+          <Ionicons
+            name="bag-outline"
+            size={24}
+            color={Colors.grayIcon}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("Main", { screen: "Wishlist" })}
+        >
+          <Ionicons
+            name="heart-outline"
+            size={24}
+            color={Colors.grayIcon}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("Main", { screen: "Me" })}
+        >
+          <Ionicons
+            name="person-outline"
+            size={24}
+            color={Colors.grayIcon}
+          />
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -162,6 +222,10 @@ const styles = StyleSheet.create({
   screenContainer: {
     flex: 1,
     backgroundColor: Colors.lightBackground,
+  },
+
+  mainContent: {
+    flex: 1,
   },
 
   header: {
@@ -275,5 +339,23 @@ const styles = StyleSheet.create({
     color: Colors.mutedText,
     fontStyle: "italic",
     paddingVertical: 20,
+  },
+
+  bottomNav: {
+    flexDirection: "row",
+    backgroundColor: Colors.whiteBackground,
+    borderTopWidth: 1,
+    borderTopColor: Colors.lightBorder,
+    height: 90,
+    paddingBottom: 25,
+    paddingTop: 10,
+    justifyContent: "space-around",
+    alignItems: "center",
+  },
+
+  navItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

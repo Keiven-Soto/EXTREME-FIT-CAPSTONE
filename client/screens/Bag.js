@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Platform, Image, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Platform, Image, ActivityIndicator, Linking } from 'react-native';
 import { getCloudinaryImageUrl } from '../utils/cloudinary';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -101,6 +101,71 @@ export default function BagScreen() {
     }
   };
   
+  // Stripe Checkout flow
+  const handleStripeCheckout = async () => {
+    if (!cartItems || cartItems.length === 0) {
+      Alert.alert('Error', 'Your cart is empty. Add products before checking out.');
+      return;
+    }
+
+    try {
+      // 1. Find user's default address
+      const addressResult = await ApiService.addresses.getByUser(userId);
+      let defaultAddress = null;
+      if (addressResult.success && Array.isArray(addressResult.data)) {
+        defaultAddress = addressResult.data.find(addr => addr.is_default);
+      }
+      if (!defaultAddress) {
+        Alert.alert('Error', 'You don\'t have a default shipping address. Please add one in your profile.');
+        return;
+      }
+
+      // 2. Create order in backend with pending status
+      const orderPayload = {
+        user_id: userId,
+        total_amount: subtotal + SHIPPING_COST,
+        shipping_cost: SHIPPING_COST,
+        payment_method: 'stripe',
+        payment_status: 'pending',
+        order_status: 'processing',
+        shipping_address_id: defaultAddress.address_id,
+      };
+      const orderResult = await ApiService.orders.create(orderPayload);
+      if (!orderResult || !orderResult.order_id) {
+        Alert.alert('Error', 'Could not create order.');
+        return;
+      }
+      const orderId = orderResult.order_id;
+
+      // 3. Create order items
+      let allItemsOk = true;
+      for (const item of cartItems) {
+        const itemPayload = {
+          product_id: item.id,
+          quantity: item.quantity,
+          unit_price: item.price,
+          size: item.size || '',
+          color: item.color || '',
+        };
+        const itemResult = await ApiService.orders.addOrderItem(orderId, itemPayload);
+        if (!itemResult || !itemResult.order_item_id) {
+          allItemsOk = false;
+          break;
+        }
+      }
+      if (!allItemsOk) {
+        Alert.alert('Error', 'Could not save all products in the order.');
+        return;
+      }
+
+      navigation.navigate('Checkout', { orderId });
+
+    } catch (err) {
+      console.error('Error in handleStripeCheckout:', err);
+      Alert.alert('Error', 'There was a problem creating the order.');
+    }
+  };
+
   // Import useNavigation and useFocusEffect
   const navigation = require('@react-navigation/native').useNavigation();
   const useFocusEffect = require('@react-navigation/native').useFocusEffect;
@@ -397,9 +462,9 @@ export default function BagScreen() {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.checkoutButton} onPress={handlePayPalPayment}>
-          <Text style={styles.checkoutButtonText}>Pay with PayPal</Text>
-          <Ionicons name="logo-paypal" size={20} color={Colors.whiteText} />
+        <TouchableOpacity style={styles.checkoutButton} onPress={handleStripeCheckout}>
+          <Text style={styles.checkoutButtonText}>Checkout with Stripe</Text>
+          <Ionicons name="card-outline" size={20} color={Colors.whiteText} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.testingcheckoutButton} onPress={handleSimulatedPayment}>
           <Text style={styles.checkoutButtonText}>Pay Now</Text>
