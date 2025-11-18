@@ -252,6 +252,13 @@ export const ApiService = {
     getByCategory: async (categoryId) => {
       return await apiRequest(`/api/products/category/${categoryId}`);
     },
+    // Adjust stock for a product (size-based). payload: { size, quantity, operation }
+    adjustStock: async (productId, payload) => {
+      return await apiRequest(`/api/products/${productId}/adjust-stock`, {
+        method: 'POST',
+        body: payload,
+      });
+    },
   },
 
   // Orders Management

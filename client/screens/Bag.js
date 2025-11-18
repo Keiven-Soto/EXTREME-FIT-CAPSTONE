@@ -58,10 +58,37 @@ export default function BagScreen() {
         return;
       }
       const orderId = orderResult.order_id;
-
-      // 3. Create order items
+      // 3. For each cart item: decrement stock by size, then create order item.
+      //    If any stock adjustment or order item creation fails we rollback previous
+      //    stock adjustments (increment back) and abort.
+      const adjusted = []; // keep track of successful adjustments to rollback if needed
       let allItemsOk = true;
       for (const item of cartItems) {
+        // attempt to decrement stock for this product/size
+        try {
+          const adjustRes = await ApiService.products.adjustStock(item.id, {
+            size: item.size || '',
+            quantity: item.quantity,
+            operation: 'decrement',
+          });
+
+          if (!adjustRes || !adjustRes.success) {
+            // adjustment failed (e.g. insufficient stock)
+            allItemsOk = false;
+            const message = (adjustRes && adjustRes.error) ? adjustRes.error : 'Failed to adjust stock';
+            Alert.alert('Error', message);
+            break;
+          }
+
+          // record successful adjustment for potential rollback
+          adjusted.push({ productId: item.id, size: item.size || '', quantity: item.quantity });
+        } catch (err) {
+          allItemsOk = false;
+          Alert.alert('Error', 'Failed to adjust stock for a product.');
+          break;
+        }
+
+        // create the order item after stock was reserved
         const itemPayload = {
           product_id: item.id,
           quantity: item.quantity,
@@ -72,11 +99,24 @@ export default function BagScreen() {
         const itemResult = await ApiService.orders.addOrderItem(orderId, itemPayload);
         if (!itemResult || !itemResult.order_item_id) {
           allItemsOk = false;
+          Alert.alert('Error', 'Could not save a product in the order.');
           break;
         }
       }
+
       if (!allItemsOk) {
-        Alert.alert('Error', 'Could not save all products in the order.');
+        // rollback any successful adjustments by incrementing back
+        for (const a of adjusted) {
+          try {
+            await ApiService.products.adjustStock(a.productId, {
+              size: a.size,
+              quantity: a.quantity,
+              operation: 'increment',
+            });
+          } catch (e) {
+            console.error('Rollback failed for', a, e);
+          }
+        }
         return;
       }
 
@@ -158,9 +198,38 @@ export default function BagScreen() {
         return;
       }
 
-      // 4. Navigate to Checkout screen with orderId
-      console.log('Navigating to Checkout screen with order:', orderId);
-      navigation.navigate('Checkout', { orderId });
+      // 4. Create Stripe Checkout Session
+      console.log('Creating Stripe checkout session for order:', orderId);
+      const checkoutResult = await ApiService.payments.createCheckoutSession(
+        orderId,
+        'extremefit://order-success',
+        'extremefit://checkout'
+      );
+
+      if (!checkoutResult.success || !checkoutResult.data.url) {
+        Alert.alert('Error', checkoutResult.error || 'Failed to create checkout session');
+        return;
+      }
+
+      console.log('Stripe checkout URL:', checkoutResult.data.url);
+
+      // 5. Open Stripe Checkout in browser
+      const stripeUrl = checkoutResult.data.url;
+      const canOpen = await Linking.canOpenURL(stripeUrl);
+
+      if (canOpen) {
+        await Linking.openURL(stripeUrl);
+
+        // 6. Clear cart after opening Stripe (will be cleared in backend after payment)
+        setCartItems([]);
+
+        // 7. Navigate to success screen (user will return here after payment)
+        setTimeout(() => {
+          navigation.navigate('OrderSuccess', { orderId });
+        }, 1000);
+      } else {
+        Alert.alert('Error', 'Unable to open Stripe checkout page');
+      }
 
     } catch (err) {
       console.error('Error in handleStripeCheckout:', err);
@@ -252,7 +321,7 @@ export default function BagScreen() {
       setCartItems([]); // Set empty cart to avoid infinite loading
     }
   };
-
+  //TODO: REVIEW FOCUS EFFECT USAGE
   // // Only fetch cart when BOTH userId AND token are ready
   // useEffect(() => {
   //   if (userId && tokenReady) {
