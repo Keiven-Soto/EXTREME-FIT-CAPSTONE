@@ -59,10 +59,37 @@ export default function BagScreen() {
         return;
       }
       const orderId = orderResult.order_id;
-
-      // 3. Create order items
+      // 3. For each cart item: decrement stock by size, then create order item.
+      //    If any stock adjustment or order item creation fails we rollback previous
+      //    stock adjustments (increment back) and abort.
+      const adjusted = []; // keep track of successful adjustments to rollback if needed
       let allItemsOk = true;
       for (const item of cartItems) {
+        // attempt to decrement stock for this product/size
+        try {
+          const adjustRes = await ApiService.products.adjustStock(item.id, {
+            size: item.size || '',
+            quantity: item.quantity,
+            operation: 'decrement',
+          });
+
+          if (!adjustRes || !adjustRes.success) {
+            // adjustment failed (e.g. insufficient stock)
+            allItemsOk = false;
+            const message = (adjustRes && adjustRes.error) ? adjustRes.error : 'Failed to adjust stock';
+            Alert.alert('Error', message);
+            break;
+          }
+
+          // record successful adjustment for potential rollback
+          adjusted.push({ productId: item.id, size: item.size || '', quantity: item.quantity });
+        } catch (err) {
+          allItemsOk = false;
+          Alert.alert('Error', 'Failed to adjust stock for a product.');
+          break;
+        }
+
+        // create the order item after stock was reserved
         const itemPayload = {
           product_id: item.id,
           quantity: item.quantity,
@@ -73,11 +100,24 @@ export default function BagScreen() {
         const itemResult = await ApiService.orders.addOrderItem(orderId, itemPayload);
         if (!itemResult || !itemResult.order_item_id) {
           allItemsOk = false;
+          Alert.alert('Error', 'Could not save a product in the order.');
           break;
         }
       }
+
       if (!allItemsOk) {
-        Alert.alert('Error', 'Could not save all products in the order.');
+        // rollback any successful adjustments by incrementing back
+        for (const a of adjusted) {
+          try {
+            await ApiService.products.adjustStock(a.productId, {
+              size: a.size,
+              quantity: a.quantity,
+              operation: 'increment',
+            });
+          } catch (e) {
+            console.error('Rollback failed for', a, e);
+          }
+        }
         return;
       }
 
@@ -282,13 +322,13 @@ export default function BagScreen() {
       setCartItems([]); // Set empty cart to avoid infinite loading
     }
   };
-
-  // Only fetch cart when BOTH userId AND token are ready
-  useEffect(() => {
-    if (userId && tokenReady) {
-      fetchCart();
-    }
-  }, [userId, tokenReady]);
+  //TODO: REVIEW FOCUS EFFECT USAGE
+  // // Only fetch cart when BOTH userId AND token are ready
+  // useEffect(() => {
+  //   if (userId && tokenReady) {
+  //     fetchCart();
+  //   }
+  // }, [userId, tokenReady]);
 
   // Refresh cart every time the screen receives focus
   useFocusEffect(
