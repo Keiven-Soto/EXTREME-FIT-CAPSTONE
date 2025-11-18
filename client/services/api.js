@@ -222,10 +222,30 @@ export const ApiService = {
       });
     },
 
-    search: async (query) => {
-      return await apiRequest(
-        `/api/products/search?q=${encodeURIComponent(query)}`
-      );
+    // UPGRADED: Search products with fuzzy matching and optional filters
+    search: async (query, options = {}) => {
+      // Build query parameters
+      const params = new URLSearchParams();
+      
+      // Required: search query
+      params.append('q', query);
+      
+      // Optional: gender filter
+      if (options.gender) {
+        params.append('gender', options.gender);
+      }
+      
+      // Optional: color filter
+      if (options.color) {
+        params.append('color', options.color);
+      }
+      
+      // Optional: threshold (default is 0.5 in backend)
+      if (options.threshold !== undefined) {
+        params.append('threshold', options.threshold);
+      }
+      
+      return await apiRequest(`/api/products/search?${params.toString()}`);
     },
 
     // Get products by category
@@ -371,6 +391,30 @@ export const ApiService = {
       return await apiRequest(`/api/categories/${gender}`);
     },
   },
+
+  // Payments Management
+
+payments: {
+  // Create PaymentIntent for mobile Payment Sheet
+  createPaymentIntent: async (orderId) => {
+    return await apiRequest('/api/payments/create-payment-intent', {
+      method: 'POST',
+      body: { order_id: orderId },
+    });
+  },
+
+  // Create Checkout Session (for web, kept for reference)
+  createCheckoutSession: async (orderId, cancelUrl, successUrl) => {
+    return await apiRequest('/api/payments/create-checkout-session', {
+      method: 'POST',
+      body: {
+        order_id: orderId,
+        cancel_url: cancelUrl,
+        success_url: successUrl,
+      },
+    });
+  },
+},
 };
 
 // Export base URL for direct access if needed
