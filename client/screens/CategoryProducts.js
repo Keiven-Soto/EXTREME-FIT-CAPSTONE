@@ -13,44 +13,114 @@ import {
   ScrollView,
   Alert,
 } from "react-native";
-import ApiService from "../services/api";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getCloudinaryImageUrl } from "../utils/cloudinary";
+import { useUser, useAuth } from "@clerk/clerk-expo";
+import ApiService, { setGlobalAuthToken } from "../services/api";
+import { useCurrentUser } from "../hooks/useAuthenticatedApi";
 
 // dynamic adjustment to device screen width
 const { width } = Dimensions.get("window");
 
 export default function CategoryProducts({ route, navigation }) {
   const { category_id, category_name, gender } = route.params;
-  
+  const { user: clerkUser } = useUser();
+  const { getToken, isSignedIn } = useAuth();
+  const { getCurrentUser } = useCurrentUser();
+
+  const [userId, setUserId] = useState(null);
+  const [tokenReady, setTokenReady] = useState(false);
+
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isWishlisted, setIsWishlisted] = useState(false);
+  // products will be annotated with `isWishlisted` after merging with wishlist
 
   useEffect(() => {
-    loadProducts(category_id);
-  }, [category_id]);
+    const fetchUserIdAndSetToken = async () => {
+      if (clerkUser && isSignedIn) {
+        try {
+          // Get and set the token
+          const token = await getToken();
+          console.log("[Category] Setting global token:", !!token);
+          setGlobalAuthToken(token);
+          setTokenReady(true);
 
-  const loadProducts = async (category_id) => {
-    try {
-      setLoading(true);
-      const result = await ApiService.products.getByCategory(category_id);
-
-      if (result.success) {
-        // Handle the successful response, e.g., set state with products
-        setProducts(result.data);
-      } else {
-        Alert.alert("Error", "Failed to load products for the category");
+          // Get user data
+          const userData = await getCurrentUser();
+          if (userData && userData.user_id) {
+            setUserId(userData.user_id);
+            console.log("[Category] Obtained User ID");
+          } else {
+            console.log("[Category] Could not get User ID");
+          }
+        } catch (error) {
+          console.error("[Category] Error fetching  User ID:", error);
+        }
       }
-    } catch (error) {
-      console.error("Error loading products:", error);
-      Alert.alert("Error", "Failed to connect to server");
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    fetchUserIdAndSetToken();
+  }, [clerkUser, isSignedIn]);
+
+  // Fetch products + wishlist when category_id or userId changes
+  useEffect(() => {
+    let mounted = true;
+
+    const loadProducts = async () => {
+      try {
+        setLoading(true);
+
+        // JavaScript
+        const results = await Promise.allSettled([
+          ApiService.products.getByCategory(category_id),
+          userId
+            ? ApiService.wishlist.get(userId)
+            : Promise.resolve({
+                status: "fulfilled",
+                value: { success: true, data: [] },
+              }),
+        ]);
+
+        const prodRes =
+          results[0].status === "fulfilled" ? results[0].value : null;
+        const wishRes =
+          results[1].status === "fulfilled"
+            ? results[1].value
+            : { success: true, data: [] };
+
+        const wishlistIds = new Set(
+          (wishRes?.data || [])
+            .map((i) => i.product_id ?? i.productId ?? i.product)
+            .filter((id) => id != null)
+            .map((id) => String(id))
+        );
+
+        if (prodRes && prodRes.success && mounted) {
+          const merged = (prodRes.data || []).map((p) => ({
+            ...p,
+            isWishlisted: wishlistIds.has(String(p.product_id)),
+          }));
+          setProducts(merged);
+        } else if (!prodRes || !prodRes.success) {
+          console.log("[Category] Failed to load products for category");
+          setProducts([]);
+        }
+      } catch (err) {
+        console.error("[Category] Failed to load products or wishlist:", err);
+        setProducts([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    loadProducts();
+
+    return () => {
+      mounted = false;
+    };
+  }, [category_id, userId]);
 
   const renderProduct = (product) => {
+    const isProductWishlisted = !!product.isWishlisted;
     const getImageSource = () => {
       if (product.cloudinary_public_id) {
         const imageUrl = getCloudinaryImageUrl(product.cloudinary_public_id, {
@@ -78,80 +148,218 @@ export default function CategoryProducts({ route, navigation }) {
           source={imageSource}
           style={styles.productImage}
           onError={() =>
-            console.log("Image failed to load for product:", product.name)
+            console.log(
+              "[Category] Image failed to load for product:",
+              product.name
+            )
           }
         />
-
         {/* Product Info */}
         <View style={styles.productInfo}>
           {/* Product Name & Price */}
           <Text style={styles.productName} numberOfLines={2}>
             {product.name}
           </Text>
-          <Text style={styles.productPrice}>
-            ${parseFloat(product.price).toFixed(2)}
-          </Text>
 
           {/* Product Info Footer */}
           <View style={styles.productInfoFooter}>
-            {/* Gender */}
-            {product.gender && (
-              <Text style={styles.productGender}>{product.gender}</Text>
-            )}
+            <View style={{ flexDirection: "column", gap: 3 }}>
+              {/* Gender */}
+              {product.gender && (
+                <Text style={styles.productGender}>{product.gender}</Text>
+              )}
+
+              {/* Price */}
+              <Text style={styles.productPrice}>
+                ${parseFloat(product.price).toFixed(2)}
+              </Text>
+            </View>
 
             {/* Wishlist Icon */}
-            <Pressable
+            <TouchableOpacity
               style={styles.productIcon}
-              onPress={() => handleFavorite(product)}
+              onPress={() => handleWishlistToggle(product)}
             >
               <Ionicons
-                name={isWishlisted ? "heart" : "heart-outline"}
-                size={18}
-                color={isWishlisted ? Colors.mainColor : Colors.darkText}
+                name={isProductWishlisted ? "heart" : "heart-outline"}
+                size={22}
+                color={isProductWishlisted ? Colors.mainColor : Colors.darkText}
               />
-            </Pressable>
+            </TouchableOpacity>
           </View>
         </View>
       </TouchableOpacity>
     );
   };
 
-    function handleFavorite(product) {
-      Alert.alert("Coming soon!");
+  const addToWishlist = async (product) => {
+    try {
+      const wishlistRes = await ApiService.wishlist.add(
+        userId,
+        product.product_id
+      );
+
+      if (wishlistRes.success) {
+        Alert.alert("Added to Wishlist", `${product.name}`, [{ text: "OK" }]);
+        console.log("[Category] Successfully added to wishlist.");
+        // annotate product in products array
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.product_id === product.product_id
+              ? { ...p, isWishlisted: true }
+              : p
+          )
+        );
+      } else {
+        Alert.alert("Error", wishlistRes.error || "Could not add to wishlist");
+        console.log("[Category] Failed to add to wishlist.");
+      }
+    } catch (err) {
+      Alert.alert("Error", "Failed to connect to server");
+      console.log("[Category] Error connecting to server for wishlist add.");
     }
+  };
+
+  const removeFromWishlist = async (productId) => {
+    try {
+      const wishlistRes = await ApiService.wishlist.remove(userId, productId);
+      if (wishlistRes.success) {
+        console.log("[Category] Successfully removed from wishlist.");
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.product_id === productId ? { ...p, isWishlisted: false } : p
+          )
+        );
+      } else {
+        console.log("[Category] Failed to remove from wishlist.");
+        // leave the set unchanged on failure
+      }
+    } catch (err) {
+      Alert.alert("Error", "Failed to connect to server");
+      console.log("[Category] Error connecting to server for wishlist remove.");
+    }
+  };
+
+  const handleWishlistToggle = async (product) => {
+    if (!userId) {
+      Alert.alert("Sign In Required", "Please sign in to manage your wishlist");
+      return;
+    }
+
+    const productIsWishlisted = !!product.isWishlisted;
+
+    if (!productIsWishlisted) {
+      addToWishlist(product);
+    } else {
+      Alert.alert(
+        "Remove from wishlist?",
+        `Are you sure you want to remove "${product.name}" from your wishlist?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Remove",
+            style: "destructive",
+            onPress: async () => {
+              removeFromWishlist(product.product_id);
+            },
+          },
+        ]
+      );
+    }
+  };
 
   return (
     <SafeAreaView style={styles.screenContainer}>
-      <ScrollView showVerticalScrollIndicator={true}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-          >
-            <Ionicons name="arrow-back" size={24} color={Colors.darkText} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>
-            {gender} - {category_name}
-          </Text>
-        </View>
+      <View style={styles.mainContent}>
+        <ScrollView showVerticalScrollIndicator={true}>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.backButton}
+            >
+              <Ionicons name="arrow-back" size={24} color={Colors.darkText} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>
+              {gender} - {category_name}
+            </Text>
+          </View>
 
-        {/* Products Grid */}
-        <View style={styles.productsContainer}>
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={Colors.mainColor} />
-              <Text style={styles.loadingText}>Loading products...</Text>
-            </View>
-          ) : products.length > 0 ? (
-            <View style={styles.productsGrid}>
-              {products.map(renderProduct)}
-            </View>
-          ) : (
-            <Text style={styles.noResults}>No products available 😢</Text>
-          )}
-        </View>
-      </ScrollView>
+          {/* Products Grid */}
+          <View style={styles.productsContainer}>
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={Colors.mainColor} />
+                <Text style={styles.loadingText}>Loading products...</Text>
+              </View>
+            ) : products.length > 0 ? (
+              <View style={styles.productsGrid}>
+                {products.map(renderProduct)}
+              </View>
+            ) : (
+              <Text style={styles.noResults}>No products available 😢</Text>
+            )}
+          </View>
+        </ScrollView>
+      </View>
+
+      {/* Bottom Navigation Bar */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("Main", { screen: "Home" })}
+        >
+          <Ionicons
+            name="home-outline"
+            size={24}
+            color={Colors.grayIcon}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("Main", { screen: "Shop" })}
+        >
+          <Ionicons
+            name="search-outline"
+            size={24}
+            color={Colors.grayIcon}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("Main", { screen: "Bag" })}
+        >
+          <Ionicons
+            name="bag-outline"
+            size={24}
+            color={Colors.grayIcon}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("Main", { screen: "Wishlist" })}
+        >
+          <Ionicons
+            name="heart-outline"
+            size={24}
+            color={Colors.grayIcon}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("Main", { screen: "Me" })}
+        >
+          <Ionicons
+            name="person-outline"
+            size={24}
+            color={Colors.grayIcon}
+          />
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -162,6 +370,10 @@ const styles = StyleSheet.create({
   screenContainer: {
     flex: 1,
     backgroundColor: Colors.lightBackground,
+  },
+
+  mainContent: {
+    flex: 1,
   },
 
   header: {
@@ -275,5 +487,23 @@ const styles = StyleSheet.create({
     color: Colors.mutedText,
     fontStyle: "italic",
     paddingVertical: 20,
+  },
+
+  bottomNav: {
+    flexDirection: "row",
+    backgroundColor: Colors.whiteBackground,
+    borderTopWidth: 1,
+    borderTopColor: Colors.lightBorder,
+    height: 90,
+    paddingBottom: 25,
+    paddingTop: 10,
+    justifyContent: "space-around",
+    alignItems: "center",
+  },
+
+  navItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

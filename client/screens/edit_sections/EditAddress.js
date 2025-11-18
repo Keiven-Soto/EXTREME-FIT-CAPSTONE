@@ -41,6 +41,7 @@ export default function EditAddressSection({ navigation, route }) {
     state: original.state || '',
     postal_code: original.postal_code || '',
     is_default: Boolean(original.is_default) || false,
+    phone: original.phone || '',
   });
 
   const [loading, setLoading] = useState(true); // Loading for fetching user + address
@@ -88,6 +89,7 @@ export default function EditAddressSection({ navigation, route }) {
               state: found.state || '',
               postal_code: found.postal_code || '',
               is_default: Boolean(found.is_default) || false,
+              phone: found.phone || '',
             });
           }
         }
@@ -119,6 +121,11 @@ export default function EditAddressSection({ navigation, route }) {
       Alert.alert('Check ZIP code', 'Use a 5-digit ZIP code (e.g., 02121).');
       return false;
     }
+    // Optional phone validation: allow international (+), digits, spaces, parentheses and dashes
+    if (form.phone && !/^\+?[0-9 ()\-]{4,30}$/.test(form.phone)) {
+      Alert.alert('Check phone', 'Please enter a valid phone number.');
+      return false;
+    }
     return true;
   };
 
@@ -134,6 +141,7 @@ export default function EditAddressSection({ navigation, route }) {
         state: form.state,
         postal_code: form.postal_code.trim(),
         is_default: !!form.is_default,
+        phone: form.phone ? form.phone.trim() : null,
       };
 
       console.log('Address payload to send:', payload);
@@ -184,6 +192,15 @@ export default function EditAddressSection({ navigation, route }) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 36 }}
         >
+          {/* Phone */}
+          <FieldLabel>Phone</FieldLabel>
+          <Input
+            keyboardType="phone-pad"
+            value={form.phone}
+            onChangeText={t => onChange('phone', String(t).replace(/[^0-9+ ()\-]/g, '').slice(0, 30))}
+            placeholder="e.g. +1 787 518 2440"
+            maxLength={30}
+          />
           {/* Address */}
           <FieldLabel>Address</FieldLabel>
           <Input

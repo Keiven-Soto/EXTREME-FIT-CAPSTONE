@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -23,8 +23,8 @@ import { getCloudinaryImageUrl } from '../utils/cloudinary';
 export default function WishlistScreen({ navigation }) {
   const { getToken, isSignedIn } = useAuth();
   const { getCurrentUser } = useCurrentUser();
-  const useFocusEffect = require('@react-navigation/native').useFocusEffect;
-
+  const useFocusEffect = require("@react-navigation/native").useFocusEffect;
+  
   const [userId, setUserId] = useState(null);
   const [wishlistItems, setWishlistItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -33,8 +33,8 @@ export default function WishlistScreen({ navigation }) {
   // Size/Color selection modal state
   const [showSizeModal, setShowSizeModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [selectedSize, setSelectedSize] = useState('');
-  const [selectedColor, setSelectedColor] = useState('');
+  const [selectedSize, setSelectedSize] = useState("");
+  const [selectedColor, setSelectedColor] = useState("");
 
   // Fetch authenticated user's database ID AND set the global token
   useEffect(() => {
@@ -43,20 +43,20 @@ export default function WishlistScreen({ navigation }) {
         try {
           // Get and set the token FIRST
           const token = await getToken();
-          console.log('🎫 Setting global token in WishlistScreen:', !!token);
+          console.log("🎫 Setting global token in WishlistScreen:", !!token);
           setGlobalAuthToken(token);
           setTokenReady(true);
 
           // Then get user data
           const userData = await getCurrentUser();
           if (userData && userData.user_id) {
-            console.log('✅ User ID obtained:', userData.user_id);
+            console.log("✅ User ID obtained:", userData.user_id);
             setUserId(userData.user_id);
           } else {
-            console.log('❌ Could not get user_id');
+            console.log("❌ Could not get user_id");
           }
         } catch (error) {
-          console.error('❌ Error fetching user ID:', error);
+          console.error("❌ Error fetching user ID:", error);
         }
       }
     };
@@ -66,21 +66,21 @@ export default function WishlistScreen({ navigation }) {
   // Fetch wishlist from backend
   const fetchWishlist = async () => {
     if (!userId) {
-      console.log('No userId available, skipping wishlist fetch');
+      console.log("No userId available, skipping wishlist fetch");
       return;
     }
 
     if (!tokenReady) {
-      console.log('Token not ready yet, skipping wishlist fetch');
+      console.log("Token not ready yet, skipping wishlist fetch");
       return;
     }
 
-    console.log('🛍️ Fetching wishlist for userId:', userId);
+    console.log("🛍️ Fetching wishlist for userId:", userId);
     setLoading(true);
 
     try {
       const result = await ApiService.wishlist.get(userId);
-      console.log('🛍️ Wishlist API result:', result);
+      console.log("🛍️ Wishlist API result:", result);
 
       if (result.success) {
         // Fetch product details for each wishlist item
@@ -93,22 +93,22 @@ export default function WishlistScreen({ navigation }) {
 
                 // Parse sizes if it's a string
                 let sizes = productData.sizes;
-                if (typeof sizes === 'string') {
+                if (typeof sizes === "string") {
                   try {
                     sizes = JSON.parse(sizes);
                   } catch (e) {
-                    console.error('Error parsing sizes:', e);
+                    console.error("Error parsing sizes:", e);
                     sizes = {};
                   }
                 }
 
                 // Parse colors if it's a string
                 let colors = productData.colors;
-                if (typeof colors === 'string') {
+                if (typeof colors === "string") {
                   try {
                     colors = JSON.parse(colors);
                   } catch (e) {
-                    console.error('Error parsing colors:', e);
+                    console.error("Error parsing colors:", e);
                     colors = [];
                   }
                 }
@@ -124,7 +124,7 @@ export default function WishlistScreen({ navigation }) {
               }
               return null;
             } catch (error) {
-              console.error('Error fetching product details:', error);
+              console.error("Error fetching product details:", error);
               return null;
             }
           })
@@ -132,20 +132,23 @@ export default function WishlistScreen({ navigation }) {
 
         // Filter out null values
         const validItems = itemsWithDetails.filter((item) => item !== null);
-        console.log('🛍️ Wishlist items loaded:', validItems.length);
+        console.log("🛍️ Wishlist items loaded:", validItems.length);
         setWishlistItems(validItems);
       } else {
-        console.error('❌ Error loading wishlist:', result.error);
+        console.error("❌ Error loading wishlist:", result.error);
 
         // Handle authentication errors specifically
         if (result.status === 401) {
-          Alert.alert('Session Expired', 'Please sign in again to view your wishlist');
+          Alert.alert(
+            "Session Expired",
+            "Please sign in again to view your wishlist"
+          );
         }
         setWishlistItems([]);
       }
     } catch (error) {
-      console.error('❌ Exception loading wishlist:', error);
-      Alert.alert('Error', 'Could not load wishlist. Please try again.');
+      console.error("❌ Exception loading wishlist:", error);
+      Alert.alert("Error", "Could not load wishlist. Please try again.");
       setWishlistItems([]);
     } finally {
       setLoading(false);
@@ -172,30 +175,30 @@ export default function WishlistScreen({ navigation }) {
     try {
       const result = await ApiService.wishlist.remove(userId, productId);
       if (result.success) {
-        console.log('✅ Removed from wishlist');
+        console.log("✅ Removed from wishlist");
         // Refresh wishlist
         await fetchWishlist();
       } else {
-        Alert.alert('Error', result.error || 'Could not remove from wishlist');
+        Alert.alert("Error", result.error || "Could not remove from wishlist");
       }
     } catch (error) {
-      console.error('❌ Error removing from wishlist:', error);
-      Alert.alert('Error', 'Could not remove from wishlist');
+      console.error("❌ Error removing from wishlist:", error);
+      Alert.alert("Error", "Could not remove from wishlist");
     }
   };
 
   const goToProduct = (productId) => {
-    navigation.navigate('ProductDetails', {
+    navigation.navigate("ProductDetails", {
       productId,
-      isFromWishlist: true 
+      isFromWishlist: true,
     });
   };
 
   // Open size selection modal
   const openSizeSelectionModal = (product) => {
     setSelectedProduct(product);
-    setSelectedSize('');
-    setSelectedColor('');
+    setSelectedSize("");
+    setSelectedColor("");
     setShowSizeModal(true);
   };
 
@@ -203,8 +206,8 @@ export default function WishlistScreen({ navigation }) {
   const closeSizeModal = () => {
     setShowSizeModal(false);
     setSelectedProduct(null);
-    setSelectedSize('');
-    setSelectedColor('');
+    setSelectedSize("");
+    setSelectedColor("");
   };
 
   // Confirm and add to cart with selected size/color
@@ -255,7 +258,7 @@ export default function WishlistScreen({ navigation }) {
   // Add to cart and remove from wishlist
   const addToCart = async (product) => {
     if (!userId) {
-      Alert.alert('Sign In Required', 'Please sign in to add items to cart');
+      Alert.alert("Sign In Required", "Please sign in to add items to cart");
       return;
     }
 
@@ -303,10 +306,10 @@ export default function WishlistScreen({ navigation }) {
               ]}
             >
               {item.stock_quantity === 0
-                ? 'Out of Stock'
+                ? "Out of Stock"
                 : item.stock_quantity < 10
                 ? `Only ${item.stock_quantity} left`
-                : 'In Stock'}
+                : "In Stock"}
             </Text>
           )}
 
@@ -320,7 +323,7 @@ export default function WishlistScreen({ navigation }) {
           >
             <Ionicons name="cart-outline" size={16} color={Colors.whiteText} />
             <Text style={styles.addToCartText}>
-              {item.stock_quantity === 0 ? 'Out of Stock' : 'Add to Cart'}
+              {item.stock_quantity === 0 ? "Out of Stock" : "Add to Cart"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -342,12 +345,10 @@ export default function WishlistScreen({ navigation }) {
     <View style={styles.emptyContainer}>
       <Ionicons name="heart-outline" size={80} color={Colors.mutedText} />
       <Text style={styles.emptyTitle}>Your Wishlist is Empty</Text>
-      <Text style={styles.emptySubtitle}>
-        Save your favorite items here
-      </Text>
+      <Text style={styles.emptySubtitle}>Save your favorite items here</Text>
       <TouchableOpacity
         style={styles.shopButton}
-        onPress={() => navigation.navigate('Home')}
+        onPress={() => navigation.navigate("Home")}
       >
         <Text style={styles.shopButtonText}>Start Shopping</Text>
       </TouchableOpacity>
@@ -355,11 +356,11 @@ export default function WishlistScreen({ navigation }) {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Wishlist</Text>
         <Text style={styles.headerSubtitle}>
-          {wishlistItems.length} {wishlistItems.length === 1 ? 'item' : 'items'}
+          {wishlistItems.length} {wishlistItems.length === 1 ? "item" : "items"}
         </Text>
       </View>
 
@@ -380,6 +381,16 @@ export default function WishlistScreen({ navigation }) {
           }
           ListEmptyComponent={renderEmpty}
           showsVerticalScrollIndicator={false}
+          ListFooterComponent={
+            wishlistItems.length > 0 && (
+              <TouchableOpacity
+                style={styles.continueButton}
+                onPress={() => navigation.navigate("Shop")}
+              >
+                <Text style={styles.continueButtonText}>Continue Shopping</Text>
+              </TouchableOpacity>
+            )
+          }
         />
       )}
 
@@ -534,201 +545,201 @@ export default function WishlistScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.lightBackground || '#f5f5f5',
+    backgroundColor: Colors.lightBackground || "#f5f5f5",
   },
   header: {
     padding: 20,
     paddingTop: 60,
-    backgroundColor: Colors.whiteBackground || '#fff',
+    backgroundColor: Colors.whiteBackground || "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: Colors.lightBorder || '#e5e5e5',
+    borderBottomColor: Colors.lightBorder || "#e5e5e5",
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    color: Colors.darkText || '#000',
+    fontWeight: "bold",
+    textAlign: "center",
+    color: Colors.darkText || "#000",
     marginBottom: 5,
   },
   headerSubtitle: {
     fontSize: 16,
-    textAlign: 'center',
-    color: Colors.mutedText || '#666',
+    textAlign: "center",
+    color: Colors.mutedText || "#666",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 40,
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: Colors.mutedText || '#666',
+    color: Colors.mutedText || "#666",
   },
   emptyListContainer: {
     flexGrow: 1,
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 40,
   },
   emptyTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: Colors.darkText || '#000',
+    fontWeight: "bold",
+    color: Colors.darkText || "#000",
     marginTop: 20,
     marginBottom: 10,
   },
   emptySubtitle: {
     fontSize: 16,
-    color: Colors.mutedText || '#666',
-    textAlign: 'center',
+    color: Colors.mutedText || "#666",
+    textAlign: "center",
     marginBottom: 30,
   },
   shopButton: {
-    backgroundColor: Colors.mainColor || '#000',
+    backgroundColor: Colors.mainColor || "#000",
     paddingHorizontal: 30,
     paddingVertical: 15,
     borderRadius: 25,
   },
   shopButtonText: {
-    color: Colors.whiteText || '#fff',
+    color: Colors.whiteText || "#fff",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   listContainer: {
     padding: 15,
   },
   wishlistItem: {
-    backgroundColor: Colors.whiteBackground || '#fff',
+    backgroundColor: Colors.whiteBackground || "#fff",
     borderRadius: 12,
     marginBottom: 15,
-    overflow: 'hidden',
-    shadowColor: Colors.shadowColor || '#000',
+    overflow: "hidden",
+    shadowColor: Colors.shadowColor || "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
   },
   itemContent: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: 15,
   },
   imageContainer: {
     width: 100,
     height: 120,
     borderRadius: 8,
-    overflow: 'hidden',
-    backgroundColor: Colors.lightBackground || '#f5f5f5',
+    overflow: "hidden",
+    backgroundColor: Colors.lightBackground || "#f5f5f5",
     marginRight: 15,
   },
   productImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   imagePlaceholder: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
   },
   itemDetails: {
     flex: 1,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   productName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: Colors.darkText || '#000',
+    fontWeight: "600",
+    color: Colors.darkText || "#000",
     marginBottom: 5,
   },
   productDescription: {
     fontSize: 14,
-    color: Colors.mutedText || '#666',
+    color: Colors.mutedText || "#666",
     marginBottom: 8,
   },
   productPrice: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.mainColor || '#000',
+    fontWeight: "bold",
+    color: Colors.mainColor || "#000",
     marginBottom: 5,
   },
   stockText: {
     fontSize: 12,
-    color: Colors.successColor || '#22c55e',
+    color: Colors.successColor || "#22c55e",
     marginBottom: 10,
   },
   outOfStock: {
-    color: Colors.errorColor || '#ef4444',
+    color: Colors.errorColor || "#ef4444",
   },
   addToCartButton: {
-    flexDirection: 'row',
-    backgroundColor: Colors.mainColor || '#000',
+    flexDirection: "row",
+    backgroundColor: Colors.mainColor || "#000",
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'flex-start',
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "flex-start",
     gap: 6,
   },
   addToCartText: {
-    color: Colors.whiteText || '#fff',
+    color: Colors.whiteText || "#fff",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   removeButton: {
     width: 44,
     height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'absolute',
+    justifyContent: "center",
+    alignItems: "center",
+    position: "absolute",
     top: 8,
     right: 8,
   },
   // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: Colors.whiteBackground || '#fff',
+    backgroundColor: Colors.whiteBackground || "#fff",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingTop: 20,
     paddingBottom: 40,
     paddingHorizontal: 20,
-    maxHeight: '80%',
+    maxHeight: "80%",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 20,
     paddingBottom: 15,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.lightBorder || '#e5e5e5',
+    borderBottomColor: Colors.lightBorder || "#e5e5e5",
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.darkText || '#000',
+    fontWeight: "bold",
+    color: Colors.darkText || "#000",
   },
   closeButton: {
     width: 32,
     height: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalProductInfo: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: 25,
     padding: 15,
-    backgroundColor: Colors.lightBackground || '#f5f5f5',
+    backgroundColor: Colors.lightBackground || "#f5f5f5",
     borderRadius: 12,
   },
   modalProductImage: {
@@ -739,31 +750,31 @@ const styles = StyleSheet.create({
   },
   modalProductDetails: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   modalProductName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: Colors.darkText || '#000',
+    fontWeight: "600",
+    color: Colors.darkText || "#000",
     marginBottom: 8,
   },
   modalProductPrice: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.mainColor || '#000',
+    fontWeight: "bold",
+    color: Colors.mainColor || "#000",
   },
   selectionSection: {
     marginBottom: 25,
   },
   selectionLabel: {
     fontSize: 16,
-    fontWeight: '600',
-    color: Colors.darkText || '#000',
+    fontWeight: "600",
+    color: Colors.darkText || "#000",
     marginBottom: 12,
   },
   optionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
   },
   optionButton: {
@@ -771,49 +782,62 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1.5,
-    borderColor: Colors.lightBorder || '#e5e5e5',
-    backgroundColor: Colors.whiteBackground || '#fff',
+    borderColor: Colors.lightBorder || "#e5e5e5",
+    backgroundColor: Colors.whiteBackground || "#fff",
     minWidth: 70,
-    alignItems: 'center',
+    alignItems: "center",
   },
   optionButtonSelected: {
-    backgroundColor: Colors.mainColor || '#000',
-    borderColor: Colors.mainColor || '#000',
+    backgroundColor: Colors.mainColor || "#000",
+    borderColor: Colors.mainColor || "#000",
   },
   optionButtonDisabled: {
-    backgroundColor: Colors.lightBackground || '#f5f5f5',
-    borderColor: Colors.lightBorder || '#e5e5e5',
+    backgroundColor: Colors.lightBackground || "#f5f5f5",
+    borderColor: Colors.lightBorder || "#e5e5e5",
     opacity: 0.5,
   },
   optionText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: Colors.darkText || '#000',
+    fontWeight: "600",
+    color: Colors.darkText || "#000",
   },
   optionTextSelected: {
-    color: Colors.whiteText || '#fff',
+    color: Colors.whiteText || "#fff",
   },
   optionTextDisabled: {
-    color: Colors.mutedText || '#999',
+    color: Colors.mutedText || "#999",
   },
   confirmButton: {
-    flexDirection: 'row',
-    backgroundColor: Colors.mainColor || '#000',
+    flexDirection: "row",
+    backgroundColor: Colors.mainColor || "#000",
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: 10,
     gap: 10,
   },
   confirmButtonDisabled: {
-    backgroundColor: Colors.mutedText || '#999',
+    backgroundColor: Colors.mutedText || "#999",
     opacity: 0.5,
   },
   confirmButtonText: {
-    color: Colors.whiteText || '#fff',
+    color: Colors.whiteText || "#fff",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
+  },
+  continueButton: {
+    alignItems: "center",
+    backgroundColor: Colors.mainColor || "#000",
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    marginHorizontal: 20,
+    borderRadius: 25,
+  },
+  continueButtonText: {
+    color: Colors.whiteText || "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });

@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useIsFocused } from '@react-navigation/native';
 import { useAuth } from '@clerk/clerk-expo';
 import ApiService, { setGlobalAuthToken, API_BASE_URL } from '../../services/api';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Alert } from 'react-native';
+import { useUser } from '@clerk/clerk-expo';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../../colors';
@@ -75,7 +76,65 @@ export default function EditProfileSection({navigation}) {
   }, [isFocused]);
 
   // Handlers
-  const onEditContact = () => {};
+  const [editingContact, setEditingContact] = useState(false);
+  const [editFirstName, setEditFirstName] = useState('');
+  const [editLastName, setEditLastName] = useState('');
+  const [savingContact, setSavingContact] = useState(false);
+  const { user: clerkUser } = useUser();
+
+  const onEditContact = () => {
+    if (!currentUser) return;
+    setEditFirstName(currentUser.first_name || '');
+    setEditLastName(currentUser.last_name || '');
+    setEditingContact(true);
+  };
+
+  const onCancelEditContact = () => {
+    setEditingContact(false);
+  };
+
+  const onSaveContact = async () => {
+    if (!currentUser?.user_id) return;
+    setSavingContact(true);
+    try {
+      // First, update Clerk profile if available
+      if (clerkUser && typeof clerkUser.update === 'function') {
+        try {
+          await clerkUser.update({ firstName: editFirstName, lastName: editLastName });
+          console.log('✅ Clerk profile updated');
+        } catch (clerkErr) {
+          console.warn('Failed to update Clerk profile:', clerkErr);
+          // Don't abort — continue to update backend, but inform user
+          Alert.alert('Clerk sync failed', 'Name saved locally but failed to sync with authentication provider.');
+        }
+      }
+      const payload = {
+        first_name: editFirstName,
+        last_name: editLastName,
+      };
+
+      const result = await ApiService.users.update(currentUser.user_id, payload);
+      // result may be the updated user object or an API wrapper { success, data }
+      let updatedUser = null;
+      if (result) {
+        if (result.success && result.data) updatedUser = result.data;
+        else if (result.user_id) updatedUser = result;
+      }
+
+      if (updatedUser) {
+        setCurrentUser(updatedUser);
+      } else {
+        // If API didn't return the updated user, refetch current user
+        const refetched = await ApiService.users.getCurrentUser();
+        if (refetched && refetched.user_id) setCurrentUser(refetched);
+      }
+
+      setEditingContact(false);
+    } catch (err) {
+      console.error('Error updating contact:', err);
+    }
+    setSavingContact(false);
+  };
   const onResetPassword = () => {
     navigation && navigation.navigate('ChangePassword');
   };
@@ -94,6 +153,7 @@ export default function EditProfileSection({navigation}) {
         postal_code: addr.postal_code,
         country: addr.country,
         address_type: addr.address_type,
+        phone: addr.phone || null,
         is_default: true
       };
       const result = await ApiService.addresses.update(addr.address_id, payload);
@@ -134,13 +194,45 @@ export default function EditProfileSection({navigation}) {
           <View style={styles.fieldRow}>
             <View style={styles.fieldCol}>
               <Text style={styles.fieldLabel}>Your Name</Text>
-              <Text style={styles.fieldValue}>
-                {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : 'Loading...'}
-              </Text>
+              {!editingContact ? (
+                <Text style={styles.fieldValue}>
+                  {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : 'Loading...'}
+                </Text>
+              ) : (
+                <View>
+                  <TextInput
+                    value={editFirstName}
+                    onChangeText={setEditFirstName}
+                    placeholder="First name"
+                    style={styles.input}
+                  />
+                  <TextInput
+                    value={editLastName}
+                    onChangeText={setEditLastName}
+                    placeholder="Last name"
+                    style={styles.input}
+                  />
+                </View>
+              )}
             </View>
-            <TouchableOpacity onPress={onEditContact} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="pencil" size={18} color={Colors.mutedText} />
-            </TouchableOpacity>
+            {!editingContact ? (
+              <TouchableOpacity onPress={onEditContact} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="pencil" size={18} color={Colors.mutedText} />
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.editButtons}>
+                <TouchableOpacity style={[styles.saveBtn]} onPress={onSaveContact} disabled={savingContact}>
+                  {savingContact ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.btnText}>Save</Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.cancelBtn]} onPress={onCancelEditContact} disabled={savingContact}>
+                  <Text style={styles.btnText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
           {/* Email Row */}
           <View style={[styles.fieldRow, styles.fieldRowDivider]}>
@@ -179,6 +271,7 @@ export default function EditProfileSection({navigation}) {
                 <Text style={styles.addressLine}>{addr.street_address}</Text>
                 <Text style={styles.addressLine}>{addr.city}{addr.state ? `, ${addr.state}` : ''} {addr.postal_code}</Text>
                 <Text style={styles.addressLine}>{addr.country}</Text>
+                {addr.phone ? <Text style={styles.addressLine}>{addr.phone}</Text> : null}
                 <View style={styles.addressActions}>
                   <TouchableOpacity style={styles.iconBtn} onPress={() => gotoEditAddressSection(addr)}>
                     <Text>Edit</Text>
@@ -345,6 +438,39 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.mainColor,
     fontWeight: '600',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: Colors.grayBorder,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginTop: 6,
+    width: 300,
+    maxWidth: '80%',
+    backgroundColor: Colors.whiteBackground,
+    color: Colors.darkText,
+  },
+  editButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  saveBtn: {
+    backgroundColor: Colors.mainColor,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  cancelBtn: {
+    backgroundColor: Colors.mutedText,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  btnText: {
+    color: '#fff',
+    fontWeight: '700',
   },
   footer: {
     alignItems: 'center',
