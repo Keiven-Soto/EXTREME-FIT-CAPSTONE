@@ -253,12 +253,12 @@ export default function BagScreen() {
     }
   };
 
-  // Only fetch cart when BOTH userId AND token are ready
-  useEffect(() => {
-    if (userId && tokenReady) {
-      fetchCart();
-    }
-  }, [userId, tokenReady]);
+  // // Only fetch cart when BOTH userId AND token are ready
+  // useEffect(() => {
+  //   if (userId && tokenReady) {
+  //     fetchCart();
+  //   }
+  // }, [userId, tokenReady]);
 
   // Refresh cart every time the screen receives focus
   useFocusEffect(
@@ -390,8 +390,9 @@ export default function BagScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>My Cart</Text>
-          <Text style={styles.headerSubtitle}>{totalItems} {totalItems === 1 ? 'item' : 'items'}</Text>
+          <Text style={styles.headerTitle}>🛒 My Cart</Text>
+          <CornerLogo></CornerLogo>
+          <Text style={styles.headerSubtitle}>{totalItems} items</Text>
         </View>
 
         <View style={styles.cartItems}>
