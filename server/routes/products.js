@@ -6,6 +6,7 @@ const {
   getGenders,
   createProduct, 
   updateProduct, 
+  adjustStock,
   deleteProduct, 
   getProductsByCategory,
   searchProducts
@@ -24,6 +25,9 @@ router.post('/', createProduct);
 
 // PUT routes
 router.put('/:id', updateProduct);
+
+// Stock adjustment (decrement/increment by size)
+router.post('/:id/adjust-stock', adjustStock);
 
 // DELETE routes
 router.delete('/:id', deleteProduct);
