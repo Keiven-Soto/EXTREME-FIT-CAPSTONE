@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../colors';
 import ApiService from '../services/api';
+import { color } from '@cloudinary/url-gen/qualifiers/background';
 
 export default function OrderSuccessScreen({ route, navigation }) {
   const { orderId } = route.params || {};
@@ -146,13 +147,6 @@ export default function OrderSuccessScreen({ route, navigation }) {
             </View>
           </View>
         )}
-
-        <View style={styles.infoCard}>
-          <Ionicons name="information-circle" size={24} color={Colors.primary} />
-          <Text style={styles.infoText}>
-            A confirmation email has been sent to your registered email address with order details and tracking information.
-          </Text>
-        </View>
 
         <View style={styles.buttonContainer}>
           <TouchableOpacity
@@ -298,7 +292,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButtonText: {
-    color: '#fff',
+    color: Colors.mainColor,
     fontSize: 16,
     fontWeight: 'bold',
   },

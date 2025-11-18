@@ -60,62 +60,56 @@ export default function ShopScreen({ navigation }) {
     fetchUserIdAndSetToken();
   }, [clerkUser, isSignedIn]);
 
+  // Load products function - accessible throughout component
+  const loadProducts = async () => {
+    try {
+      setLoading(true);
+
+      const results = await Promise.allSettled([
+        ApiService.products.getAll(),
+        userId
+          ? ApiService.wishlist.get(userId)
+          : Promise.resolve({
+              status: "fulfilled",
+              value: { success: true, data: [] },
+            }),
+      ]);
+
+      const prodRes =
+        results[0].status === "fulfilled" ? results[0].value : null;
+      const wishRes =
+        results[1].status === "fulfilled"
+          ? results[1].value
+          : { success: true, data: [] };
+
+      const wishlistIds = new Set(
+        (wishRes?.data || [])
+          .map((i) => i.product_id ?? i.productId ?? i.product)
+          .filter((id) => id != null)
+          .map((id) => String(id))
+      );
+
+      if (prodRes && prodRes.success) {
+        const merged = (prodRes.data || []).map((p) => ({
+          ...p,
+          isWishlisted: wishlistIds.has(String(p.product_id)),
+        }));
+        setProducts(merged);
+      } else if (!prodRes || !prodRes.success) {
+        console.log("[Shop] Failed to load products for category");
+        setProducts([]);
+      }
+    } catch (err) {
+      console.error("[Shop] Failed to load products or wishlist:", err);
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fetch products + wishlist when userId changes
   useEffect(() => {
-    let mounted = true;
-
-    const loadProducts = async () => {
-      try {
-        setLoading(true);
-
-        // JavaScript
-        const results = await Promise.allSettled([
-          await ApiService.products.getAll(),
-          userId
-            ? ApiService.wishlist.get(userId)
-            : Promise.resolve({
-                status: "fulfilled",
-                value: { success: true, data: [] },
-              }),
-        ]);
-
-        const prodRes =
-          results[0].status === "fulfilled" ? results[0].value : null;
-        const wishRes =
-          results[1].status === "fulfilled"
-            ? results[1].value
-            : { success: true, data: [] };
-
-        const wishlistIds = new Set(
-          (wishRes?.data || [])
-            .map((i) => i.product_id ?? i.productId ?? i.product)
-            .filter((id) => id != null)
-            .map((id) => String(id))
-        );
-
-        if (prodRes && prodRes.success && mounted) {
-          const merged = (prodRes.data || []).map((p) => ({
-            ...p,
-            isWishlisted: wishlistIds.has(String(p.product_id)),
-          }));
-          setProducts(merged);
-        } else if (!prodRes || !prodRes.success) {
-          console.log("[Shop] Failed to load products for category");
-          setProducts([]);
-        }
-      } catch (err) {
-        console.error("[Shop] Failed to load products or wishlist:", err);
-        setProducts([]);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-
     loadProducts();
-
-    return () => {
-      mounted = false;
-    };
   }, [userId]);
 
   // NEW: Search products function
@@ -139,7 +133,7 @@ export default function ShopScreen({ navigation }) {
 
   const clearSearch = () => {
     setSearchText("");
-    // No need to call loadProducts() - useEffect will handle it
+    loadProducts();
   };
 
   // NEW: Search products whenever searchText changes (with debounce)
@@ -196,6 +190,7 @@ export default function ShopScreen({ navigation }) {
 
   const renderProduct = (product) => {
     const isProductWishlisted = !!product.isWishlisted;
+
     // Get image source
     const getImageSource = () => {
       if (product.cloudinary_public_id) {
@@ -549,6 +544,21 @@ const styles = StyleSheet.create({
     resizeMode: "cover",
   },
 
+  productImagePlaceholder: {
+    width: "100%",
+    height: 120,
+    backgroundColor: Colors.lightBackground,
+    justifyContent: "center",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.grayBorder,
+  },
+
+  placeholderText: {
+    color: Colors.mutedText,
+    fontSize: 12,
+  },
+
   productName: {
     fontSize: 14,
     fontWeight: "600",
@@ -580,11 +590,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  productsContainer: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-
   loadingContainer: {
     padding: 40,
     alignItems: "center",
@@ -610,7 +615,7 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
   },
 
-clearSearchButton: {
+  clearSearchButton: {
     backgroundColor: Colors.mainColor,
     paddingHorizontal: 28,    
     paddingVertical: 14,       

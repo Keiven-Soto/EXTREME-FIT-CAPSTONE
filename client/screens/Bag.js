@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Platform, Image, ActivityIndicator, Linking } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Platform, Image, ActivityIndicator } from 'react-native';
 import { getCloudinaryImageUrl } from '../utils/cloudinary';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,7 +9,6 @@ import CornerLogo from '../components/CornerLogo';
 import ApiService, { setGlobalAuthToken } from '../services/api';
 import { useCurrentUser } from '../hooks/useAuthenticatedApi';
 
-// Only import PayPal on native platforms
 let PayPal = null;
 if (Platform.OS !== 'web') {
   try {
@@ -159,38 +158,9 @@ export default function BagScreen() {
         return;
       }
 
-      // 4. Create Stripe Checkout Session
-      console.log('Creating Stripe checkout session for order:', orderId);
-      const checkoutResult = await ApiService.payments.createCheckoutSession(
-        orderId,
-        'extremefit://order-success',
-        'extremefit://checkout'
-      );
-
-      if (!checkoutResult.success || !checkoutResult.data.url) {
-        Alert.alert('Error', checkoutResult.error || 'Failed to create checkout session');
-        return;
-      }
-
-      console.log('Stripe checkout URL:', checkoutResult.data.url);
-
-      // 5. Open Stripe Checkout in browser
-      const stripeUrl = checkoutResult.data.url;
-      const canOpen = await Linking.canOpenURL(stripeUrl);
-
-      if (canOpen) {
-        await Linking.openURL(stripeUrl);
-
-        // 6. Clear cart after opening Stripe (will be cleared in backend after payment)
-        setCartItems([]);
-
-        // 7. Navigate to success screen (user will return here after payment)
-        setTimeout(() => {
-          navigation.navigate('OrderSuccess', { orderId });
-        }, 1000);
-      } else {
-        Alert.alert('Error', 'Unable to open Stripe checkout page');
-      }
+      // 4. Navigate to Checkout screen with orderId
+      console.log('Navigating to Checkout screen with order:', orderId);
+      navigation.navigate('Checkout', { orderId });
 
     } catch (err) {
       console.error('Error in handleStripeCheckout:', err);
@@ -420,9 +390,8 @@ export default function BagScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>🛒 My Cart</Text>
-          <CornerLogo></CornerLogo>
-          <Text style={styles.headerSubtitle}>{totalItems} items</Text>
+          <Text style={styles.headerTitle}>My Cart</Text>
+          <Text style={styles.headerSubtitle}>{totalItems} {totalItems === 1 ? 'item' : 'items'}</Text>
         </View>
 
         <View style={styles.cartItems}>
