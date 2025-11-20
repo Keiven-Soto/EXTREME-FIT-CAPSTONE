@@ -146,17 +146,8 @@ export default function EditProfileSection({navigation}) {
   const onSetDefault = async (addr) => {
     if (!addr?.address_id || !currentUser?.user_id) return;
     try {
-      const payload = {
-        street_address: addr.street_address,
-        city: addr.city,
-        state: addr.state,
-        postal_code: addr.postal_code,
-        country: addr.country,
-        address_type: addr.address_type,
-        phone: addr.phone || null,
-        is_default: true
-      };
-      const result = await ApiService.addresses.update(addr.address_id, payload);
+      // Use a dedicated endpoint that sets this address as default without requiring full payload
+      const result = await ApiService.addresses.setDefault(addr.address_id);
       console.log('Set default response:', result);
       await sleep(500);
       if (result.success) {

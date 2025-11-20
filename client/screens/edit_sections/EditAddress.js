@@ -75,6 +75,20 @@ export default function EditAddressSection({ navigation, route }) {
 
         setCurrentUser(user);
 
+        // If creating (not editing) and the user has no addresses yet,
+        // make the new address default by pre-filling the form flag.
+        if (!editing && user && user.user_id) {
+          try {
+            const addrList = await ApiService.addresses.getByUser(user.user_id);
+            const hasAddresses = addrList && addrList.success && Array.isArray(addrList.data) && addrList.data.length > 0;
+            if (!hasAddresses) {
+              setForm(prev => ({ ...prev, is_default: true }));
+            }
+          } catch (err) {
+            console.error('Error checking existing addresses for default behaviour:', err);
+          }
+        }
+
         // If editing, fetch the address details
         if (editing && original.address_id) {
           const result = await ApiService.addresses.getByUser(user.user_id);
@@ -155,6 +169,18 @@ export default function EditAddressSection({ navigation, route }) {
         // create
         result = await ApiService.addresses.create(currentUser.user_id, payload);
         console.log('POST response:', result);
+      }
+
+      // If this address should be the default, use the dedicated endpoint AFTER save
+      try {
+        const savedId = editing
+          ? (result?.data?.address_id || original.address_id || result?.address_id)
+          : (result?.data?.address_id || result?.address_id);
+        if (payload.is_default && savedId) {
+          await ApiService.addresses.setDefault(savedId);
+        }
+      } catch (e) {
+        console.error('Failed to set address as default after save:', e);
       }
 
       if (result?.success) {

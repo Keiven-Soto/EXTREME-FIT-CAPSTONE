@@ -38,7 +38,14 @@ export default function BagScreen() {
         defaultAddress = addressResult.data.find(addr => addr.is_default);
       }
       if (!defaultAddress) {
-        Alert.alert('Error', 'You don\'t have a default shipping address. Please add one in your profile.');
+        Alert.alert(
+          'OH NO!',
+          'You don\'t have a default shipping address. Please add one in your profile.',
+          [
+            { text: 'Ok', style: 'cancel' },
+            { text: 'Add Address', onPress: () => navigation.navigate('EditAddress') },
+          ]
+        );
         return;
       }
 
@@ -156,7 +163,14 @@ export default function BagScreen() {
         defaultAddress = addressResult.data.find(addr => addr.is_default);
       }
       if (!defaultAddress) {
-        Alert.alert('Error', 'You don\'t have a default shipping address. Please add one in your profile.');
+        Alert.alert(
+          'OH NO!',
+          'You don\'t have a default shipping address. Please add one in your profile.',
+          [
+            { text: 'Ok', style: 'cancel' },
+            { text: 'Add Address', onPress: () => navigation.navigate('EditAddress') },
+          ]
+        );
         return;
       }
 
