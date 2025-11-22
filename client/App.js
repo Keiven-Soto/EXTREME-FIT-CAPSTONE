@@ -3,7 +3,6 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { ClerkProvider } from '@clerk/clerk-expo';
 import { StripeProvider } from '@stripe/stripe-react-native';
-
 import { tokenCache } from './utils/tokenCache';
 import WelcomeScreen from './screens/Welcome';
 import CreateAccountPage from './screens/CreateAccountPage';
