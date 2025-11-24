@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Platform, Image, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Platform, Image, ActivityIndicator, Linking } from 'react-native';
 import { getCloudinaryImageUrl } from '../utils/cloudinary';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,7 +38,14 @@ export default function BagScreen() {
         defaultAddress = addressResult.data.find(addr => addr.is_default);
       }
       if (!defaultAddress) {
-        Alert.alert('Error', 'You don\'t have a default shipping address. Please add one in your profile.');
+        Alert.alert(
+          'OH NO!',
+          'You don\'t have a default shipping address. Please add one in your profile.',
+          [
+            { text: 'Ok', style: 'cancel' },
+            { text: 'Add Address', onPress: () => navigation.navigate('EditAddress') },
+          ]
+        );
         return;
       }
 
@@ -156,7 +163,14 @@ export default function BagScreen() {
         defaultAddress = addressResult.data.find(addr => addr.is_default);
       }
       if (!defaultAddress) {
-        Alert.alert('Error', 'You don\'t have a default shipping address. Please add one in your profile.');
+        Alert.alert(
+          'OH NO!',
+          'You don\'t have a default shipping address. Please add one in your profile.',
+          [
+            { text: 'Ok', style: 'cancel' },
+            { text: 'Add Address', onPress: () => navigation.navigate('EditAddress') },
+          ]
+        );
         return;
       }
 
@@ -275,59 +289,102 @@ export default function BagScreen() {
 
   // Function to get cart from backend
   const fetchCart = async () => {
+    // Validate prerequisites
     if (!userId) {
-      console.log('No userId available, skipping cart fetch');
+      console.log('⏸️ No userId available, skipping cart fetch');
       return;
     }
 
     if (!tokenReady) {
-      console.log('Token not ready yet, skipping cart fetch');
+      console.log('⏸️ Token not ready yet, skipping cart fetch');
       return;
     }
 
-    console.log('Fetching cart for userId:', userId);
+    console.log('🔄 fetchCart: Starting to fetch cart for userId:', userId);
     setLoadingItems(true);
-    
+
     try {
       const result = await ApiService.cart.get(userId);
-      console.log('Cart API result:', result);
-      
-      if (result.success) {
-        // Wait half a second before showing items
-        setTimeout(() => {
-          const mappedItems = result.data.map(item => ({
-            id: item.product_id,
-            name: item.name,
-            price: item.price,
-            quantity: item.quantity,
-            size: item.size,
-            color: item.color,
-            image_url: item.cloudinary_public_id ? getCloudinaryImageUrl(item.cloudinary_public_id) : null,
-          }));
-          console.log('Cart items loaded:', mappedItems.length);
-          setCartItems(mappedItems);
-          setLoadingItems(false);
-        }, 500);
-      } else {
-        console.error('Error loading cart:', result.error);
-        Alert.alert('Error', result.error || 'Could not load cart');
+      console.log('📦 fetchCart: Received result:', result);
+
+      // Validate result exists
+      if (!result) {
+        console.error('❌ fetchCart: No result returned from API');
+        Alert.alert('Error', 'Failed to load cart - no response from server');
         setLoadingItems(false);
-        setCartItems([]); // Set empty cart to avoid infinite loading
+        setCartItems([]);
+        return;
+      }
+
+      if (result.success) {
+        // Validate data is an array
+        if (!Array.isArray(result.data)) {
+          console.error('❌ fetchCart: Invalid data format (not an array):', result.data);
+          Alert.alert('Error', 'Invalid cart data received from server');
+          setLoadingItems(false);
+          setCartItems([]);
+          return;
+        }
+
+        console.log(`✅ fetchCart: Successfully loaded ${result.data.length} cart items`);
+
+        // Map the data to frontend format
+        const mappedItems = result.data.map(item => ({
+          id: item.product_id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          size: item.size,
+          color: item.color,
+          image_url: item.cloudinary_public_id ? getCloudinaryImageUrl(item.cloudinary_public_id) : null,
+        }));
+
+        setCartItems(mappedItems);
+        setLoadingItems(false);
+      } else {
+        // Handle authentication errors specifically
+        if (result.status === 401) {
+          console.error('❌ fetchCart: Authentication error');
+          Alert.alert('Session Expired', 'Please sign in again to view your cart');
+          setLoadingItems(false);
+          setCartItems([]);
+          return;
+        }
+
+        // Other errors
+        const errorMessage = result.error || 'Could not load cart';
+        console.error('❌ fetchCart: API returned error:', errorMessage);
+
+        // Don't show alert for empty cart (valid state)
+        if (!errorMessage.includes('empty') && !errorMessage.includes('no items')) {
+          Alert.alert('Error', errorMessage);
+        }
+
+        setLoadingItems(false);
+        setCartItems([]);
       }
     } catch (error) {
-      console.error('Exception loading cart:', error);
-      Alert.alert('Error', 'Could not load cart. Check your connection.');
+      console.error('❌ fetchCart: Exception occurred:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        userId,
+      });
+
+      // Provide more specific error messages
+      let errorMessage = 'Could not load cart. Check your connection.';
+      if (error.message) {
+        errorMessage = error.message;
+      }
+
+      Alert.alert('Error', errorMessage);
       setLoadingItems(false);
-      setCartItems([]); // Set empty cart to avoid infinite loading
+      setCartItems([]);
+    } finally {
+      console.log('🏁 fetchCart: Completed');
     }
   };
-  //TODO: REVIEW FOCUS EFFECT USAGE
-  // // Only fetch cart when BOTH userId AND token are ready
-  // useEffect(() => {
-  //   if (userId && tokenReady) {
-  //     fetchCart();
-  //   }
-  // }, [userId, tokenReady]);
+
 
   // Refresh cart every time the screen receives focus
   useFocusEffect(

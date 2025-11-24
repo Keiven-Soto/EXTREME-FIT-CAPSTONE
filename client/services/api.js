@@ -379,6 +379,13 @@ export const ApiService = {
       });
     },
 
+    // Set an address as the default (uses server endpoint that doesn't require full payload)
+    setDefault: async (addressId) => {
+      return await apiRequest(`/api/addresses/${addressId}/set-default`, {
+        method: 'PUT',
+      });
+    },
+
     // Delete an address
     delete: async (addressId) => {
       return await apiRequest(`/api/addresses/${addressId}`, {

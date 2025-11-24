@@ -14,7 +14,6 @@ export default function WelcomeScreen({ navigation }) {
 
   const handleCreateAccount = () => navigation.navigate('CreateAccountPage');
   const handleLogInAccount = () => navigation.navigate('LogInPage');
-  const handleContinueAsGuest = () => navigation.navigate('Main');
 
   return (
     <View style={styles.container}>
@@ -58,15 +57,6 @@ export default function WelcomeScreen({ navigation }) {
           activeOpacity={0.8}
         >
           <Text style={styles.loginText}>LOG IN</Text>
-        </TouchableOpacity>
-
-        {/* GUEST LINK */}
-        <TouchableOpacity 
-          style={styles.guestButton}
-          onPress={handleContinueAsGuest}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.guestText}>Continue as guest</Text>
         </TouchableOpacity>
 
       </View>
@@ -163,19 +153,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     letterSpacing: 1,
-  },
-
-  guestButton: {
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-
-  guestText: {
-    color: '#fff',
-    opacity: 0.75,
-    textDecorationLine: 'underline',
-    fontSize: 15,
-    fontWeight: '500',
   },
 });
 

@@ -134,11 +134,6 @@ export default function ProfileScreen({ navigation }) {
             </View>
           </TouchableOpacity>
         </View>
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Extreme Fit v1.0.0</Text>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
