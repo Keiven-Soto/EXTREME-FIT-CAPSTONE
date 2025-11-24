@@ -252,6 +252,13 @@ export const ApiService = {
     getByCategory: async (categoryId) => {
       return await apiRequest(`/api/products/category/${categoryId}`);
     },
+    // Adjust stock for a product (size-based). payload: { size, quantity, operation }
+    adjustStock: async (productId, payload) => {
+      return await apiRequest(`/api/products/${productId}/adjust-stock`, {
+        method: 'POST',
+        body: payload,
+      });
+    },
   },
 
   // Orders Management
@@ -369,6 +376,13 @@ export const ApiService = {
       return await apiRequest(`/api/addresses/${addressId}`, {
         method: "PUT",
         body: addressData,
+      });
+    },
+
+    // Set an address as the default (uses server endpoint that doesn't require full payload)
+    setDefault: async (addressId) => {
+      return await apiRequest(`/api/addresses/${addressId}/set-default`, {
+        method: 'PUT',
       });
     },
 

@@ -10,20 +10,21 @@ import {
   Alert,
   Modal,
   ScrollView,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import { useAuth } from "@clerk/clerk-expo";
-import Colors from "../colors";
-import ApiService, { setGlobalAuthToken } from "../services/api";
-import { useCurrentUser } from "../hooks/useAuthenticatedApi";
-import { getCloudinaryImageUrl } from "../utils/cloudinary";
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@clerk/clerk-expo';
+import Colors from '../colors';
+import {ProductDetailScreen} from '../screens/productDetails';
+import ApiService, { setGlobalAuthToken } from '../services/api';
+import { useCurrentUser } from '../hooks/useAuthenticatedApi';
+import { getCloudinaryImageUrl } from '../utils/cloudinary';
 
 export default function WishlistScreen({ navigation }) {
   const { getToken, isSignedIn } = useAuth();
   const { getCurrentUser } = useCurrentUser();
   const useFocusEffect = require("@react-navigation/native").useFocusEffect;
-
+  
   const [userId, setUserId] = useState(null);
   const [wishlistItems, setWishlistItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -86,9 +87,7 @@ export default function WishlistScreen({ navigation }) {
         const itemsWithDetails = await Promise.all(
           result.data.map(async (item) => {
             try {
-              const productResult = await ApiService.products.getById(
-                item.product_id
-              );
+              const productResult = await ApiService.products.getById(item.product_id);
               if (productResult.success) {
                 const productData = productResult.data;
 
@@ -214,24 +213,16 @@ export default function WishlistScreen({ navigation }) {
   // Confirm and add to cart with selected size/color
   const confirmAddToCart = async () => {
     // Check if product has sizes defined
-    const hasSizes =
-      selectedProduct?.sizes && Object.keys(selectedProduct.sizes).length > 0;
-    const hasColors =
-      selectedProduct?.colors && selectedProduct.colors.length > 0;
+    const hasSizes = selectedProduct?.sizes && Object.keys(selectedProduct.sizes).length > 0;
+    const hasColors = selectedProduct?.colors && selectedProduct.colors.length > 0;
 
     if (hasSizes && !selectedSize) {
-      Alert.alert(
-        "Size Required",
-        "Please select a size before adding to cart"
-      );
+      Alert.alert('Size Required', 'Please select a size before adding to cart');
       return;
     }
 
     if (hasColors && !selectedColor) {
-      Alert.alert(
-        "Color Required",
-        "Please select a color before adding to cart"
-      );
+      Alert.alert('Color Required', 'Please select a color before adding to cart');
       return;
     }
 
@@ -247,24 +238,20 @@ export default function WishlistScreen({ navigation }) {
 
       if (cartResult.success) {
         // Remove from wishlist
-        const wishlistResult = await ApiService.wishlist.remove(
-          userId,
-          selectedProduct.product_id
-        );
+        const wishlistResult = await ApiService.wishlist.remove(userId, selectedProduct.product_id);
 
         if (wishlistResult.success) {
-          Alert.alert(
-            "Success!",
-            `Item added to cart (Size: ${selectedSize}, Color: ${selectedColor})`
-          );
+          Alert.alert('Success!', `Item added to cart (Size: ${selectedSize}, Color: ${selectedColor})`);
           closeSizeModal();
           // Refresh the wishlist to show updated list
           await fetchWishlist();
         }
+      } else {
+        Alert.alert('Error', cartResult.error || 'Could not add to cart');
       }
     } catch (error) {
-      console.error("Error adding to cart:", error);
-      Alert.alert("Error", "Could not add to cart");
+      console.error('Error adding to cart:', error);
+      Alert.alert('Error', 'Could not add to cart');
     }
   };
 
@@ -295,11 +282,7 @@ export default function WishlistScreen({ navigation }) {
             />
           ) : (
             <View style={styles.imagePlaceholder}>
-              <Ionicons
-                name="image-outline"
-                size={40}
-                color={Colors.mutedText}
-              />
+              <Ionicons name="image-outline" size={40} color={Colors.mutedText} />
             </View>
           )}
         </View>
@@ -313,10 +296,8 @@ export default function WishlistScreen({ navigation }) {
               {item.description}
             </Text>
           )}
-          <Text style={styles.productPrice}>
-            ${Number(item.price).toFixed(2)}
-          </Text>
-
+          <Text style={styles.productPrice}>${Number(item.price).toFixed(2)}</Text>
+          
           {item.stock_quantity !== undefined && (
             <Text
               style={[
@@ -354,11 +335,7 @@ export default function WishlistScreen({ navigation }) {
             removeFromWishlist(item.product_id);
           }}
         >
-          <Ionicons
-            name="heart"
-            size={24}
-            color={Colors.errorColor || "#ef4444"}
-          />
+          <Ionicons name="heart" size={24} color={Colors.errorColor || '#ef4444'} />
         </TouchableOpacity>
       </TouchableOpacity>
     </View>
@@ -429,10 +406,7 @@ export default function WishlistScreen({ navigation }) {
             {/* Modal Header */}
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Size & Color</Text>
-              <TouchableOpacity
-                onPress={closeSizeModal}
-                style={styles.closeButton}
-              >
+              <TouchableOpacity onPress={closeSizeModal} style={styles.closeButton}>
                 <Ionicons name="close" size={24} color={Colors.darkText} />
               </TouchableOpacity>
             </View>
@@ -442,18 +416,12 @@ export default function WishlistScreen({ navigation }) {
               {selectedProduct && (
                 <View style={styles.modalProductInfo}>
                   <Image
-                    source={{
-                      uri: getCloudinaryImageUrl(
-                        selectedProduct.cloudinary_public_id
-                      ),
-                    }}
+                    source={{ uri: getCloudinaryImageUrl(selectedProduct.cloudinary_public_id) }}
                     style={styles.modalProductImage}
                     resizeMode="cover"
                   />
                   <View style={styles.modalProductDetails}>
-                    <Text style={styles.modalProductName}>
-                      {selectedProduct.name}
-                    </Text>
+                    <Text style={styles.modalProductName}>{selectedProduct.name}</Text>
                     <Text style={styles.modalProductPrice}>
                       ${Number(selectedProduct.price).toFixed(2)}
                     </Text>
@@ -462,78 +430,63 @@ export default function WishlistScreen({ navigation }) {
               )}
 
               {/* Size Selection */}
-              {selectedProduct?.sizes &&
-                Object.keys(selectedProduct.sizes).length > 0 && (
-                  <View style={styles.selectionSection}>
-                    <Text style={styles.selectionLabel}>Size *</Text>
-                    <View style={styles.optionsGrid}>
-                      {Object.keys(selectedProduct.sizes).length === 1 &&
-                      selectedProduct.sizes["OS"] !== undefined ? (
-                        // One Size (OS) only
-                        <TouchableOpacity
-                          key="OS"
+              {selectedProduct?.sizes && Object.keys(selectedProduct.sizes).length > 0 && (
+                <View style={styles.selectionSection}>
+                  <Text style={styles.selectionLabel}>Size *</Text>
+                  <View style={styles.optionsGrid}>
+                    {Object.keys(selectedProduct.sizes).length === 1 && selectedProduct.sizes["OS"] !== undefined ? (
+                      // One Size (OS) only
+                      <TouchableOpacity
+                        key="OS"
+                        style={[
+                          styles.optionButton,
+                          selectedSize === "OS" && styles.optionButtonSelected,
+                          selectedProduct.sizes["OS"] === 0 && styles.optionButtonDisabled,
+                        ]}
+                        onPress={() => setSelectedSize("OS")}
+                        disabled={selectedProduct.sizes["OS"] === 0}
+                      >
+                        <Text
                           style={[
-                            styles.optionButton,
-                            selectedSize === "OS" &&
-                              styles.optionButtonSelected,
-                            selectedProduct.sizes["OS"] === 0 &&
-                              styles.optionButtonDisabled,
+                            styles.optionText,
+                            selectedSize === "OS" && styles.optionTextSelected,
+                            selectedProduct.sizes["OS"] === 0 && styles.optionTextDisabled,
                           ]}
-                          onPress={() => setSelectedSize("OS")}
-                          disabled={selectedProduct.sizes["OS"] === 0}
                         >
-                          <Text
+                          OS {selectedProduct.sizes["OS"] === 0 ? '(Out of Stock)' : ''}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : (
+                      // Regular sizes (S, M, L, XL)
+                      ["S", "M", "L", "XL"].filter(size => selectedProduct.sizes[size] !== undefined).map((size) => {
+                        const qty = selectedProduct.sizes[size] ?? 0;
+                        return (
+                          <TouchableOpacity
+                            key={size}
                             style={[
-                              styles.optionText,
-                              selectedSize === "OS" &&
-                                styles.optionTextSelected,
-                              selectedProduct.sizes["OS"] === 0 &&
-                                styles.optionTextDisabled,
+                              styles.optionButton,
+                              selectedSize === size && styles.optionButtonSelected,
+                              qty === 0 && styles.optionButtonDisabled,
                             ]}
+                            onPress={() => setSelectedSize(size)}
+                            disabled={qty === 0}
                           >
-                            OS{" "}
-                            {selectedProduct.sizes["OS"] === 0
-                              ? "(Out of Stock)"
-                              : ""}
-                          </Text>
-                        </TouchableOpacity>
-                      ) : (
-                        // Regular sizes (S, M, L, XL)
-                        ["S", "M", "L", "XL"]
-                          .filter(
-                            (size) => selectedProduct.sizes[size] !== undefined
-                          )
-                          .map((size) => {
-                            const qty = selectedProduct.sizes[size] ?? 0;
-                            return (
-                              <TouchableOpacity
-                                key={size}
-                                style={[
-                                  styles.optionButton,
-                                  selectedSize === size &&
-                                    styles.optionButtonSelected,
-                                  qty === 0 && styles.optionButtonDisabled,
-                                ]}
-                                onPress={() => setSelectedSize(size)}
-                                disabled={qty === 0}
-                              >
-                                <Text
-                                  style={[
-                                    styles.optionText,
-                                    selectedSize === size &&
-                                      styles.optionTextSelected,
-                                    qty === 0 && styles.optionTextDisabled,
-                                  ]}
-                                >
-                                  {size} {qty === 0 ? "(Out of Stock)" : ""}
-                                </Text>
-                              </TouchableOpacity>
-                            );
-                          })
-                      )}
-                    </View>
+                            <Text
+                              style={[
+                                styles.optionText,
+                                selectedSize === size && styles.optionTextSelected,
+                                qty === 0 && styles.optionTextDisabled,
+                              ]}
+                            >
+                              {size} {qty === 0 ? '(Out of Stock)' : ''}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })
+                    )}
                   </View>
-                )}
+                </View>
+              )}
 
               {/* Color Selection */}
               {selectedProduct?.colors && selectedProduct.colors.length > 0 && (
@@ -545,16 +498,14 @@ export default function WishlistScreen({ navigation }) {
                         key={color}
                         style={[
                           styles.optionButton,
-                          selectedColor === color &&
-                            styles.optionButtonSelected,
+                          selectedColor === color && styles.optionButtonSelected,
                         ]}
                         onPress={() => setSelectedColor(color)}
                       >
                         <Text
                           style={[
                             styles.optionText,
-                            selectedColor === color &&
-                              styles.optionTextSelected,
+                            selectedColor === color && styles.optionTextSelected,
                           ]}
                         >
                           {color}
@@ -569,22 +520,15 @@ export default function WishlistScreen({ navigation }) {
               <TouchableOpacity
                 style={[
                   styles.confirmButton,
-                  ((selectedProduct?.sizes &&
-                    Object.keys(selectedProduct.sizes).length > 0 &&
-                    !selectedSize) ||
-                    (selectedProduct?.colors &&
-                      selectedProduct.colors.length > 0 &&
-                      !selectedColor)) &&
-                    styles.confirmButtonDisabled,
+                  (
+                    (selectedProduct?.sizes && Object.keys(selectedProduct.sizes).length > 0 && !selectedSize) ||
+                    (selectedProduct?.colors && selectedProduct.colors.length > 0 && !selectedColor)
+                  ) && styles.confirmButtonDisabled,
                 ]}
                 onPress={confirmAddToCart}
                 disabled={
-                  (selectedProduct?.sizes &&
-                    Object.keys(selectedProduct.sizes).length > 0 &&
-                    !selectedSize) ||
-                  (selectedProduct?.colors &&
-                    selectedProduct.colors.length > 0 &&
-                    !selectedColor)
+                  (selectedProduct?.sizes && Object.keys(selectedProduct.sizes).length > 0 && !selectedSize) ||
+                  (selectedProduct?.colors && selectedProduct.colors.length > 0 && !selectedColor)
                 }
               >
                 <Ionicons name="cart" size={20} color={Colors.whiteText} />

@@ -4,6 +4,7 @@ const getDb = () => (global && global.__DB_MOCK__) ? global.__DB_MOCK__ : requir
 // GET cart items by user ID
 const getCart = async (req, res) => {
     const { userId } = req.params;
+    console.log('🛒 getCart called for userId:', userId);
     try {
     const result = await getDb().query(
             `SELECT c.cart_id, c.product_id, c.quantity, c.added_at,
@@ -15,8 +16,10 @@ const getCart = async (req, res) => {
              ORDER BY c.added_at DESC`,
             [userId]
         );
+        console.log('✅ Cart items found:', result.rows.length);
         res.json({ success: true, data: result.rows });
     } catch (error) {
+        console.error('❌ Error in getCart:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 };
@@ -67,7 +70,7 @@ const removeItemFromCart = async (req, res) => {
 const updateCartItemQuantity = async (req, res) => {
 	const { userId, productId, quantity } = req.body;
 	try {
-		await db.query(
+		await getDb().query(
 			'UPDATE cart SET quantity = $1 WHERE user_id = $2 AND product_id = $3',
 			[quantity, userId, productId]
 		);

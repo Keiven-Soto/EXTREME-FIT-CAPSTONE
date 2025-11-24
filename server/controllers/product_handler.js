@@ -620,6 +620,83 @@ const getProductsByCategory = async (req, res) => {
   }
 };
 
+// ADJUST stock by size (JSONB approach)
+const adjustStock = async (req, res) => {
+  const db = getDb();
+  try {
+    const id = Number(req.params.id);
+    const { size, quantity = 1, operation = 'decrement' } = req.body;
+
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ success: false, error: 'Invalid product ID' });
+    }
+    if (!size || !Number.isInteger(quantity) || quantity <= 0) {
+      return res.status(400).json({ success: false, error: 'Invalid size or quantity' });
+    }
+
+    await db.query('BEGIN');
+
+    // Lock the product row for update to avoid races
+    const sel = await db.query('SELECT sizes, stock_quantity FROM products WHERE product_id = $1 FOR UPDATE', [id]);
+    if (sel.rowCount === 0) {
+      await db.query('ROLLBACK');
+      return res.status(404).json({ success: false, error: 'Product not found' });
+    }
+
+    const row = sel.rows[0];
+    const sizesObj = row.sizes || {};
+    const stockQty = Number(row.stock_quantity || 0);
+    const sizeCount = Number(sizesObj[size] ?? 0);
+
+    if (operation === 'decrement') {
+      if (stockQty < quantity) {
+        await db.query('ROLLBACK');
+        return res.status(409).json({ success: false, error: 'Insufficient total stock' });
+      }
+      if (sizeCount < quantity) {
+        await db.query('ROLLBACK');
+        return res.status(409).json({ success: false, error: `Insufficient stock for size ${size}` });
+      }
+
+      const updateQuery = `
+        UPDATE products
+        SET stock_quantity = stock_quantity - $1,
+            sizes = jsonb_set(sizes, $2::text[], to_jsonb(((sizes->>$3)::int - $1)), false)
+        WHERE product_id = $4
+        RETURNING *;
+      `;
+
+      const params = [quantity, [size], size, id];
+      const updated = await db.query(updateQuery, params);
+      await db.query('COMMIT');
+
+      return res.json({ success: true, data: updated.rows[0] });
+    }
+
+    if (operation === 'increment') {
+      const updateQuery = `
+        UPDATE products
+        SET stock_quantity = stock_quantity + $1,
+            sizes = jsonb_set(sizes, $2::text[], to_jsonb(((COALESCE((sizes->>$3)::int,0)) + $1)), false)
+        WHERE product_id = $4
+        RETURNING *;
+      `;
+
+      const params = [quantity, [size], size, id];
+      const updated = await db.query(updateQuery, params);
+      await db.query('COMMIT');
+      return res.json({ success: true, data: updated.rows[0] });
+    }
+
+    await db.query('ROLLBACK');
+    return res.status(400).json({ success: false, error: 'Invalid operation' });
+  } catch (err) {
+    try { await db.query('ROLLBACK'); } catch (e) {}
+    console.error('Error adjusting stock:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
 module.exports = {
   getProducts,
   getProductById,
@@ -629,4 +706,5 @@ module.exports = {
   deleteProduct,
   getProductsByCategory,
   searchProducts,
+  adjustStock,
 };

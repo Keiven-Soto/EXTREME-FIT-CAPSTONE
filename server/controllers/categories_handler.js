@@ -1,7 +1,4 @@
-const getDb = () =>
-  global && global.__DB_MOCK__
-    ? global.__DB_MOCK__
-    : require("../config/database");
+const getDb = () => (global && global.__DB_MOCK__) ? global.__DB_MOCK__ : require("../config/database");
 
 // GET all categories
 const getCategories = async (req, res) => {

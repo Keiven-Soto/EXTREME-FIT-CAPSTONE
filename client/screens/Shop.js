@@ -375,6 +375,7 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     paddingVertical: 20,
   },
+
   clearSearchButton: {
     backgroundColor: Colors.mainColor,
     paddingHorizontal: 28,

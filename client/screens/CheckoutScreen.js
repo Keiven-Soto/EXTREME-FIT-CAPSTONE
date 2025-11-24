@@ -105,14 +105,14 @@ export default function CheckoutScreen({ route, navigation }) {
           email: order?.email || undefined,
         },
         // Enable Apple Pay and Google Pay
-        applePay: {
-          merchantCountryCode: 'US',
-        },
-        googlePay: {
-          merchantCountryCode: 'US',
-          testEnv: __DEV__, // Use test environment in development
-          currencyCode: 'USD',
-        },
+        // applePay: {
+        //   merchantCountryCode: 'US',
+        // },
+        // googlePay: {
+        //   merchantCountryCode: 'US',
+        //   testEnv: __DEV__, // Use test environment in development
+        //   currencyCode: 'USD',
+        // },
         // Customize appearance
         appearance: {
           colors: {
@@ -166,6 +166,16 @@ export default function CheckoutScreen({ route, navigation }) {
       } else {
         // Payment succeeded!
         console.log('✅ Payment succeeded!');
+
+        // Clear cart in backend after successful payment (same as Pay Now button)
+        try {
+          await ApiService.cart.clear(userId);
+          console.log('🛒 Cart cleared after successful payment');
+        } catch (cartError) {
+          console.error('❌ Failed to clear cart:', cartError);
+          // Continue anyway - payment was successful
+        }
+
         Alert.alert(
           'Payment Successful',
           'Your order has been confirmed!',
@@ -206,7 +216,10 @@ export default function CheckoutScreen({ route, navigation }) {
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={{ paddingBottom: 120 }}
+      >
         {order && (
           <>
             <View style={styles.section}>
@@ -237,24 +250,19 @@ export default function CheckoutScreen({ route, navigation }) {
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Payment Method</Text>
-              
-              <View style={styles.paymentOption}>
+
+              <TouchableOpacity
+                style={styles.paymentOption}
+                onPress={handlePayment}
+                disabled={!paymentReady || loading}
+              >
                 <Ionicons name="card" size={24} color={Colors.primary} />
                 <Text style={styles.paymentText}>Credit or Debit Card</Text>
-              </View>
-
-              <View style={styles.paymentOption}>
-                <Ionicons name="logo-apple" size={24} color={Colors.dark} />
-                <Text style={styles.paymentText}>Apple Pay</Text>
-              </View>
-
-              <View style={styles.paymentOption}>
-                <Ionicons name="logo-google" size={24} color={Colors.primary} />
-                <Text style={styles.paymentText}>Google Pay</Text>
-              </View>
+                <Ionicons name="chevron-forward" size={20} color={Colors.gray} style={{ marginLeft: 'auto' }} />
+              </TouchableOpacity>
 
               <Text style={styles.paymentDescription}>
-                Your payment is processed securely by Stripe. We never store your card details.
+                Tap any option above or use the Pay button below to complete your purchase.
               </Text>
             </View>
 
@@ -388,10 +396,17 @@ const styles = StyleSheet.create({
   paymentOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    marginBottom: 8,
+    padding: 16,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1.5,
+    borderColor: '#e0e0e0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   paymentText: {
     fontSize: 16,
@@ -432,10 +447,19 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     padding: 16,
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   checkoutButton: {
     backgroundColor: Colors.primary,
@@ -444,6 +468,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 1000,
   },
   checkoutButtonDisabled: {
     backgroundColor: Colors.gray,
