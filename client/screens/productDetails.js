@@ -16,19 +16,23 @@ import Colors from "../colors";
 import { getCloudinaryImageUrl } from "../utils/cloudinary";
 import ApiService from "../services/api";
 import { useCurrentUser } from "../hooks/useAuthenticatedApi";
+import emitter, { WISHLIST_UPDATED } from "../utils/events";
+import { useWishlist } from "../hooks/useWishlist";
 
 export default function ProductDetailScreen({ route, navigation }) {
   const { productId, isFromWishlist } = route.params;
   const { user: clerkUser } = useUser();
   const { getCurrentUser } = useCurrentUser();
-
-  const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [selectedSize, setSelectedSize] = useState(null);
-  const [selectedColor, setSelectedColor] = useState(null);
-  const [quantity, setQuantity] = useState(1);
-  const [isWishlisted, setIsWishlisted] = useState(isFromWishlist || false);
   const [userId, setUserId] = useState(null);
+
+  const [product, setProduct] = useState(null); // Product details
+  const [loading, setLoading] = useState(true); // Loading state
+  const [selectedSize, setSelectedSize] = useState(null); // User-selected size
+  const [selectedColor, setSelectedColor] = useState(null); // User-selected color
+  const [quantity, setQuantity] = useState(1); // Quantity to add to cart
+
+  const { wishlist, add, remove } = useWishlist(); // Wishlist state
+  const isWishlisted = wishlist.includes(productId); // Check if product is wishlisted
 
   // Fetch authenticated user's database ID
   useEffect(() => {
@@ -47,16 +51,21 @@ export default function ProductDetailScreen({ route, navigation }) {
     fetchUserId();
   }, [clerkUser]);
 
+  // Load product details whenever productId changes
   useEffect(() => {
     console.log(
       "🔄 ProductDetails useEffect triggered - productId:",
       productId
     );
     loadProduct();
-  }, [productId]); // Only re-run when productId changes, not userId
+  }, [productId]);
 
+  // Fetch product details from API
   const loadProduct = async () => {
-    console.log("📦 loadProduct called for productId:", productId);
+    console.log(
+      "[ProductDetails] loadProduct called for productId:",
+      productId
+    );
     try {
       setLoading(true);
       const result = await ApiService.products.getById(productId);
@@ -65,25 +74,9 @@ export default function ProductDetailScreen({ route, navigation }) {
         const productData = result.data.data || result.data;
         setProduct(productData);
 
-        // Don't auto-select size or color - let user choose
+        // Reset selected size and color when loading new product
         setSelectedSize(null);
         setSelectedColor(null);
-
-        if (userId && !isFromWishlist) {
-          try {
-            const wishlistCheck = await ApiService.wishlist.getById(
-              userId,
-              productId
-            );
-
-            setIsWishlisted(
-              Array.isArray(wishlistCheck.data) && wishlistCheck.data.length > 0
-            );
-          } catch (err) {
-            console.error("Failed to fetch wishlist status", err);
-            setIsWishlisted(false);
-          }
-        }
       } else {
         Alert.alert("Error", "Failed to load product");
         navigation.goBack();
@@ -97,6 +90,7 @@ export default function ProductDetailScreen({ route, navigation }) {
     }
   };
 
+  // Handle adding product to cart
   const handleAddToCart = async () => {
     if (!userId) {
       Alert.alert(
@@ -126,7 +120,7 @@ export default function ProductDetailScreen({ route, navigation }) {
         selectedColor
       );
       if (result.success) {
-        // Fetch cart to update data after adding item
+        // Fetch cart to update local data after adding item
         await ApiService.cart.get(userId);
         Alert.alert(
           "Added to Cart",
@@ -152,43 +146,21 @@ export default function ProductDetailScreen({ route, navigation }) {
     }
   };
 
-  const handleWishlistToggle = async (productId) => {
+  // Toggle product in wishlist
+  const handleWishlistToggle = async (product) => {
     if (!userId) {
-      Alert.alert("Sign In Required", "Please sign in to manage your wishlist");
+      Alert.alert("Sign In Required", "Please sign in");
       return;
     }
 
-    if (!isWishlisted) {
-      console.log("Sent User ID and Product ID: ", userId, ", ", productId);
-      await ApiService.wishlist.add(userId, productId);
-      Alert.alert("Added to Wishlist", `${product.name}`, [{ text: "OK" }]);
-      setIsWishlisted(true);
+    if (isWishlisted) {
+      remove(product);
     } else {
-      Alert.alert(
-        "Remove from wishlist?",
-        `Are you sure you want to remove "${product.name}" from your wishlist?`,
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Remove",
-            style: "destructive",
-            onPress: async () => {
-              // call API to remove and refresh list
-              console.log(
-                "Sent User ID and Product ID: ",
-                userId,
-                product.product_id
-              );
-              await ApiService.wishlist.remove(userId, product.product_id);
-              setIsWishlisted(false);
-            },
-          },
-        ]
-      );
+      add(product);
     }
   };
 
-  // Nueva lógica: cantidad depende del stock de la talla seleccionada
+  // Increment quantity while respecting stock limits
   const incrementQuantity = () => {
     if (
       product?.sizes &&
@@ -199,12 +171,14 @@ export default function ProductDetailScreen({ route, navigation }) {
     }
   };
 
+  // Decrement quantity, minimum 1
   const decrementQuantity = () => {
     if (quantity > 1) {
       setQuantity(quantity - 1);
     }
   };
 
+  // Render loading state
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -216,6 +190,7 @@ export default function ProductDetailScreen({ route, navigation }) {
     );
   }
 
+  // Render fallback if product failed to load
   if (!product) {
     return (
       <SafeAreaView style={styles.container}>
@@ -226,6 +201,7 @@ export default function ProductDetailScreen({ route, navigation }) {
     );
   }
 
+  // Determine image source for product
   const imageSource = product.cloudinary_public_id
     ? {
         uri: getCloudinaryImageUrl(product.cloudinary_public_id, {
@@ -234,12 +210,13 @@ export default function ProductDetailScreen({ route, navigation }) {
       }
     : null;
 
+  // Compute total price based on quantity
   const totalPrice = (parseFloat(product.price) * quantity).toFixed(2);
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header with Back Button */}
+        {/* Header with Back & Wishlist Buttons */}
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
@@ -248,7 +225,7 @@ export default function ProductDetailScreen({ route, navigation }) {
             <Ionicons name="arrow-back" size={24} color={Colors.darkText} />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => handleWishlistToggle(productId)}
+            onPress={() => handleWishlistToggle(product)}
             style={styles.wishlistButton}
           >
             <Ionicons
@@ -279,7 +256,7 @@ export default function ProductDetailScreen({ route, navigation }) {
           )}
         </View>
 
-        {/* Product Info */}
+        {/* Product Info Section */}
         <View style={styles.contentContainer}>
           <Text style={styles.productName}>{product.name}</Text>
 
@@ -293,7 +270,7 @@ export default function ProductDetailScreen({ route, navigation }) {
             ${parseFloat(product.price).toFixed(2)}
           </Text>
 
-          {/* Description */}
+          {/* Product Description */}
           {product.description && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Description</Text>
@@ -308,7 +285,7 @@ export default function ProductDetailScreen({ route, navigation }) {
               <View style={styles.optionsContainer}>
                 {Object.keys(product.sizes).length === 1 &&
                 product.sizes["OS"] !== undefined ? (
-                  // Solo OS
+                  // Only One Size (OS) available
                   <TouchableOpacity
                     key="OS"
                     style={[
@@ -332,7 +309,7 @@ export default function ProductDetailScreen({ route, navigation }) {
                     </Text>
                   </TouchableOpacity>
                 ) : (
-                  // S, M, L, XL en orden si existen
+                  // Multiple sizes (S, M, L, XL)
                   ["S", "M", "L", "XL"]
                     .filter((size) => product.sizes[size] !== undefined)
                     .map((size) => {
@@ -433,7 +410,7 @@ export default function ProductDetailScreen({ route, navigation }) {
             </View>
           </View>
 
-          {/* Stock Info por talla */}
+          {/* Stock Info */}
           {selectedSize && product.sizes && (
             <Text style={styles.stockText}>
               {product.sizes[selectedSize] > 0
@@ -444,7 +421,7 @@ export default function ProductDetailScreen({ route, navigation }) {
         </View>
       </ScrollView>
 
-      {/* Add to Cart Button - Fixed at bottom */}
+      {/* Footer: Total Price + Add to Cart Button */}
       <View style={styles.footer}>
         <View style={styles.totalContainer}>
           <Text style={styles.totalLabel}>Total:</Text>
@@ -474,25 +451,15 @@ export default function ProductDetailScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.lightBackground,
-  },
+  container: { flex: 1, backgroundColor: Colors.lightBackground },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 40,
   },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: Colors.mutedText,
-  },
-  errorText: {
-    fontSize: 16,
-    color: Colors.mutedText,
-  },
+  loadingText: { marginTop: 10, fontSize: 16, color: Colors.mutedText },
+  errorText: { fontSize: 16, color: Colors.mutedText },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -500,21 +467,14 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: Colors.whiteBackground,
   },
-  backButton: {
-    padding: 8,
-  },
-  wishlistButton: {
-    padding: 8,
-  },
+  backButton: { padding: 8 },
+  wishlistButton: { padding: 8 },
   imageContainer: {
     width: "100%",
     height: 400,
     backgroundColor: Colors.whiteBackground,
   },
-  productImage: {
-    width: "100%",
-    height: "100%",
-  },
+  productImage: { width: "100%", height: "100%" },
   imagePlaceholder: {
     width: "100%",
     height: "100%",
@@ -522,14 +482,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: Colors.lightBackground,
   },
-  placeholderText: {
-    marginTop: 10,
-    fontSize: 14,
-    color: Colors.mutedText,
-  },
-  contentContainer: {
-    padding: 20,
-  },
+  placeholderText: { marginTop: 10, fontSize: 14, color: Colors.mutedText },
+  contentContainer: { padding: 20 },
   productName: {
     fontSize: 24,
     fontWeight: "bold",
@@ -550,25 +504,15 @@ const styles = StyleSheet.create({
     color: Colors.mainColor,
     marginBottom: 20,
   },
-  section: {
-    marginBottom: 24,
-  },
+  section: { marginBottom: 24 },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "600",
     color: Colors.darkText,
     marginBottom: 12,
   },
-  description: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: Colors.mutedText,
-  },
-  optionsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
+  description: { fontSize: 15, lineHeight: 22, color: Colors.mutedText },
+  optionsContainer: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   optionButton: {
     paddingHorizontal: 20,
     paddingVertical: 12,
@@ -581,19 +525,9 @@ const styles = StyleSheet.create({
     borderColor: Colors.mainColor,
     backgroundColor: Colors.mainColor,
   },
-  optionText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: Colors.darkText,
-  },
-  optionTextSelected: {
-    color: Colors.whiteText,
-  },
-  quantityContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 20,
-  },
+  optionText: { fontSize: 14, fontWeight: "600", color: Colors.darkText },
+  optionTextSelected: { color: Colors.whiteText },
+  quantityContainer: { flexDirection: "row", alignItems: "center", gap: 20 },
   quantityButton: {
     width: 40,
     height: 40,
@@ -611,11 +545,7 @@ const styles = StyleSheet.create({
     minWidth: 30,
     textAlign: "center",
   },
-  stockText: {
-    fontSize: 14,
-    color: Colors.mutedText,
-    marginTop: 8,
-  },
+  stockText: { fontSize: 14, color: Colors.mutedText, marginTop: 8 },
   footer: {
     padding: 20,
     backgroundColor: Colors.whiteBackground,
@@ -633,15 +563,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
   },
-  totalLabel: {
-    fontSize: 16,
-    color: Colors.mutedText,
-  },
-  totalPrice: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: Colors.darkText,
-  },
+  totalLabel: { fontSize: 16, color: Colors.mutedText },
+  totalPrice: { fontSize: 24, fontWeight: "bold", color: Colors.darkText },
   addToCartButton: {
     flexDirection: "row",
     backgroundColor: Colors.mainColor,
@@ -656,13 +579,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  buttonDisabled: {
-    backgroundColor: Colors.mutedText,
-    opacity: 0.5,
-  },
-  addToCartText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: Colors.whiteText,
-  },
+  buttonDisabled: { backgroundColor: Colors.mutedText, opacity: 0.5 },
+  addToCartText: { fontSize: 18, fontWeight: "bold", color: Colors.whiteText },
 });
