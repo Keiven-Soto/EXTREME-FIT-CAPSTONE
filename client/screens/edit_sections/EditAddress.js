@@ -109,7 +109,14 @@ export default function EditAddressSection({ navigation, route }) {
 
   /* ------------------------------ VALIDATION ------------------------------ */
 
-  const onChange = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
+  const onChange = (k, v) => {
+    // If changing country, reset the state to empty
+    if (k === 'country') {
+      setForm(prev => ({ ...prev, [k]: v, state: '' }));
+    } else {
+      setForm(prev => ({ ...prev, [k]: v }));
+    }
+  };
 
   const validate = () => {
     const required = ['street_address', 'city', 'state', 'postal_code', 'country'];
@@ -167,15 +174,12 @@ export default function EditAddressSection({ navigation, route }) {
       }
 
       if (result?.success) {
-        Alert.alert('Done', editing ? 'Address updated.' : 'Address added.');
+        Alert.alert('Success', editing ? 'Address updated.' : 'Address added.');
         // Let previous screen refresh
         navigation?.goBack();
       } else {
         throw new Error(result?.message || result?.error || 'Failed to save address.');
       }
-
-      Alert.alert('Success', editing ? 'Address updated.' : 'Address added.');
-      navigation.goBack();
     } catch (err) {
       Alert.alert('Error', err?.message || 'Unable to save address.');
     } finally {
@@ -252,7 +256,13 @@ export default function EditAddressSection({ navigation, route }) {
                     label="State"
                     value={form.state}
                     placeholder="State"
-                    onPress={() => setShowStatePicker(true)}
+                    onPress={() => {
+                      if (!form.country) {
+                        Alert.alert('Select Country First', 'Please select a country before choosing a state.');
+                      } else {
+                        setShowStatePicker(true);
+                      }
+                    }}
                   />
                 </View>
 
@@ -316,7 +326,7 @@ export default function EditAddressSection({ navigation, route }) {
           <PickerModal
             visible={showStatePicker}
             title="Select state"
-            data={US_STATES}
+            data={getStatesForCountry(form.country)}
             selected={form.state}
             onClose={() => setShowStatePicker(false)}
             onSelect={v => {
@@ -412,10 +422,32 @@ const US_STATES = [
   'Indiana','Iowa','Kansas','Kentucky','Louisiana','Maine','Maryland','Massachusetts',
   'Michigan','Minnesota','Mississippi','Missouri','Montana','Nebraska','Nevada',
   'New Hampshire','New Jersey','New Mexico','New York','North Carolina','North Dakota',
-  'Ohio','Oklahoma','Oregon','Pennsylvania','Puerto Rico','Rhode Island','South Carolina',
+  'Ohio','Oklahoma','Oregon','Pennsylvania','Rhode Island','South Carolina',
   'South Dakota','Tennessee','Texas','Utah','Vermont','Virginia','Washington',
   'West Virginia','Wisconsin','Wyoming'
 ];
+
+const PUERTO_RICO_STATES = ['Puerto Rico'];
+
+const CANADA_PROVINCES = [
+  'Alberta', 'British Columbia', 'Manitoba', 'New Brunswick', 'Newfoundland and Labrador',
+  'Northwest Territories', 'Nova Scotia', 'Nunavut', 'Ontario', 'Prince Edward Island',
+  'Quebec', 'Saskatchewan', 'Yukon'
+];
+
+// Helper function to get states based on country
+const getStatesForCountry = (country) => {
+  switch (country) {
+    case 'United States':
+      return US_STATES;
+    case 'Puerto Rico':
+      return PUERTO_RICO_STATES;
+    case 'Canada':
+      return CANADA_PROVINCES;
+    default:
+      return [];
+  }
+};
 
 /* ------------------------------ STYLES ------------------------------ */
 
