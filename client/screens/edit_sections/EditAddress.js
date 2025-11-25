@@ -65,15 +65,22 @@ export default function EditAddressSection({ navigation, route }) {
 
         setCurrentUser(user);
 
-        if (!editing) {
-          const addrList = await ApiService.addresses.getByUser(user.user_id);
-          const hasAddresses =
-            addrList?.success && Array.isArray(addrList.data) && addrList.data.length > 0;
-
-          if (!hasAddresses) {
-            setForm(prev => ({ ...prev, is_default: true }));
+        // If creating (not editing) and the user has no addresses yet,
+        // make the new address default by pre-filling the form flag.
+        if (!editing && user && user.user_id) {
+          try {
+            const addrList = await ApiService.addresses.getByUser(user.user_id);
+            const hasAddresses = addrList && addrList.success && Array.isArray(addrList.data) && addrList.data.length > 0;
+            if (!hasAddresses) {
+              setForm(prev => ({ ...prev, is_default: true }));
+            }
+          } catch (err) {
+            console.error('Error checking existing addresses for default behaviour:', err);
           }
-        } else {
+        }
+
+        // If editing, fetch the address details
+        if (editing && original.address_id) {
           const result = await ApiService.addresses.getByUser(user.user_id);
           const found = result.success
             ? result.data.find(a => a.address_id === original.address_id)
@@ -147,11 +154,24 @@ export default function EditAddressSection({ navigation, route }) {
         result = await ApiService.addresses.create(currentUser.user_id, payload);
       }
 
-      const savedId =
-        editing ? result?.data?.address_id || original.address_id : result?.data?.address_id;
+      // If this address should be the default, use the dedicated endpoint AFTER save
+      try {
+        const savedId = editing
+          ? (result?.data?.address_id || original.address_id || result?.address_id)
+          : (result?.data?.address_id || result?.address_id);
+        if (payload.is_default && savedId) {
+          await ApiService.addresses.setDefault(savedId);
+        }
+      } catch (e) {
+        console.error('Failed to set address as default after save:', e);
+      }
 
-      if (payload.is_default && savedId) {
-        await ApiService.addresses.setDefault(savedId);
+      if (result?.success) {
+        Alert.alert('Done', editing ? 'Address updated.' : 'Address added.');
+        // Let previous screen refresh
+        navigation?.goBack();
+      } else {
+        throw new Error(result?.message || result?.error || 'Failed to save address.');
       }
 
       Alert.alert('Success', editing ? 'Address updated.' : 'Address added.');
