@@ -8,8 +8,9 @@ import {
   ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import Colors from "../../colors";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Colors from "../../colors";
+import CornerLogo from "../../components/CornerLogo";
 
 export default function HelpSupportScreen({ navigation }) {
   const goBack = () => navigation.goBack();
@@ -122,6 +123,7 @@ export default function HelpSupportScreen({ navigation }) {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Help & Support</Text>
         <View style={{ width: 26 }} />
+        <CornerLogo/>
       </View>
 
       <ScrollView>
@@ -181,7 +183,7 @@ export default function HelpSupportScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: Colors.lightBackground,
   },
   header: {
     flexDirection: "row",
@@ -196,8 +198,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     flex: 1,
-    textAlign: "center",
-    fontSize: 22,
+    textAlign: "left",
+    fontSize: 20,
     fontWeight: "700",
     color: "#000",
   },

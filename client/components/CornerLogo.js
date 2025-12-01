@@ -20,7 +20,7 @@ export default function CornerLogo() {
 
 const styles = StyleSheet.create({
   logoContainer: {
-    position: 'absolute',
+    position: 'static',
     top: 10,
     right: 10,
     flexDirection: 'row',  

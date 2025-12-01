@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { useIsFocused } from '@react-navigation/native';
-import { useAuth } from '@clerk/clerk-expo';
-import ApiService, { setGlobalAuthToken, API_BASE_URL } from '../../services/api';
+import { useEffect, useState } from "react";
+import { useIsFocused } from "@react-navigation/native";
+import { useAuth } from "@clerk/clerk-expo";
+import ApiService, { setGlobalAuthToken } from "../../services/api";
 import {
   StyleSheet,
   Text,
@@ -13,12 +13,13 @@ import {
   Alert,
   Modal,
   KeyboardAvoidingView,
-  Platform
-} from 'react-native';
-import { useUser } from '@clerk/clerk-expo';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import Colors from '../../colors';
+  Platform,
+} from "react-native";
+import { useUser } from "@clerk/clerk-expo";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import Colors from "../../colors";
+import CornerLogo from "../../components/CornerLogo";
 
 export default function EditProfileSection({ navigation }) {
   const { getToken, isSignedIn } = useAuth();
@@ -30,8 +31,8 @@ export default function EditProfileSection({ navigation }) {
   const [loading, setLoading] = useState(true);
 
   const [modalVisible, setModalVisible] = useState(false);
-  const [editFirstName, setEditFirstName] = useState('');
-  const [editLastName, setEditLastName] = useState('');
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
   const [savingContact, setSavingContact] = useState(false);
 
   useEffect(() => {
@@ -51,7 +52,7 @@ export default function EditProfileSection({ navigation }) {
         if (result.success) setAddresses(result.data);
         else setAddresses([]);
       } catch (error) {
-        console.error('Error fetching user data:', error);
+        console.error("Error fetching user data:", error);
       }
       setLoading(false);
     };
@@ -62,8 +63,8 @@ export default function EditProfileSection({ navigation }) {
 
   const openEditModal = () => {
     if (!currentUser) return;
-    setEditFirstName(currentUser.first_name || '');
-    setEditLastName(currentUser.last_name || '');
+    setEditFirstName(currentUser.first_name || "");
+    setEditLastName(currentUser.last_name || "");
     setModalVisible(true);
   };
 
@@ -72,16 +73,25 @@ export default function EditProfileSection({ navigation }) {
     setSavingContact(true);
 
     try {
-      if (clerkUser && typeof clerkUser.update === 'function') {
+      if (clerkUser && typeof clerkUser.update === "function") {
         try {
-          await clerkUser.update({ firstName: editFirstName, lastName: editLastName });
+          await clerkUser.update({
+            firstName: editFirstName,
+            lastName: editLastName,
+          });
         } catch {
-          Alert.alert('Warning', 'Clerk failed to sync name, but changes will save locally.');
+          Alert.alert(
+            "Warning",
+            "Clerk failed to sync name, but changes will save locally."
+          );
         }
       }
 
       const payload = { first_name: editFirstName, last_name: editLastName };
-      const result = await ApiService.users.update(currentUser.user_id, payload);
+      const result = await ApiService.users.update(
+        currentUser.user_id,
+        payload
+      );
 
       let updatedUser = null;
       if (result?.success && result.data) updatedUser = result.data;
@@ -98,7 +108,7 @@ export default function EditProfileSection({ navigation }) {
   };
 
   const gotoEditAddressSection = (address) => {
-    navigation && navigation.navigate('EditAddress', { address });
+    navigation && navigation.navigate("EditAddress", { address });
   };
 
   const onSetDefault = async (addr) => {
@@ -106,10 +116,12 @@ export default function EditProfileSection({ navigation }) {
     try {
       // Use a dedicated endpoint that sets this address as default without requiring full payload
       const result = await ApiService.addresses.setDefault(addr.address_id);
-      console.log('Set default response:', result);
+      console.log("Set default response:", result);
       await sleep(500);
       if (result.success) {
-        const updated = await ApiService.addresses.getByUser(currentUser.user_id);
+        const updated = await ApiService.addresses.getByUser(
+          currentUser.user_id
+        );
         setAddresses(updated.success ? updated.data : []);
       }
     } catch (error) {
@@ -117,23 +129,25 @@ export default function EditProfileSection({ navigation }) {
     }
   };
 
-  const onResetPassword = () => navigation.navigate('ChangePassword');
-  const onAddAddress = () => navigation.navigate('EditAddress');
+  const onResetPassword = () => navigation.navigate("ChangePassword");
+  const onAddAddress = () => navigation.navigate("EditAddress");
 
   return (
     <SafeAreaView style={styles.container}>
       {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={goBack} style={styles.backBtn}>
+        <TouchableOpacity onPress={goBack} style={styles.backButton}>
           <Ionicons name="chevron-back" size={26} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Edit Profile</Text>
-        <View style={{ width: 26 }} />
+        <CornerLogo />
       </View>
 
       {/* BODY */}
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-        
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 120 }}
+      >
         {/* CONTACT DETAILS CARD */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Contact Details</Text>
@@ -142,7 +156,9 @@ export default function EditProfileSection({ navigation }) {
             <View style={styles.fieldGroup}>
               <Text style={styles.label}>Your Name</Text>
               <Text style={styles.value}>
-                {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : 'Loading...'}
+                {currentUser
+                  ? `${currentUser.first_name} ${currentUser.last_name}`
+                  : "Loading..."}
               </Text>
             </View>
 
@@ -160,7 +176,11 @@ export default function EditProfileSection({ navigation }) {
 
           <TouchableOpacity style={styles.linkRow} onPress={onResetPassword}>
             <Text style={styles.linkText}>Change password</Text>
-            <Ionicons name="chevron-forward" size={18} color={Colors.mutedText} />
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={Colors.mutedText}
+            />
           </TouchableOpacity>
         </View>
 
@@ -180,11 +200,12 @@ export default function EditProfileSection({ navigation }) {
           ) : (
             addresses.map((addr) => (
               <View key={addr.address_id} style={styles.addressCard}>
-                
                 {/* HEADER ROW */}
                 <View style={styles.addressHeaderRow}>
                   <Text style={styles.addressName}>Address</Text>
-                  {addr.is_default && <Text style={styles.defaultBadge}>Default</Text>}
+                  {addr.is_default && (
+                    <Text style={styles.defaultBadge}>Default</Text>
+                  )}
                 </View>
 
                 {/* ADDRESS DETAILS */}
@@ -193,11 +214,15 @@ export default function EditProfileSection({ navigation }) {
                   {addr.city}, {addr.state} {addr.postal_code}
                 </Text>
                 <Text style={styles.addressLine}>{addr.country}</Text>
-                {addr.phone && <Text style={styles.addressLine}>{addr.phone}</Text>}
+                {addr.phone && (
+                  <Text style={styles.addressLine}>{addr.phone}</Text>
+                )}
 
                 {/* ACTION ROW */}
                 <View style={styles.addressActions}>
-                  <TouchableOpacity onPress={() => gotoEditAddressSection(addr)}>
+                  <TouchableOpacity
+                    onPress={() => gotoEditAddressSection(addr)}
+                  >
                     <Text style={styles.editText}>Edit</Text>
                   </TouchableOpacity>
 
@@ -207,7 +232,6 @@ export default function EditProfileSection({ navigation }) {
                     </TouchableOpacity>
                   )}
                 </View>
-
               </View>
             ))
           )}
@@ -218,8 +242,8 @@ export default function EditProfileSection({ navigation }) {
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={{ width: '100%' }}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            style={{ width: "100%" }}
           >
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>Edit Name</Text>
@@ -234,7 +258,9 @@ export default function EditProfileSection({ navigation }) {
                   placeholderTextColor="#999"
                 />
 
-                <Text style={[styles.modalLabel, { marginTop: 16 }]}>Last Name</Text>
+                <Text style={[styles.modalLabel, { marginTop: 16 }]}>
+                  Last Name
+                </Text>
                 <TextInput
                   value={editLastName}
                   onChangeText={setEditLastName}
@@ -258,14 +284,16 @@ export default function EditProfileSection({ navigation }) {
               </TouchableOpacity>
 
               {/* CANCEL BUTTON */}
-              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setModalVisible(false)}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setModalVisible(false)}
+              >
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </KeyboardAvoidingView>
         </View>
       </Modal>
-
     </SafeAreaView>
   );
 }
@@ -275,37 +303,36 @@ export default function EditProfileSection({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.lightBackground,
   },
 
   /* HEADER */
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingTop: 12,
-    paddingBottom: 16,
-    backgroundColor: '#FFF',
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    backgroundColor: "#FFF",
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: "#E5E7EB",
   },
-  backBtn: { padding: 6 },
+  backButton: {
+    padding: 6,
+  },
   headerTitle: {
     flex: 1,
-    textAlign: 'center',
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#000',
+    textAlign: "left",
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#000",
   },
 
   /* CARD STYLE */
   card: {
-    backgroundColor: '#FFF',
-    marginHorizontal: 20,
-    marginTop: 20,
+    backgroundColor: "#FFF",
+    margin: 20,
     padding: 22,
     borderRadius: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.06,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
@@ -313,106 +340,106 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: 16,
-    color: '#111',
+    color: "#111",
   },
   label: {
     fontSize: 13,
-    color: '#666',
+    color: "#666",
     marginBottom: 4,
   },
   value: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#111',
+    fontWeight: "600",
+    color: "#111",
   },
   divider: {
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
+    borderBottomColor: "#E5E5E5",
     marginVertical: 20,
   },
   rowBetween: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   linkRow: {
     marginTop: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingVertical: 6,
   },
-  linkText: { fontSize: 15, color: '#111' },
+  linkText: { fontSize: 15, color: "#111" },
 
   /* ADDRESSES */
   addNew: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.mainColor,
   },
   noAddress: {
     marginTop: 8,
-    color: '#666',
+    color: "#666",
   },
   addressCard: {
-    backgroundColor: '#FAFAFA',
+    backgroundColor: "#FAFAFA",
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: "#E5E5E5",
     marginTop: 16,
   },
   addressHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 4,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   addressName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#111',
+    fontWeight: "600",
+    color: "#111",
   },
   defaultBadge: {
-    backgroundColor: '#EEE',
+    backgroundColor: "#EEE",
     fontSize: 12,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
-    color: '#666',
+    color: "#666",
   },
   addressLine: {
     fontSize: 14,
-    color: '#444',
+    color: "#444",
     marginTop: 2,
   },
   addressActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginTop: 12,
     gap: 16,
   },
   editText: {
     fontSize: 14,
     color: Colors.mainColor,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   setDefault: {
     fontSize: 14,
-    color: '#000',
-    fontWeight: '600',
+    color: "#000",
+    fontWeight: "600",
   },
 
   /* MODAL */
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "flex-end",
+    alignItems: "center",
   },
   modalContent: {
-    width: '100%',
-    backgroundColor: '#FFF',
+    width: "100%",
+    backgroundColor: "#FFF",
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     padding: 24,
@@ -420,55 +447,55 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#111',
-    textAlign: 'center',
+    fontWeight: "700",
+    color: "#111",
+    textAlign: "center",
     marginBottom: 10,
   },
   modalLabel: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#555',
+    fontWeight: "500",
+    color: "#555",
     marginBottom: 6,
   },
   modalInput: {
-    backgroundColor: '#FAFAFA',
+    backgroundColor: "#FAFAFA",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: "#E5E5E5",
     paddingHorizontal: 14,
     height: 48,
     fontSize: 16,
-    color: '#111',
+    color: "#111",
   },
   modalSaveBtn: {
-    backgroundColor: '#000',
+    backgroundColor: "#000",
     borderRadius: 24,
     paddingVertical: 14,
     marginTop: 28,
-    alignItems: 'center',
+    alignItems: "center",
   },
   modalSaveText: {
-    color: '#FFF',
-    fontWeight: '700',
+    color: "#FFF",
+    fontWeight: "700",
     fontSize: 16,
   },
   modalCancelBtn: {
     marginTop: 14,
-    alignItems: 'center',
+    alignItems: "center",
   },
   modalCancelText: {
-    color: '#666',
+    color: "#666",
     fontSize: 16,
   },
 
   /* FOOTER */
   footer: {
     paddingVertical: 24,
-    alignItems: 'center',
+    alignItems: "center",
   },
   footerText: {
     fontSize: 14,
-    color: '#777',
+    color: "#777",
   },
 });

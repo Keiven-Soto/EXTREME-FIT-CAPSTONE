@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useEffect, useState } from "react";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
   View,
   Text,
@@ -8,11 +8,13 @@ import {
   Image,
   TouchableOpacity,
   Dimensions,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '@clerk/clerk-expo';
-import ApiService, { setGlobalAuthToken } from '../../services/api';
-import { getCloudinaryImageUrl } from '../../utils/cloudinary';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "@clerk/clerk-expo";
+import ApiService, { setGlobalAuthToken } from "../../services/api";
+import { getCloudinaryImageUrl } from "../../utils/cloudinary";
+import Colors from "../../colors";
+import CornerLogo from "../../components/CornerLogo";
 
 /**
  * @file OrderHistory.js
@@ -24,16 +26,15 @@ import { getCloudinaryImageUrl } from '../../utils/cloudinary';
  */
 
 // ================== COMPONENTE TARJETA ==================
-function OrderCard({ order, onPress, navigation }) {
-
+function OrderCard({ order, navigation }) {
   const gotoOrderDetailsSection = () => {
-      navigation && navigation.navigate('OrderDetails', { orderId: order.id });
+    navigation && navigation.navigate("OrderDetails", { orderId: order.id });
   };
   // Calcula 3 columnas iguales dentro de la tarjeta, miniaturas más pequeñas
-  const SCREEN_W = Dimensions.get('window').width;
-  const CARD_HPAD = 12;              // padding horizontal de .card
+  const SCREEN_W = Dimensions.get("window").width;
+  const CARD_HPAD = 12; // padding horizontal de .card
   const COLS = 3;
-  const GAP = 8;                     // separación entre miniaturas
+  const GAP = 8; // separación entre miniaturas
 
   // Tamaño de las imágenes (ajustar aquí si se desea otro tamaño)
   const itemW = 100;
@@ -43,24 +44,21 @@ function OrderCard({ order, onPress, navigation }) {
   // No rellenar con null si son menos de 3
   const thumbs = order.images.slice(0, 3);
 
-  const total = typeof order.total === 'number' ? order.total : Number(order.total);
+  const total =
+    typeof order.total === "number" ? order.total : Number(order.total);
 
   // Contenedor principal de la tarjeta
   return (
     <View style={styles.card}>
       {/* Thumbnails row */}
-      <View style={[styles.thumbRow, { gap: GAP }]}> 
+      <View style={[styles.thumbRow, { gap: GAP }]}>
         {thumbs.map((uri, i) => (
           <View
             key={i}
             style={[styles.thumbWrap, { width: itemW, height: itemH }]}
           >
             {uri ? (
-              <Image
-                source={{ uri }}
-                style={styles.thumb}
-                resizeMode="cover"
-              />
+              <Image source={{ uri }} style={styles.thumb} resizeMode="cover" />
             ) : (
               <View style={styles.thumbPlaceholder}>
                 <Ionicons name="image-outline" size={20} color="#9ca3af" />
@@ -73,13 +71,19 @@ function OrderCard({ order, onPress, navigation }) {
 
       {/* Order info text */}
       <Text style={styles.metaText}>
-        <Text style={{ color: '#666' }}>Order </Text>
+        <Text style={{ color: "#666" }}>Order </Text>
         <Text style={styles.metaLink}>#{order.id}</Text>
-        <Text> • ${!isNaN(total) ? total.toFixed(2) : '0.00'} • {order.placedAt}</Text>
+        <Text>
+          {" "}
+          • ${!isNaN(total) ? total.toFixed(2) : "0.00"} • {order.placedAt}
+        </Text>
       </Text>
 
       {/* Details button */}
-      <TouchableOpacity onPress={gotoOrderDetailsSection} style={styles.detailsBtn}>
+      <TouchableOpacity
+        onPress={gotoOrderDetailsSection}
+        style={styles.detailsBtn}
+      >
         <Text style={styles.detailsBtnText}>View Order</Text>
       </TouchableOpacity>
     </View>
@@ -88,153 +92,184 @@ function OrderCard({ order, onPress, navigation }) {
 
 // ================== PANTALLA PRINCIPAL ==================
 export default function OrderHistoryScreen({ navigation }) {
+  const goBack = () => navigation.goBack();
+
   const { getToken, isSignedIn } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-useEffect(() => {
-  const fetchOrdersWithImages = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const token = await getToken();
-      if (!token) {
-        throw new Error('No authentication token available');
-      }
-      setGlobalAuthToken(token);
+  useEffect(() => {
+    const fetchOrdersWithImages = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const token = await getToken();
+        if (!token) {
+          throw new Error("No authentication token available");
+        }
+        setGlobalAuthToken(token);
 
-      const currentUser = await ApiService.users.getCurrentUser();
+        const currentUser = await ApiService.users.getCurrentUser();
 
-      if (!currentUser || !currentUser.user_id) {
-        throw new Error('User not authenticated');
-      }
+        if (!currentUser || !currentUser.user_id) {
+          throw new Error("User not authenticated");
+        }
 
-      const ordersResult = await ApiService.orders.getByUser(currentUser.user_id);
-      if (!ordersResult.success) {
-        throw new Error(ordersResult.error || 'Failed to fetch orders');
-      }
-      const orders = ordersResult.data || [];
+        const ordersResult = await ApiService.orders.getByUser(
+          currentUser.user_id
+        );
+        if (!ordersResult.success) {
+          throw new Error(ordersResult.error || "Failed to fetch orders");
+        }
+        const orders = ordersResult.data || [];
 
-      const ordersWithImages = await Promise.all(
-        orders.map(async (order) => {
-          try {
-            const itemsResult = await ApiService.orders.getOrderItems(order.order_id);
-            const orderItems = itemsResult.success ? itemsResult.data || [] : [];
+        const ordersWithImages = await Promise.all(
+          orders.map(async (order) => {
+            try {
+              const itemsResult = await ApiService.orders.getOrderItems(
+                order.order_id
+              );
+              const orderItems = itemsResult.success
+                ? itemsResult.data || []
+                : [];
 
-            const images = await Promise.all(
-              orderItems.map(async (item) => {
-                try {
-                  const productResult = await ApiService.products.getById(item.product_id);
-                  if (!productResult.success) return null;
-                  
-                  const product = productResult.data?.data || productResult.data;
-                  if (product?.cloudinary_public_id) {
-                    return getCloudinaryImageUrl(product.cloudinary_public_id);
+              const images = await Promise.all(
+                orderItems.map(async (item) => {
+                  try {
+                    const productResult = await ApiService.products.getById(
+                      item.product_id
+                    );
+                    if (!productResult.success) return null;
+
+                    const product =
+                      productResult.data?.data || productResult.data;
+                    if (product?.cloudinary_public_id) {
+                      return getCloudinaryImageUrl(
+                        product.cloudinary_public_id
+                      );
+                    }
+                    if (product?.image_url) {
+                      return product.image_url;
+                    }
+                    return null;
+                  } catch (err) {
+                    return null;
                   }
-                  if (product?.image_url) {
-                    return product.image_url;
-                  }
-                  return null;
-                } catch (err) {
-                  return null;
-                }
-              })
-            );
+                })
+              );
 
-            return { ...order, images: images.filter(Boolean) };
-          } catch (err) {
-            return { ...order, images: [] };
-          }
-        })
-      );
+              return { ...order, images: images.filter(Boolean) };
+            } catch (err) {
+              return { ...order, images: [] };
+            }
+          })
+        );
 
-      setOrders(ordersWithImages);
-    } catch (err) {
-      console.error('Order fetch error:', err);
-      setError(err.message || 'Error loading orders');
-    } finally {
-      setLoading(false);
-    }
-  };
-  fetchOrdersWithImages();
-}, []);
+        setOrders(ordersWithImages);
+      } catch (err) {
+        console.error("Order fetch error:", err);
+        setError(err.message || "Error loading orders");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrdersWithImages();
+  }, []);
 
   return (
-    <SafeAreaView style={styles.safeArea}> 
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.iconBtn} onPress={() => navigation?.goBack?.()}>
-            <Ionicons name="chevron-back" size={24} color="#111" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Orders</Text>
-        </View>
-
-        {loading ? (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Text>Loading orders...</Text>
-          </View>
-        ) : error ? (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Text>{error}</Text>
-            <Text style={{ color: 'red', fontSize: 12, marginTop: 8 }}>
-              {error === 'Error loading orders' ? '¿Estás usando localhost en un dispositivo físico? Usa la IP local de tu PC.' : ''}
-            </Text>
-          </View>
-        ) : (
-          <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-            {orders.length === 0 ? (
-              <Text>No orders found.</Text>
-            ) : (
-              orders.map((order) => (
-                <OrderCard
-                  key={order.order_id}
-                  navigation={navigation}
-                  order={{
-                    id: order.order_id,
-                    status: order.order_status,
-                    dateLabel: order.created_at ? new Date(order.created_at).toDateString() : '',
-                    total: order.total_amount,
-                    placedAt: order.created_at ? new Date(order.created_at).toLocaleDateString() : '',
-                    images: order.images || [],
-                  }}
-                />
-              ))
-            )}
-          </ScrollView>
-        )}
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={goBack} style={styles.backButton}>
+          <Ionicons name="chevron-back" size={26} color="#000" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Orders</Text>
+        <CornerLogo />
       </View>
+
+      {loading ? (
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <Text>Loading orders...</Text>
+        </View>
+      ) : error ? (
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <Text>{error}</Text>
+          <Text style={{ color: "red", fontSize: 12, marginTop: 8 }}>
+            {error === "Error loading orders"
+              ? "¿Estás usando localhost en un dispositivo físico? Usa la IP local de tu PC."
+              : ""}
+          </Text>
+        </View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+        >
+          {orders.length === 0 ? (
+            <Text>No orders found.</Text>
+          ) : (
+            orders.map((order) => (
+              <OrderCard
+                key={order.order_id}
+                navigation={navigation}
+                order={{
+                  id: order.order_id,
+                  status: order.order_status,
+                  dateLabel: order.created_at
+                    ? new Date(order.created_at).toDateString()
+                    : "",
+                  total: order.total_amount,
+                  placedAt: order.created_at
+                    ? new Date(order.created_at).toLocaleDateString()
+                    : "",
+                  images: order.images || [],
+                }}
+              />
+            ))
+          )}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
 
 // ================== ESTILOS ==================
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#fff' },
-  container: { flex: 1, backgroundColor: '#fff' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e5e7eb',
-    backgroundColor: '#fff',
+  container: {
+    flex: 1,
+    backgroundColor: Colors.lightBackground,
   },
-  headerTitle: { fontSize: 18, fontWeight: '600', color: '#111', textAlign: 'center', flex: 1 },
-  iconBtn: { padding: 6, borderRadius: 999 },
-
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    backgroundColor: "#FFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  backButton: {
+    padding: 6,
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: "left",
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#000",
+  },
   scroll: { padding: 16, paddingBottom: 96 },
-
   card: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: "#e5e7eb",
     borderRadius: 16,
     padding: 12,
-    backgroundColor: '#fff',
-    shadowColor: '#000',
+    backgroundColor: "#fff",
+    shadowColor: "#000",
     shadowOpacity: 0.06,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
@@ -243,29 +278,33 @@ const styles = StyleSheet.create({
   },
 
   // ==== miniaturas ====
-  thumbRow: { flexDirection: 'row' },
+  thumbRow: { flexDirection: "row" },
   thumbWrap: {
     borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#f4f4f5',
+    overflow: "hidden",
+    backgroundColor: "#f4f4f5",
   },
-  thumb: { width: '100%', height: '100%', borderRadius: 8 },
+  thumb: { width: "100%", height: "100%", borderRadius: 8 },
   thumbPlaceholder: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: 6,
   },
-  placeholderText: { fontSize: 12, color: '#9ca3af' },
+  placeholderText: { fontSize: 12, color: "#9ca3af" },
 
-  metaText: { marginTop: 10, color: '#111', fontSize: 14 },
-  metaLink: { textDecorationLine: 'underline', fontWeight: '600', color: '#111' },
+  metaText: { marginTop: 10, color: "#111", fontSize: 14 },
+  metaLink: {
+    textDecorationLine: "underline",
+    fontWeight: "600",
+    color: "#111",
+  },
   detailsBtn: {
     marginTop: 10,
-    backgroundColor: '#f4f4f5',
+    backgroundColor: "#f4f4f5",
     paddingVertical: 12,
     borderRadius: 999,
-    alignItems: 'center',
+    alignItems: "center",
   },
-  detailsBtnText: { fontSize: 16, fontWeight: '700', color: '#111' },
+  detailsBtnText: { fontSize: 16, fontWeight: "700", color: "#111" },
 });
