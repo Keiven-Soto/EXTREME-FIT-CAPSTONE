@@ -69,4 +69,4 @@ export default function App() {
       </StripeProvider>
     </ClerkProvider>
   );
-}console.log('Clerk Key:', process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY);
+}
