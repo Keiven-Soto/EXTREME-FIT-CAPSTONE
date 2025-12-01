@@ -63,11 +63,9 @@ export default function Navbar() {
     };
 
     fetchCartCount();
-
-    // Poll cart count every 2 seconds to keep it updated
-    const interval = setInterval(fetchCartCount, 2000);
-
-    return () => clearInterval(interval);
+    // TODO: FIX BAG COUNT UPDATING ISSUE
+    // No polling: fetch once when `userId` or `tokenReady` change.
+    // Cleanup is not needed since we don't set an interval.
   }, [userId, tokenReady]);
   return (
     <Tab.Navigator
