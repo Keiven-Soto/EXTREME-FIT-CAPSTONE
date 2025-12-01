@@ -2,482 +2,473 @@ import React, { useEffect, useState } from 'react';
 import { useIsFocused } from '@react-navigation/native';
 import { useAuth } from '@clerk/clerk-expo';
 import ApiService, { setGlobalAuthToken, API_BASE_URL } from '../../services/api';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Alert } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  TextInput,
+  Alert,
+  Modal,
+  KeyboardAvoidingView,
+  Platform
+} from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../../colors';
 
-export default function EditProfileSection({navigation}) {
+export default function EditProfileSection({ navigation }) {
   const { getToken, isSignedIn } = useAuth();
+  const isFocused = useIsFocused();
+  const { user: clerkUser } = useUser();
 
-  const gotoEditAddressSection = (address) => {
-    navigation && navigation.navigate('EditAddress', { address });
-  };
-
-  // Estado para usuario autenticado, direcciones y loading
   const [currentUser, setCurrentUser] = useState(null);
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const isFocused = useIsFocused();
+
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editFirstName, setEditFirstName] = useState('');
+  const [editLastName, setEditLastName] = useState('');
+  const [savingContact, setSavingContact] = useState(false);
 
   useEffect(() => {
     const fetchUserAndAddresses = async () => {
       setLoading(true);
       try {
-        // Debug: Check auth status
-        console.log('🔐 Auth Status:', { isSignedIn });
-
-        // Try to get token
         const token = await getToken();
-        console.log('🎫 Token present:', !!token);
-
-        if (!token) {
-          console.error('❌ No token available - user not authenticated');
-          setLoading(false);
-          return;
-        }
-
-        // Set token globally for API calls
+        if (!token) return;
         setGlobalAuthToken(token);
 
-        // Get authenticated user from database
-        console.log('🔍 Full API URL:', `${API_BASE_URL}/api/users/me`);
-
         const user = await ApiService.users.getCurrentUser();
-        console.log('👤 Raw response:', JSON.stringify(user, null, 2));
-        console.log('👤 User response:', user);
-
-        if (!user || !user.user_id) {
-          console.error('❌ User not authenticated - no user_id in response');
-          setLoading(false);
-          return;
-        }
+        if (!user || !user.user_id) return;
 
         setCurrentUser(user);
 
-        // Fetch addresses for the authenticated user
         const result = await ApiService.addresses.getByUser(user.user_id);
-        console.log('Direcciones API result:', result);
-        if (result.success) {
-          setAddresses(result.data);
-        } else {
-          setAddresses([]);
-        }
+        if (result.success) setAddresses(result.data);
+        else setAddresses([]);
       } catch (error) {
         console.error('Error fetching user data:', error);
-        setAddresses([]);
       }
       setLoading(false);
     };
-    if (isFocused) {
-      fetchUserAndAddresses();
-    }
+    if (isFocused) fetchUserAndAddresses();
   }, [isFocused]);
 
-  // Handlers
-  const [editingContact, setEditingContact] = useState(false);
-  const [editFirstName, setEditFirstName] = useState('');
-  const [editLastName, setEditLastName] = useState('');
-  const [savingContact, setSavingContact] = useState(false);
-  const { user: clerkUser } = useUser();
+  const goBack = () => navigation && navigation.goBack();
 
-  const onEditContact = () => {
+  const openEditModal = () => {
     if (!currentUser) return;
     setEditFirstName(currentUser.first_name || '');
     setEditLastName(currentUser.last_name || '');
-    setEditingContact(true);
+    setModalVisible(true);
   };
 
-  const onCancelEditContact = () => {
-    setEditingContact(false);
-  };
-
-  const onSaveContact = async () => {
+  const saveName = async () => {
     if (!currentUser?.user_id) return;
     setSavingContact(true);
+
     try {
-      // First, update Clerk profile if available
       if (clerkUser && typeof clerkUser.update === 'function') {
         try {
           await clerkUser.update({ firstName: editFirstName, lastName: editLastName });
-          console.log('✅ Clerk profile updated');
-        } catch (clerkErr) {
-          console.warn('Failed to update Clerk profile:', clerkErr);
-          // Don't abort — continue to update backend, but inform user
-          Alert.alert('Clerk sync failed', 'Name saved locally but failed to sync with authentication provider.');
+        } catch {
+          Alert.alert('Warning', 'Clerk failed to sync name, but changes will save locally.');
         }
       }
-      const payload = {
-        first_name: editFirstName,
-        last_name: editLastName,
-      };
 
+      const payload = { first_name: editFirstName, last_name: editLastName };
       const result = await ApiService.users.update(currentUser.user_id, payload);
-      // result may be the updated user object or an API wrapper { success, data }
+
       let updatedUser = null;
-      if (result) {
-        if (result.success && result.data) updatedUser = result.data;
-        else if (result.user_id) updatedUser = result;
-      }
+      if (result?.success && result.data) updatedUser = result.data;
+      else if (result.user_id) updatedUser = result;
+      else updatedUser = await ApiService.users.getCurrentUser();
 
-      if (updatedUser) {
-        setCurrentUser(updatedUser);
-      } else {
-        // If API didn't return the updated user, refetch current user
-        const refetched = await ApiService.users.getCurrentUser();
-        if (refetched && refetched.user_id) setCurrentUser(refetched);
-      }
-
-      setEditingContact(false);
-    } catch (err) {
-      console.error('Error updating contact:', err);
+      if (updatedUser) setCurrentUser(updatedUser);
+      setModalVisible(false);
+    } catch (error) {
+      console.error(error);
     }
+
     setSavingContact(false);
   };
-  const onResetPassword = () => {
-    navigation && navigation.navigate('ChangePassword');
+
+  const gotoEditAddressSection = (address) => {
+    navigation && navigation.navigate('EditAddress', { address });
   };
-  const onAddAddress = () => {
-    navigation && navigation.navigate('EditAddress');
-  };
-  const onEditAddress = (addr) => {};
-  
+
   const onSetDefault = async (addr) => {
     if (!addr?.address_id || !currentUser?.user_id) return;
     try {
-      const payload = {
-        street_address: addr.street_address,
-        city: addr.city,
-        state: addr.state,
-        postal_code: addr.postal_code,
-        country: addr.country,
-        address_type: addr.address_type,
-        phone: addr.phone || null,
-        is_default: true
-      };
-      const result = await ApiService.addresses.update(addr.address_id, payload);
+      // Use a dedicated endpoint that sets this address as default without requiring full payload
+      const result = await ApiService.addresses.setDefault(addr.address_id);
       console.log('Set default response:', result);
       await sleep(500);
       if (result.success) {
         const updated = await ApiService.addresses.getByUser(currentUser.user_id);
         setAddresses(updated.success ? updated.data : []);
-      } else {
-        console.log('Error setting default address:', result.message || result);
       }
-    } catch (err) {
-      console.log('Default address error:', err);
+    } catch (error) {
+      console.error(error);
     }
   };
 
-  const goBack = () => {
-    navigation && navigation.goBack();
-  }
-
-  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+  const onResetPassword = () => navigation.navigate('ChangePassword');
+  const onAddAddress = () => navigation.navigate('EditAddress');
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Static Header */}
-      <View style={styles.staticHeader}>
-        <TouchableOpacity style={styles.headerBackBtn} onPress={goBack}>
-          <Ionicons name="arrow-back" size={24} color={Colors.mainColor} />
+      {/* HEADER */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={26} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.staticHeaderTitle}>Edit Profile</Text>
+        <Text style={styles.headerTitle}>Edit Profile</Text>
+        <View style={{ width: 26 }} />
       </View>
-      
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }}>
-        {/* CONTACT DETAILS */}
+
+      {/* BODY */}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+        
+        {/* CONTACT DETAILS CARD */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>CONTACT DETAILS</Text>
-          {/* Name Row */}
-          <View style={styles.fieldRow}>
-            <View style={styles.fieldCol}>
-              <Text style={styles.fieldLabel}>Your Name</Text>
-              {!editingContact ? (
-                <Text style={styles.fieldValue}>
-                  {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : 'Loading...'}
-                </Text>
-              ) : (
-                <View>
-                  <TextInput
-                    value={editFirstName}
-                    onChangeText={setEditFirstName}
-                    placeholder="First name"
-                    style={styles.input}
-                  />
-                  <TextInput
-                    value={editLastName}
-                    onChangeText={setEditLastName}
-                    placeholder="Last name"
-                    style={styles.input}
-                  />
-                </View>
-              )}
+          <Text style={styles.sectionTitle}>Contact Details</Text>
+
+          <View style={styles.rowBetween}>
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Your Name</Text>
+              <Text style={styles.value}>
+                {currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : 'Loading...'}
+              </Text>
             </View>
-            {!editingContact ? (
-              <TouchableOpacity onPress={onEditContact} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name="pencil" size={18} color={Colors.mutedText} />
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.editButtons}>
-                <TouchableOpacity style={[styles.saveBtn]} onPress={onSaveContact} disabled={savingContact}>
-                  {savingContact ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Text style={styles.btnText}>Save</Text>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.cancelBtn]} onPress={onCancelEditContact} disabled={savingContact}>
-                  <Text style={styles.btnText}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+
+            <TouchableOpacity onPress={openEditModal}>
+              <Ionicons name="pencil" size={20} color={Colors.mutedText} />
+            </TouchableOpacity>
           </View>
-          {/* Email Row */}
-          <View style={[styles.fieldRow, styles.fieldRowDivider]}>
-            <View style={styles.fieldCol}>
-              <Text style={styles.fieldLabel}>Email Address</Text>
-              <Text style={styles.fieldValue}>{currentUser?.email || 'Loading...'}</Text>
+
+          <View style={[styles.rowBetween, styles.divider]}>
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Email Address</Text>
+              <Text style={styles.value}>{currentUser?.email}</Text>
             </View>
           </View>
-          {/* Change Password Link */}
+
           <TouchableOpacity style={styles.linkRow} onPress={onResetPassword}>
             <Text style={styles.linkText}>Change password</Text>
             <Ionicons name="chevron-forward" size={18} color={Colors.mutedText} />
           </TouchableOpacity>
         </View>
 
-        {/* ADDRESSES */}
+        {/* ADDRESSES CARD */}
         <View style={styles.card}>
           <View style={styles.rowBetween}>
-            <Text style={styles.sectionTitle}>ADDRESSES</Text>
+            <Text style={styles.sectionTitle}>Addresses</Text>
             <TouchableOpacity onPress={onAddAddress}>
               <Text style={styles.addNew}>Add new</Text>
             </TouchableOpacity>
           </View>
 
           {loading ? (
-            <ActivityIndicator size="small" color={Colors.mainColor} style={{ marginVertical: 16 }} />
+            <ActivityIndicator size="small" color="#000" />
           ) : addresses.length === 0 ? (
-            <Text style={{ color: Colors.mutedText, marginVertical: 12 }}>No addresses found.</Text>
+            <Text style={styles.noAddress}>No addresses found.</Text>
           ) : (
-            addresses.map((addr, idx) => (
-              <View key={addr.address_id} style={[styles.addressCard, idx !== 0 && { marginTop: 14 }]}> 
-                <View style={styles.addressHeader}>
-                  <Text style={styles.addressName}>{addr.address_type ? addr.address_type.charAt(0).toUpperCase() + addr.address_type.slice(1) : 'Address'}</Text>
-                  {addr.is_default ? <Text style={styles.badgeDefault}>Default</Text> : null}
+            addresses.map((addr) => (
+              <View key={addr.address_id} style={styles.addressCard}>
+                
+                {/* HEADER ROW */}
+                <View style={styles.addressHeaderRow}>
+                  <Text style={styles.addressName}>Address</Text>
+                  {addr.is_default && <Text style={styles.defaultBadge}>Default</Text>}
                 </View>
+
+                {/* ADDRESS DETAILS */}
                 <Text style={styles.addressLine}>{addr.street_address}</Text>
-                <Text style={styles.addressLine}>{addr.city}{addr.state ? `, ${addr.state}` : ''} {addr.postal_code}</Text>
+                <Text style={styles.addressLine}>
+                  {addr.city}, {addr.state} {addr.postal_code}
+                </Text>
                 <Text style={styles.addressLine}>{addr.country}</Text>
-                {addr.phone ? <Text style={styles.addressLine}>{addr.phone}</Text> : null}
+                {addr.phone && <Text style={styles.addressLine}>{addr.phone}</Text>}
+
+                {/* ACTION ROW */}
                 <View style={styles.addressActions}>
-                  <TouchableOpacity style={styles.iconBtn} onPress={() => gotoEditAddressSection(addr)}>
-                    <Text>Edit</Text>
+                  <TouchableOpacity onPress={() => gotoEditAddressSection(addr)}>
+                    <Text style={styles.editText}>Edit</Text>
                   </TouchableOpacity>
-                  {!addr.is_default ? (
+
+                  {!addr.is_default && (
                     <TouchableOpacity onPress={() => onSetDefault(addr)}>
-                      <Text style={styles.setDefaultText}>Set as default</Text>
+                      <Text style={styles.setDefault}>Set as default</Text>
                     </TouchableOpacity>
-                  ) : null}
+                  )}
                 </View>
+
               </View>
             ))
           )}
         </View>
-
-        {/* FOOTER */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Extreme Fit v1.0.0</Text>
-        </View>
       </ScrollView>
+
+      {/* EDIT NAME MODAL (SHOPIFY STYLE) */}
+      <Modal visible={modalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={{ width: '100%' }}
+          >
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Edit Name</Text>
+
+              <View style={{ marginTop: 12 }}>
+                <Text style={styles.modalLabel}>First Name</Text>
+                <TextInput
+                  value={editFirstName}
+                  onChangeText={setEditFirstName}
+                  style={styles.modalInput}
+                  placeholder="First name"
+                  placeholderTextColor="#999"
+                />
+
+                <Text style={[styles.modalLabel, { marginTop: 16 }]}>Last Name</Text>
+                <TextInput
+                  value={editLastName}
+                  onChangeText={setEditLastName}
+                  style={styles.modalInput}
+                  placeholder="Last name"
+                  placeholderTextColor="#999"
+                />
+              </View>
+
+              {/* SAVE BUTTON */}
+              <TouchableOpacity
+                style={[styles.modalSaveBtn, savingContact && { opacity: 0.7 }]}
+                onPress={saveName}
+                disabled={savingContact}
+              >
+                {savingContact ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.modalSaveText}>Save Changes</Text>
+                )}
+              </TouchableOpacity>
+
+              {/* CANCEL BUTTON */}
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setModalVisible(false)}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
 
-const CARD_RADIUS = 12;
+/* ------------------------ STYLES ------------------------ */
 
 const styles = StyleSheet.create({
-  staticHeader: {
-    width: '100%',
-    paddingTop: 18,
-    paddingBottom: 12,
-    backgroundColor: Colors.lightBackground,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.lightBackground,
-    zIndex: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  staticHeaderTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: Colors.mainColor,
-    letterSpacing: 0.5,
-    textAlign: 'center',
-    flex: 1,
-  },
-  headerBackBtn: {
-    position: 'absolute',
-    left: 12,
-    top: 18,
-    padding: 4,
-    zIndex: 20,
-  },
   container: {
     flex: 1,
-    backgroundColor: Colors.lightBackground,
+    backgroundColor: '#F3F4F6',
   },
+
+  /* HEADER */
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 16,
+    backgroundColor: '#FFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  backBtn: { padding: 6 },
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#000',
+  },
+
+  /* CARD STYLE */
   card: {
-    backgroundColor: Colors.whiteBackground,
-    marginTop: 20,
+    backgroundColor: '#FFF',
     marginHorizontal: 20,
-    borderRadius: CARD_RADIUS,
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 10,
-    shadowColor: Colors.shadowColor,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
+    marginTop: 20,
+    padding: 22,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: Colors.darkText,
-    letterSpacing: 0.3,
-    marginBottom: 10,
+    fontSize: 17,
+    fontWeight: '700',
+    marginBottom: 16,
+    color: '#111',
   },
-  fieldRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  fieldRowDivider: {
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.grayBorder,
-  },
-  fieldCol: {
-    flex: 1,
-  },
-  fieldLabel: {
-    fontSize: 12,
-    color: Colors.mutedText,
+  label: {
+    fontSize: 13,
+    color: '#666',
     marginBottom: 4,
   },
-  fieldValue: {
+  value: {
     fontSize: 16,
-    color: Colors.darkText,
+    fontWeight: '600',
+    color: '#111',
   },
-  linkRow: {
-    paddingVertical: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  linkText: {
-    fontSize: 14,
-    color: Colors.darkText,
+  divider: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+    marginVertical: 20,
   },
   rowBetween: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginBottom: 6,
+    alignItems: 'center',
   },
+  linkRow: {
+    marginTop: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  linkText: { fontSize: 15, color: '#111' },
+
+  /* ADDRESSES */
   addNew: {
-    fontSize: 14,
-    color: Colors.mainColor,
+    fontSize: 15,
     fontWeight: '600',
+    color: Colors.mainColor,
+  },
+  noAddress: {
+    marginTop: 8,
+    color: '#666',
   },
   addressCard: {
-    backgroundColor: Colors.lightBackground,
-    borderRadius: 10,
-    padding: 14,
+    backgroundColor: '#FAFAFA',
+    borderRadius: 12,
+    padding: 16,
     borderWidth: 1,
-    borderColor: Colors.grayBorder,
+    borderColor: '#E5E5E5',
+    marginTop: 16,
   },
-  addressHeader: {
+  addressHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
+    justifyContent: 'space-between',
   },
   addressName: {
     fontSize: 16,
-    color: Colors.darkText,
-    fontWeight: '700',
-    marginRight: 8,
+    fontWeight: '600',
+    color: '#111',
   },
-  badgeDefault: {
-    fontSize: 12,
-    color: Colors.mutedText,
+  defaultBadge: {
     backgroundColor: '#EEE',
+    fontSize: 12,
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: 6,
-    overflow: 'hidden',
+    color: '#666',
   },
   addressLine: {
     fontSize: 14,
-    color: Colors.mutedText,
+    color: '#444',
     marginTop: 2,
   },
   addressActions: {
-    marginTop: 10,
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    marginTop: 12,
+    gap: 16,
   },
-  iconBtn: {
-    padding: 6,
-  },
-  setDefaultText: {
-    fontSize: 13,
+  editText: {
+    fontSize: 14,
     color: Colors.mainColor,
     fontWeight: '600',
   },
-  input: {
-    borderWidth: 1,
-    borderColor: Colors.grayBorder,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    marginTop: 6,
-    width: 300,
-    maxWidth: '80%',
-    backgroundColor: Colors.whiteBackground,
-    color: Colors.darkText,
+  setDefault: {
+    fontSize: 14,
+    color: '#000',
+    fontWeight: '600',
   },
-  editButtons: {
-    flexDirection: 'row',
+
+  /* MODAL */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-    gap: 8,
   },
-  saveBtn: {
-    backgroundColor: Colors.mainColor,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+  modalContent: {
+    width: '100%',
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    padding: 24,
+    paddingBottom: 40,
   },
-  cancelBtn: {
-    backgroundColor: Colors.mutedText,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  btnText: {
-    color: '#fff',
+  modalTitle: {
+    fontSize: 20,
     fontWeight: '700',
+    color: '#111',
+    textAlign: 'center',
+    marginBottom: 10,
   },
-  footer: {
+  modalLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#555',
+    marginBottom: 6,
+  },
+  modalInput: {
+    backgroundColor: '#FAFAFA',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    paddingHorizontal: 14,
+    height: 48,
+    fontSize: 16,
+    color: '#111',
+  },
+  modalSaveBtn: {
+    backgroundColor: '#000',
+    borderRadius: 24,
+    paddingVertical: 14,
+    marginTop: 28,
     alignItems: 'center',
+  },
+  modalSaveText: {
+    color: '#FFF',
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  modalCancelBtn: {
+    marginTop: 14,
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    color: '#666',
+    fontSize: 16,
+  },
+
+  /* FOOTER */
+  footer: {
     paddingVertical: 24,
+    alignItems: 'center',
   },
   footerText: {
     fontSize: 14,
-    color: Colors.mutedText,
+    color: '#777',
   },
 });

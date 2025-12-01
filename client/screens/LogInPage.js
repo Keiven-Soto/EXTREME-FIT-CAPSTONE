@@ -37,11 +37,10 @@ export default function LogInPage({ navigation }) {
         await setActive({ session: signInAttempt.createdSessionId });
         navigation.replace('Main');
       } else {
-        Alert.alert('Error', 'Sign in incomplete. Please try again.');
-        console.error(JSON.stringify(signInAttempt, null, 2));
+        Alert.alert('OH NO!', 'Sign in incomplete. Please try again.');
       }
     } catch (err) {
-      Alert.alert('Error', err.errors?.[0]?.message || 'Failed to sign in');
+      Alert.alert('OH NO!', err.errors?.[0]?.message || 'Failed to sign in');
       console.error(JSON.stringify(err, null, 2));
     } finally {
       setLoading(false);
@@ -50,83 +49,89 @@ export default function LogInPage({ navigation }) {
 
   return (
     <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={{ flex: 1 }}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.navigate('Welcome')}
-        >
-          <Ionicons name="arrow-back" size={28} color="#fff" />
-        </TouchableOpacity>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.centerWrapper}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.navigate('Welcome')}
+          >
+            <Ionicons name="arrow-back" size={28} color="#fff" />
+          </TouchableOpacity>
 
-        <View style={styles.header}>
-          <Text style={styles.title}>WELCOME BACK</Text>
-          <Text style={styles.subtitle}>Log in to continue</Text>
-        </View>
-
-        <View style={styles.formContainer}>
-          <TextInput
-            style={styles.input}
-            autoCapitalize="none"
-            value={emailAddress}
-            placeholder="Email address"
-            placeholderTextColor="#666"
-            onChangeText={setEmailAddress}
-            keyboardType="email-address"
-            autoComplete="email"
-          />
-          
-          <View style={styles.passwordContainer}>
-            <TextInput
-              style={styles.passwordInput}
-              value={password}
-              placeholder="Password"
-              placeholderTextColor="#666"
-              secureTextEntry={!showPassword}
-              onChangeText={setPassword}
-              autoComplete="password"
-            />
-            <TouchableOpacity
-              style={styles.eyeIcon}
-              onPress={() => setShowPassword(!showPassword)}
-            >
-              <Ionicons
-                name={showPassword ? "eye-off" : "eye"}
-                size={24}
-                color="#666"
-              />
-            </TouchableOpacity>
+          <View style={styles.header}>
+            <Text style={styles.title}>WELCOME BACK</Text>
+            <Text style={styles.subtitle}>Log in to continue</Text>
           </View>
 
-          <TouchableOpacity 
-            onPress={() => navigation.navigate('ForgotPasswordPage')}
-            style={styles.forgotButton}
-          >
-            <Text style={styles.forgotText}>Forgot Password?</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={onSignInPress}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#000" />
-            ) : (
-              <Text style={styles.buttonText}>LOG IN</Text>
-            )}
-          </TouchableOpacity>
+          <View style={styles.formContainer}>
+            <TextInput
+              style={styles.input}
+              autoCapitalize="none"
+              value={emailAddress}
+              placeholder="Email address"
+              placeholderTextColor="#666"
+              onChangeText={setEmailAddress}
+              keyboardType="email-address"
+              autoComplete="email"
+            />
+            
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                value={password}
+                placeholder="Password"
+                placeholderTextColor="#666"
+                secureTextEntry={!showPassword}
+                onChangeText={setPassword}
+                autoComplete="password"
+              />
+              <TouchableOpacity
+                style={styles.eyeIcon}
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                <Ionicons
+                  name={showPassword ? "eye-off" : "eye"}
+                  size={24}
+                  color="#666"
+                />
+              </TouchableOpacity>
+            </View>
 
-          <TouchableOpacity 
-            onPress={() => navigation.navigate('CreateAccountPage')}
-            style={styles.linkButton}
-          >
-            <Text style={styles.linkText}>
-              Don't have an account? <Text style={styles.linkTextBold}>Sign up</Text>
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('ForgotPasswordPage')}
+              style={styles.forgotButton}
+            >
+              <Text style={styles.forgotText}>Forgot Password?</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={onSignInPress}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#000" />
+              ) : (
+                <Text style={styles.buttonText}>LOG IN</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('CreateAccountPage')}
+              style={styles.linkButton}
+            >
+              <Text style={styles.linkText}>
+                Don't have an account? <Text style={styles.linkTextBold}>Sign up</Text>
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -134,16 +139,24 @@ export default function LogInPage({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  scrollView: {
     flex: 1,
     backgroundColor: Colors.darkBackground || '#000',
   },
+
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
-    padding: 30,
-    paddingTop: 60,
   },
+
+  // ⭐ Safe way to center EVERYTHING
+  centerWrapper: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center', 
+    paddingTop: 40,
+    paddingBottom: 80,
+  },
+
   backButton: {
     position: 'absolute',
     top: 20,
@@ -151,10 +164,12 @@ const styles = StyleSheet.create({
     zIndex: 10,
     padding: 10,
   },
+
   header: {
     marginBottom: 40,
     alignItems: 'center',
   },
+
   title: {
     fontSize: 28,
     fontWeight: 'bold',
@@ -162,29 +177,37 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     marginBottom: 10,
   },
+
   subtitle: {
     fontSize: 16,
     color: '#fff',
     opacity: 0.8,
     textAlign: 'center',
   },
+
   formContainer: {
-    width: '100%',
+    width: '85%',
+    alignItems: 'center',
   },
+
   input: {
     backgroundColor: '#1a1a1a',
     borderWidth: 1,
     borderColor: '#333',
     padding: 15,
+    width: '100%',
     borderRadius: 10,
     marginBottom: 15,
     fontSize: 16,
     color: '#fff',
   },
+
   passwordContainer: {
+    width: '100%',
     position: 'relative',
     marginBottom: 15,
   },
+
   passwordInput: {
     backgroundColor: '#1a1a1a',
     borderWidth: 1,
@@ -195,47 +218,57 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
   },
+
   eyeIcon: {
     position: 'absolute',
     right: 15,
     top: 15,
     padding: 5,
   },
+
   forgotButton: {
     alignSelf: 'flex-end',
     marginBottom: 20,
   },
+
   forgotText: {
     color: '#fff',
     fontSize: 14,
     opacity: 0.8,
     textDecorationLine: 'underline',
   },
+
   button: {
     backgroundColor: '#fff',
     paddingVertical: 15,
+    width: '100%',
     borderRadius: 25,
     alignItems: 'center',
     marginBottom: 20,
   },
+
   buttonDisabled: {
     opacity: 0.6,
   },
+
   buttonText: {
     color: '#000',
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: 0.5,
   },
+
   linkButton: {
     alignItems: 'center',
     paddingVertical: 10,
   },
+
   linkText: {
     color: '#fff',
     fontSize: 14,
     opacity: 0.8,
   },
+
   linkTextBold: {
     fontWeight: '600',
     textDecorationLine: 'underline',

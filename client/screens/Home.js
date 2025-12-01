@@ -53,24 +53,34 @@ export default function HomeScreen({ navigation }) {
     },
   ];
 
-  const DEALS = [
+  const DROPS = [
     {
       id: 1,
-      name: "Leggings",
+      cloudinary_public_id: "deals/deal_hoodies",
+      name: "Hoodies",
       discount: 20,
-      price: 30.0,
+      price: 29.99,
     },
     {
       id: 2,
-      name: "Hoodies",
+      cloudinary_public_id: "deals/deal_socks",
+      name: "Socks",
       discount: 15,
-      price: 50.0,
+      price: 9.99,
     },
     {
       id: 3,
-      name: "Running Shoes",
+      cloudinary_public_id: "deals/deal_tshirts",
+      name: "T-Shirts",
       discount: 25,
-      price: 120.0,
+      price: 19.99,
+    },
+    {
+      id: 4,
+      cloudinary_public_id: "deals/deal_caps",
+      name: "Caps",
+      discount: 25,
+      price: 14.99,
     },
   ];
 
@@ -129,7 +139,7 @@ export default function HomeScreen({ navigation }) {
         });
         return { uri: imageUrl };
       }
-      return null;
+      return require("../assets/splash-icon.png");
     };
 
     const imageSource = getImageSource();
@@ -182,6 +192,33 @@ export default function HomeScreen({ navigation }) {
           </Text>
         </View>
       </TouchableOpacity>
+    );
+  };
+
+  const renderDeal = (deal) => {
+    const getImageSource = () => {
+      if (deal.cloudinary_public_id) {
+        const imageUrl = getCloudinaryImageUrl(deal.cloudinary_public_id, {
+          format: "auto",
+        });
+        return { uri: imageUrl };
+      }
+      return null;
+    };
+
+    const imageSource = getImageSource();
+    return (
+      <View style={styles.dealCard}>
+        <Image
+          id="dealImage"
+          source={imageSource}
+          style={styles.dealImage}
+        >
+        </Image>
+        <View id="dealCaption" style={styles.dealCaption}>
+          <Text style={styles.dealName}>{deal.name}</Text>
+        </View>
+      </View>
     );
   };
 
@@ -243,12 +280,10 @@ export default function HomeScreen({ navigation }) {
           />
         </View>
 
-        {/* Categories Section Title */}
+        {/* Categories Grid */}
         <View id="categorySectionTitle" style={styles.section}>
           <Text style={styles.sectionTitle}>Shop by Category</Text>
         </View>
-
-        {/* Categories Grid */}
         <View id="categoryGrid" style={styles.catalogContainer}>
           {loading ? (
             <View style={styles.loadingContainer}>
@@ -264,47 +299,18 @@ export default function HomeScreen({ navigation }) {
           )}
         </View>
 
-        {/* Deals Section Title */}
-        <View id="dealSectionTitle" style={styles.section}>
-          <Text style={styles.sectionTitle}>Limited Time Deals</Text>
+        {/* New Drops */}
+        <View id="dropsSectionTitle" style={styles.section}>
+          <Text style={styles.sectionTitle}>New Drops Coming Soon 2026</Text>
         </View>
-
-        {/* Deals */}
         <View style={styles.dealContainer}>
           <FlatList
-            data={DEALS}
+            data={DROPS}
             keyExtractor={(item) => item.id}
             horizontal
             showsHorizontalScrollIndicator={false}
             ListEmptyComponent={<Text>No running deals</Text>}
-            renderItem={({ item }) => {
-              const isActive = selected === item.gender;
-              return (
-                <View style={styles.dealCard}>
-                  <ImageBackground
-                    id="dealImage"
-                    source={require("../assets/adaptive-icon.png")}
-                    style={styles.dealImage}
-                  >
-                    <Text id="dealDiscount" style={styles.dealDiscount}>
-                      {item.discount}% OFF
-                    </Text>
-                  </ImageBackground>
-                  <View id="dealCaption" style={styles.dealCaption}>
-                    <Text style={styles.dealName}>{item.name}</Text>
-                    <View
-                      id="priceContainer"
-                      style={{ flexDirection: "row", gap: 10, paddingTop: 2 }}
-                    >
-                      <Text style={styles.dealRealPrice}>${item.price}</Text>
-                      <Text style={styles.dealPrice}>
-                        ${item.price - (item.discount / 100) * item.price}{" "}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              );
-            }}
+            renderItem={({ item }) => renderDeal(item)}
           />
         </View>
       </ScrollView>
@@ -331,38 +337,34 @@ const styles = StyleSheet.create({
   gendersContainer: {
     marginBottom: 20,
     alignItems: "center",
-    backgroundColor: "#000",
-    borderRadius: 50,
-    padding: 10,
-    margin: 18,
   },
 
   gender: {
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 20,
+    backgroundColor: Colors.lightBackground,
     marginRight: 8,
   },
 
-  genderText: {
-    fontSize: 16,
-    fontWeight: "2000",
-    color: Colors.whiteText,
-    textTransform: "capitalize",
-  },
-
   activeGender: {
-    backgroundColor: Colors.whiteBackground,
-  },
-
-  activeGenderText: {
-    color: "#000",
-    fontWeight: "600",
+    backgroundColor: "#000",
   },
 
   pressedGender: {
     opacity: 0.7,
     transform: [{ scale: 0.96 }],
+  },
+
+  genderText: {
+    fontSize: 16,
+    color: "#333",
+    textTransform: "capitalize",
+  },
+
+  activeGenderText: {
+    color: "#fff",
+    fontWeight: "600",
   },
 
   bannerContainer: {
@@ -502,13 +504,14 @@ const styles = StyleSheet.create({
   },
 
   dealImage: {
-    width: "100%",
-    height: 150,
-    resizeMode: "contain",
+    height: 300,
+    width: width - 180,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    resizeMode: "cover",
   },
 
   dealCaption: {
-    width: "100%",
     padding: 10,
     flex: 1,
   },
@@ -517,33 +520,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: Colors.darkText,
-  },
-
-  dealDiscount: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    fontSize: 14,
-    fontWeight: "600",
-    backgroundColor: "#000",
-    borderRadius: 50,
-    padding: 10,
-    fontWeight: "2000",
-    color: Colors.whiteText,
-    textTransform: "capitalize",
-  },
-
-  dealPrice: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: Colors.mutedText,
-  },
-
-  dealRealPrice: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "Colors.darkText",
-    textDecorationLine: "line-through",
   },
 
   loadingContainer: {

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,18 +16,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@clerk/clerk-expo';
 import ApiService, { setGlobalAuthToken } from '../../services/api';
-import Colors from '../../colors';
 
-/**
- * EditAddressScreen
- *
- * A single-page address editor that mirrors the provided mockup.
- * - Works for both Create and Edit flows.
- * - Prefills from route.params.address when provided.
- * - Validates required fields, ZIP (US 5‑digit), and Phone (US 10‑digit).
- * - Supports a simple State and Country picker (US‑centric by default).
- * - "Set as default" toggle.
- */
+/* ------------------------------ MAIN SCREEN ------------------------------ */
+
 export default function EditAddressSection({ navigation, route }) {
   const { getToken } = useAuth();
   const editing = Boolean(route?.params?.address);
@@ -44,30 +35,29 @@ export default function EditAddressSection({ navigation, route }) {
     phone: original.phone || '',
   });
 
-  const [loading, setLoading] = useState(true); // Loading for fetching user + address
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [showStatePicker, setShowStatePicker] = useState(false);
 
+  /* ------------------------------ LOAD USER ------------------------------ */
 
-  // Get authenticated user and address if editing
   useEffect(() => {
     const fetchUserAndAddress = async () => {
       setLoading(true);
       try {
-        // Get JWT token and set it globally
         const token = await getToken();
         if (!token) {
           Alert.alert('Error', 'Not authenticated');
           navigation?.goBack();
           return;
         }
-        setGlobalAuthToken(token);
 
-        // Get authenticated user from database
+        setGlobalAuthToken(token);
         const user = await ApiService.users.getCurrentUser();
 
-        if (!user || !user.user_id) {
+        if (!user?.user_id) {
           Alert.alert('Error', 'User not authenticated');
           navigation?.goBack();
           return;
@@ -75,12 +65,27 @@ export default function EditAddressSection({ navigation, route }) {
 
         setCurrentUser(user);
 
+        // If creating (not editing) and the user has no addresses yet,
+        // make the new address default by pre-filling the form flag.
+        if (!editing && user && user.user_id) {
+          try {
+            const addrList = await ApiService.addresses.getByUser(user.user_id);
+            const hasAddresses = addrList && addrList.success && Array.isArray(addrList.data) && addrList.data.length > 0;
+            if (!hasAddresses) {
+              setForm(prev => ({ ...prev, is_default: true }));
+            }
+          } catch (err) {
+            console.error('Error checking existing addresses for default behaviour:', err);
+          }
+        }
+
         // If editing, fetch the address details
         if (editing && original.address_id) {
           const result = await ApiService.addresses.getByUser(user.user_id);
           const found = result.success
-            ? result.data.find(addr => addr.address_id === original.address_id)
+            ? result.data.find(a => a.address_id === original.address_id)
             : null;
+
           if (found) {
             setForm({
               country: found.country || '',
@@ -88,49 +93,53 @@ export default function EditAddressSection({ navigation, route }) {
               city: found.city || '',
               state: found.state || '',
               postal_code: found.postal_code || '',
-              is_default: Boolean(found.is_default) || false,
+              is_default: Boolean(found.is_default),
               phone: found.phone || '',
             });
           }
         }
-      } catch (error) {
-        console.error('Error fetching user:', error);
-        Alert.alert('Error', 'Failed to load user information');
+      } catch (err) {
+        Alert.alert('Error', 'Failed to load user info');
       }
       setLoading(false);
     };
+
     fetchUserAndAddress();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editing, original.address_id]);
+  }, []);
 
+  /* ------------------------------ VALIDATION ------------------------------ */
 
-  const onChange = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
-
-  // Basic validators
-  const isValidZip = zip => /^\d{5}$/.test(zip);
-  const required = ['street_address', 'city', 'state', 'postal_code', 'country'];
+  const onChange = (k, v) => {
+    // If changing country, reset the state to empty
+    if (k === 'country') {
+      setForm(prev => ({ ...prev, [k]: v, state: '' }));
+    } else {
+      setForm(prev => ({ ...prev, [k]: v }));
+    }
+  };
 
   const validate = () => {
+    const required = ['street_address', 'city', 'state', 'postal_code', 'country'];
     for (const k of required) {
-      if (!String(form[k] || '').trim()) {
-        Alert.alert('Missing info', `Please fill the ${labelFor(k)} field.`);
+      if (!String(form[k]).trim()) {
+        Alert.alert('Missing info', `Please fill the ${k.replace('_', ' ')}`);
         return false;
       }
     }
-    if (form.country === 'United States' && !isValidZip(form.postal_code)) {
-      Alert.alert('Check ZIP code', 'Use a 5-digit ZIP code (e.g., 02121).');
+
+    if (form.country === 'United States' && !/^\d{5}$/.test(form.postal_code)) {
+      Alert.alert('Check ZIP code', 'Use a 5-digit ZIP code.');
       return false;
     }
-    // Optional phone validation: allow international (+), digits, spaces, parentheses and dashes
-    if (form.phone && !/^\+?[0-9 ()\-]{4,30}$/.test(form.phone)) {
-      Alert.alert('Check phone', 'Please enter a valid phone number.');
-      return false;
-    }
+
     return true;
   };
 
+  /* ------------------------------ SAVE ------------------------------ */
+
   const handleSave = async () => {
     if (!validate() || !currentUser?.user_id) return;
+
     try {
       setSaving(true);
 
@@ -141,232 +150,259 @@ export default function EditAddressSection({ navigation, route }) {
         state: form.state,
         postal_code: form.postal_code.trim(),
         is_default: !!form.is_default,
-        phone: form.phone ? form.phone.trim() : null,
+        phone: form.phone?.trim() || null,
       };
 
-      console.log('Address payload to send:', payload);
-
       let result;
+
       if (editing) {
-        // update
         result = await ApiService.addresses.update(original.address_id, payload);
-        console.log('PUT response:', result);
       } else {
-        // create
         result = await ApiService.addresses.create(currentUser.user_id, payload);
-        console.log('POST response:', result);
+      }
+
+      // If this address should be the default, use the dedicated endpoint AFTER save
+      try {
+        const savedId = editing
+          ? (result?.data?.address_id || original.address_id || result?.address_id)
+          : (result?.data?.address_id || result?.address_id);
+        if (payload.is_default && savedId) {
+          await ApiService.addresses.setDefault(savedId);
+        }
+      } catch (e) {
+        console.error('Failed to set address as default after save:', e);
       }
 
       if (result?.success) {
-        Alert.alert('Done', editing ? 'Address updated.' : 'Address added.');
+        Alert.alert('Success', editing ? 'Address updated.' : 'Address added.');
         // Let previous screen refresh
         navigation?.goBack();
       } else {
         throw new Error(result?.message || result?.error || 'Failed to save address.');
       }
     } catch (err) {
-      Alert.alert('Error', err?.message || 'Something went wrong.');
-      console.log('Address save error:', err);
+      Alert.alert('Error', err?.message || 'Unable to save address.');
     } finally {
       setSaving(false);
     }
   };
 
+  /* ------------------------------ RENDER ------------------------------ */
+
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={64}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation?.goBack()} style={styles.backBtn}>
-            <Ionicons name="chevron-back" size={22} color={Colors.darkText} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{editing ? 'Edit Address' : 'Add Address'}</Text>
-          <View style={{ width: 22 }} />
-        </View>
-
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 36 }}
+      {loading ? (
+        <ActivityIndicator size="large" style={{ marginTop: 50 }} />
+      ) : (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1 }}
         >
-          {/* Phone */}
-          <FieldLabel>Phone</FieldLabel>
-          <Input
-            keyboardType="phone-pad"
-            value={form.phone}
-            onChangeText={t => onChange('phone', String(t).replace(/[^0-9+ ()\-]/g, '').slice(0, 30))}
-            placeholder="e.g. +1 787 518 2440"
-            maxLength={30}
-          />
-          {/* Address */}
-          <FieldLabel>Address</FieldLabel>
-          <Input
-            value={form.street_address}
-            onChangeText={t => onChange('street_address', t)}
-            placeholder="Street Address"
-          />
-          <FieldLabel>Country/Region</FieldLabel>
-          <PickerField
-            value={form.country}
-            placeholder="Select country"
-            onPress={() => setShowCountryPicker(true)}
-          />
+          {/* HEADER */}
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+              <Ionicons name="chevron-back" size={26} color="#000" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>
+              {editing ? 'Edit Address' : 'Add Address'}
+            </Text>
+            <View style={{ width: 26 }} />
+          </View>
 
-          {/* City */}
-          <FieldLabel>City</FieldLabel>
-          <Input value={form.city} onChangeText={t => onChange('city', t)} placeholder="City" />
+          {/* SINGLE SHOPIFY CARD */}
+          <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
+            <View style={styles.card}>
 
-          {/* State + Zip */}
-          <Row>
-            <Col>
-              <FieldLabel>State</FieldLabel>
-              <PickerField
-                value={form.state || 'Select'}
-                placeholder="Select"
-                onPress={() => setShowStatePicker(true)}
+              {/* CONTACT */}
+              <SectionTitle title="Contact Information" />
+
+              <FormInput
+                label="Phone"
+                value={form.phone}
+                keyboardType="phone-pad"
+                placeholder="+1 787 518 2440"
+                onChangeText={t => onChange('phone', t.replace(/[^0-9+ ()\-]/g, ''))}
               />
-            </Col>
-            <Col>
-              <FieldLabel>Zip code</FieldLabel>
-              <Input
-                keyboardType="number-pad"
-                value={form.postal_code}
-                onChangeText={t => onChange('postal_code', t.replace(/\D+/g, '').slice(0, 5))}
-                placeholder="02121"
-                maxLength={5}
-              />
-            </Col>
-          </Row>
 
-          {/* Set default */}
-          <TouchableOpacity
-            style={styles.defaultRow}
-            onPress={() => onChange('is_default', !form.is_default)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.checkbox, form.is_default && styles.checkboxChecked]}>
-              {form.is_default ? (
-                <Ionicons name="checkmark" size={16} color="#000" />
-              ) : null}
+              <Divider />
+
+              {/* ADDRESS SECTION */}
+              <SectionTitle title="Address Details" />
+
+              <FormInput
+                label="Street Address"
+                value={form.street_address}
+                placeholder="Street Address"
+                onChangeText={t => onChange('street_address', t)}
+              />
+
+              <FormPicker
+                label="Country"
+                value={form.country}
+                placeholder="Select country"
+                onPress={() => setShowCountryPicker(true)}
+              />
+
+              <FormInput
+                label="City"
+                value={form.city}
+                placeholder="City"
+                onChangeText={t => onChange('city', t)}
+              />
+
+              <View style={styles.row}>
+                <View style={{ flex: 1 }}>
+                  <FormPicker
+                    label="State"
+                    value={form.state}
+                    placeholder="State"
+                    onPress={() => {
+                      if (!form.country) {
+                        Alert.alert('Select Country First', 'Please select a country before choosing a state.');
+                      } else {
+                        setShowStatePicker(true);
+                      }
+                    }}
+                  />
+                </View>
+
+                <View style={{ width: 14 }} />
+
+                <View style={{ flex: 1 }}>
+                  <FormInput
+                    label="ZIP"
+                    value={form.postal_code}
+                    keyboardType="numeric"
+                    maxLength={5}
+                    placeholder="02121"
+                    onChangeText={t => onChange('postal_code', t.replace(/\D/g, ''))}
+                  />
+                </View>
+              </View>
+
+              <Divider />
+
+              {/* DEFAULT CHECKBOX */}
+              <TouchableOpacity
+                style={styles.defaultRow}
+                onPress={() => onChange('is_default', !form.is_default)}
+              >
+                <View style={[styles.checkbox, form.is_default && styles.checkboxActive]}>
+                  {form.is_default && <Ionicons name="checkmark" size={16} color="#000" />}
+                </View>
+                <Text style={styles.defaultText}>Set as default</Text>
+              </TouchableOpacity>
+
             </View>
-            <Text style={styles.defaultText}>Set as default</Text>
+          </ScrollView>
+
+          {/* SAVE BUTTON */}
+          <TouchableOpacity
+            onPress={handleSave}
+            style={[styles.saveButton, saving && { opacity: 0.7 }]}
+            disabled={saving}
+          >
+            {saving ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.saveButtonText}>Save</Text>
+            )}
           </TouchableOpacity>
-        </ScrollView>
 
-        {/* Save Button */}
-        <TouchableOpacity
-          onPress={handleSave}
-          disabled={saving}
-          style={[styles.saveBtn, saving && { opacity: 0.7 }]}
-        >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.saveText}>Save</Text>
-          )}
-        </TouchableOpacity>
-      </KeyboardAvoidingView>
+          {/* COUNTRY PICKER */}
+          <PickerModal
+            visible={showCountryPicker}
+            title="Select country"
+            data={COUNTRIES}
+            selected={form.country}
+            onClose={() => setShowCountryPicker(false)}
+            onSelect={v => {
+              onChange('country', v);
+              setShowCountryPicker(false);
+            }}
+          />
 
-      {/* Country Picker */}
-      <PickerModal
-        visible={showCountryPicker}
-        onClose={() => setShowCountryPicker(false)}
-        data={COUNTRIES}
-        selected={form.country}
-        onSelect={(val) => {
-          onChange('country', val);
-          setShowCountryPicker(false);
-        }}
-        title="Select country"
-      />
+          {/* STATE PICKER */}
+          <PickerModal
+            visible={showStatePicker}
+            title="Select state"
+            data={getStatesForCountry(form.country)}
+            selected={form.state}
+            onClose={() => setShowStatePicker(false)}
+            onSelect={v => {
+              onChange('state', v);
+              setShowStatePicker(false);
+            }}
+          />
 
-      {/* State Picker */}
-      <PickerModal
-        visible={showStatePicker}
-        onClose={() => setShowStatePicker(false)}
-        data={US_STATES}
-        selected={form.state}
-        onSelect={(val) => {
-          onChange('state', val);
-          setShowStatePicker(false);
-        }}
-        title="Select state"
-      />
+        </KeyboardAvoidingView>
+      )}
     </SafeAreaView>
   );
 }
 
-/* ---------------------------- helpers & UI ---------------------------- */
+/* ------------------------------ COMPONENTS ------------------------------ */
 
-function labelFor(key) {
-  const map = {
-    street_address: 'Address',
-    city: 'City',
-    state: 'State',
-    postal_code: 'Zip code',
-    country: 'Country',
-  };
-  return map[key] || key;
+function SectionTitle({ title }) {
+  return <Text style={styles.sectionTitle}>{title}</Text>;
 }
 
-function FieldLabel({ children }) {
-  return <Text style={styles.label}>{children}</Text>;
+function Divider() {
+  return <View style={styles.divider} />;
 }
 
-function Input(props) {
+function FormInput({ label, ...props }) {
   return (
-    <TextInput
-      {...props}
-      style={[styles.input, props.style]}
-      placeholderTextColor={Colors.placeholderText || '#9AA0A6'}
-    />
+    <View style={{ marginBottom: 18 }}>
+      <Text style={styles.inputLabel}>{label}</Text>
+      <TextInput
+        {...props}
+        style={styles.input}
+        placeholderTextColor="#8E8E8E"
+      />
+    </View>
   );
 }
 
-function PickerField({ value, placeholder, onPress }) {
+function FormPicker({ label, value, placeholder, onPress }) {
   return (
-    <TouchableOpacity onPress={onPress} style={styles.pickerField} activeOpacity={0.8}>
-      <Text style={[styles.pickerText, !value && { color: Colors.placeholderText }]}>
-        {value || placeholder}
-      </Text>
-      <Ionicons name="chevron-down" size={18} color={Colors.mutedText} />
-    </TouchableOpacity>
+    <View style={{ marginBottom: 18 }}>
+      <Text style={styles.inputLabel}>{label}</Text>
+      <TouchableOpacity onPress={onPress} style={styles.input}>
+        <View style={styles.pickerRow}>
+          <Text style={[styles.pickerText, !value && { color: '#8E8E8E' }]}>
+            {value || placeholder}
+          </Text>
+          <Ionicons name="chevron-down" size={18} color="#9E9E9E" />
+        </View>
+      </TouchableOpacity>
+    </View>
   );
-}
-
-function Row({ children }) {
-  return <View style={styles.row}>{children}</View>;
-}
-
-function Col({ children }) {
-  return <View style={styles.col}>{children}</View>;
 }
 
 function PickerModal({ visible, onClose, data, selected, onSelect, title }) {
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade">
       <View style={styles.modalBackdrop}>
         <View style={styles.modalCard}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{title}</Text>
-            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="close" size={20} color={Colors.darkText} />
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={22} color="#111" />
             </TouchableOpacity>
           </View>
-          <ScrollView style={{ maxHeight: 340 }}>
-            {data.map((item) => (
+
+          <ScrollView style={{ maxHeight: 360 }}>
+            {data.map(item => (
               <TouchableOpacity
                 key={item}
                 style={styles.modalItem}
                 onPress={() => onSelect(item)}
               >
                 <Text style={styles.modalItemText}>{item}</Text>
-                {selected === item ? (
-                  <Ionicons name="checkmark" size={18} color={Colors.mainColor} />
-                ) : null}
+                {selected === item && (
+                  <Ionicons name="checkmark" size={20} color="#000" />
+                )}
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -376,169 +412,226 @@ function PickerModal({ visible, onClose, data, selected, onSelect, title }) {
   );
 }
 
-/* ------------------------------- data ------------------------------- */
+/* ------------------------------ CONSTANTS ------------------------------ */
 
-const COUNTRIES = ['United States', 'Puerto Rico', 'Canada']; // extend if needed
+const COUNTRIES = ['United States', 'Puerto Rico', 'Canada'];
 
 const US_STATES = [
-  'Alabama','Alaska','Arizona','Arkansas','California','Colorado','Connecticut','Delaware','District of Columbia','Florida','Georgia','Hawaii','Idaho','Illinois','Indiana','Iowa','Kansas','Kentucky','Louisiana','Maine','Maryland','Massachusetts','Michigan','Minnesota','Mississippi','Missouri','Montana','Nebraska','Nevada','New Hampshire','New Jersey','New Mexico','New York','North Carolina','North Dakota','Ohio','Oklahoma','Oregon','Pennsylvania', 'Puerto Rico','Rhode Island','South Carolina','South Dakota','Tennessee','Texas','Utah','Vermont','Virginia','Washington','West Virginia','Wisconsin','Wyoming'
+  'Alabama','Alaska','Arizona','Arkansas','California','Colorado','Connecticut',
+  'Delaware','District of Columbia','Florida','Georgia','Hawaii','Idaho','Illinois',
+  'Indiana','Iowa','Kansas','Kentucky','Louisiana','Maine','Maryland','Massachusetts',
+  'Michigan','Minnesota','Mississippi','Missouri','Montana','Nebraska','Nevada',
+  'New Hampshire','New Jersey','New Mexico','New York','North Carolina','North Dakota',
+  'Ohio','Oklahoma','Oregon','Pennsylvania','Rhode Island','South Carolina',
+  'South Dakota','Tennessee','Texas','Utah','Vermont','Virginia','Washington',
+  'West Virginia','Wisconsin','Wyoming'
 ];
 
-/* ------------------------------ styles ------------------------------ */
+const PUERTO_RICO_STATES = ['Puerto Rico'];
 
-const CARD_RADIUS = 12;
+const CANADA_PROVINCES = [
+  'Alberta', 'British Columbia', 'Manitoba', 'New Brunswick', 'Newfoundland and Labrador',
+  'Northwest Territories', 'Nova Scotia', 'Nunavut', 'Ontario', 'Prince Edward Island',
+  'Quebec', 'Saskatchewan', 'Yukon'
+];
+
+// Helper function to get states based on country
+const getStatesForCountry = (country) => {
+  switch (country) {
+    case 'United States':
+      return US_STATES;
+    case 'Puerto Rico':
+      return PUERTO_RICO_STATES;
+    case 'Canada':
+      return CANADA_PROVINCES;
+    default:
+      return [];
+  }
+};
+
+/* ------------------------------ STYLES ------------------------------ */
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.lightBackground,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  backBtn: { padding: 6 },
-  headerTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 22,
-    fontWeight: '800',
-    color: Colors.darkText,
+    backgroundColor: "#F3F4F6", // light gray background (Shopify)
   },
 
-  label: {
-    fontSize: 13,
-    color: Colors.mutedText,
-    marginTop: 12,
-    marginHorizontal: 20,
-    marginBottom: 6,
+  /* HEADER */
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 16,
+    backgroundColor: "#FFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
   },
-  input: {
+  backButton: {
+    padding: 6,
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#000",
+  },
+
+  /* SHOPIFY CARD */
+  card: {
+    backgroundColor: "#FFF",
     marginHorizontal: 20,
+    marginTop: 20,
+    padding: 22,
+    borderRadius: 16,
+
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#111",
+    marginBottom: 16,
+    marginTop: 4,
+  },
+
+  divider: {
+    height: 1,
+    backgroundColor: "#E5E7EB",
+    marginVertical: 20,
+  },
+
+  /* INPUTS */
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+    marginBottom: 6,
+    color: "#3A3A3A",
+  },
+
+  input: {
     height: 48,
-    borderRadius: 10,
+    backgroundColor: "#FAFAFA",
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: Colors.grayBorder,
-    backgroundColor: Colors.whiteBackground,
+    borderColor: "#E5E5E5",
     paddingHorizontal: 14,
     fontSize: 16,
-    color: Colors.darkText,
+    color: "#111",
+    justifyContent: "center",
   },
-  pickerField: {
-    marginHorizontal: 20,
-    height: 52,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.grayBorder,
-    backgroundColor: Colors.whiteBackground,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+
+  pickerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   pickerText: {
     fontSize: 16,
-    color: Colors.darkText,
+    color: "#111",
   },
 
   row: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 20,
-  },
-  col: {
-    flex: 1,
+    flexDirection: "row",
   },
 
+  /* DEFAULT CHECKBOX */
   defaultRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 20,
-    marginTop: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 6,
   },
   checkbox: {
-    width: 28,
-    height: 28,
-    borderRadius: 18,
+    width: 24,
+    height: 24,
+    borderRadius: 6,
     borderWidth: 2,
-    borderColor: Colors.grayBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.whiteBackground,
+    borderColor: "#CFCFCF",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  checkboxChecked: {
-    backgroundColor: '#fff',
-    borderColor: Colors.darkText,
+  checkboxActive: {
+    borderColor: "#000",
   },
   defaultText: {
     marginLeft: 12,
     fontSize: 16,
-    color: Colors.darkText,
+    color: "#111",
   },
 
-  saveBtn: {
-    position: 'absolute',
+  /* SAVE BUTTON */
+  saveButton: {
+    position: "absolute",
     left: 20,
     right: 20,
-    bottom: 24,
-    height: 54,
-    backgroundColor: Colors.darkText, // visually closer to mockup's solid black button
-    borderRadius: CARD_RADIUS,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: Colors.shadowColor,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    bottom: 32,
+    height: 56,
+    backgroundColor: "#000",
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+
+    shadowColor: "#000",
+    shadowOpacity: 0.18,
     shadowRadius: 12,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
-  saveText: {
-    color: '#fff',
+  saveButtonText: {
+    color: "#FFF",
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: "700",
   },
 
-  /* Modal */
+  /* MODAL */
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.25)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
+    backgroundColor: "rgba(0,0,0,0.25)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 30,
   },
   modalCard: {
-    width: '100%',
-    maxWidth: 520,
-    backgroundColor: Colors.whiteBackground,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
+    width: "100%",
+    maxWidth: 420,
+    backgroundColor: "#FFF",
+    borderRadius: 16,
+    paddingVertical: 16,
+
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
   },
   modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   modalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.darkText,
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#111",
   },
   modalItem: {
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Colors.grayBorder,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EFEFEF",
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   modalItemText: {
     fontSize: 16,
-    color: Colors.darkText,
+    color: "#111",
   },
 });
+

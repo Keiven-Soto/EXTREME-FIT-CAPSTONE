@@ -7,27 +7,18 @@ export default function WelcomeScreen({ navigation }) {
   const { isSignedIn } = useAuth();
 
   useEffect(() => {
-    // If user is already signed in, redirect to main app
     if (isSignedIn) {
       navigation.replace('Main');
     }
   }, [isSignedIn]);
 
-  const handleCreateAccount = () => {
-    navigation.navigate('CreateAccountPage');
-  };
-
-  const handleLogInAccount = () => {
-    navigation.navigate('LogInPage');
-  };
-
-  const handleContinueAsGuest = () => {
-    navigation.navigate('Main');
-  };
+  const handleCreateAccount = () => navigation.navigate('CreateAccountPage');
+  const handleLogInAccount = () => navigation.navigate('LogInPage');
 
   return (
     <View style={styles.container}>
-      {/* Background image area */}
+
+      {/* Background image */}
       {Platform.OS === 'web' ? (
         <View style={styles.imageContainer}>
           <View style={styles.brandingContainer}>
@@ -42,104 +33,126 @@ export default function WelcomeScreen({ navigation }) {
           resizeMode="cover"
         >
           <View style={styles.brandingContainer}>
-            {/* <Text style={styles.brandText}>EXTREME FIT</Text> */}
             <Text style={styles.tagline}>The best of Extreme Fit, anytime, anywhere.</Text>
           </View>
         </ImageBackground>
       )}
 
-      {/* Bottom section with buttons */}
+      {/* BUTTON SECTION */}
       <View style={styles.bottomContainer}>
-        <TouchableOpacity style={styles.createAccountButton} onPress={handleCreateAccount}>
+
+        {/* CREATE ACCOUNT (Primary) */}
+        <TouchableOpacity 
+          style={styles.createAccountButton}
+          onPress={handleCreateAccount}
+          activeOpacity={0.8}
+        >
           <Text style={styles.createAccountText}>CREATE ACCOUNT</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogInAccount}>
+
+        {/* LOGIN (Outline) */}
+        <TouchableOpacity 
+          style={styles.loginButton}
+          onPress={handleLogInAccount}
+          activeOpacity={0.8}
+        >
           <Text style={styles.loginText}>LOG IN</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.guestButton} onPress={handleContinueAsGuest}>
-          <Text style={styles.guestText}>Continue as guest</Text>
-        </TouchableOpacity>
       </View>
     </View>
   );
 }
+
+/* ---------------------------  STYLES  --------------------------- */
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.darkBackground,
   },
+
   imageContainer: {
     flex: 1,
-    backgroundColor: Colors.darkBackground,
     justifyContent: 'flex-end',
     paddingBottom: 60,
   },
+
   brandingContainer: {
     alignItems: 'center',
     paddingHorizontal: 20,
   },
+
   brandText: {
     color: '#fff',
-    fontSize: 24,
-    fontWeight: 'bold',
-    letterSpacing: 2,
-    marginBottom: 10,
+    fontSize: 28,
+    fontWeight: '900',
+    letterSpacing: 3,
   },
+
   tagline: {
     color: '#fff',
     fontSize: 16,
-    textAlign: 'center',
     opacity: 0.9,
+    textAlign: 'center',
+    fontWeight: '500',
+    marginTop: 8,
   },
+
   bottomContainer: {
     paddingHorizontal: 30,
     paddingBottom: 50,
-    paddingTop: 20,
-    backgroundColor: 'black',
+    paddingTop: 30,
+    backgroundColor: '#000',
   },
+
+  /* --------------------------- BUTTONS --------------------------- */
+
   createAccountButton: {
-    backgroundColor: Colors.whiteBackground,
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderWidth: 6,
-    borderColor: Colors.grayIcon,
-    borderRadius: 25,
+    backgroundColor: '#fff',
+    paddingVertical: 18,
+    width: '100%',
+
+    // ⭐ PILL SHAPE (VERY ROUND)
+    borderRadius: 50,
+
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 20,
+
+    // Subtle shadow
+    shadowColor: '#ffffff',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 6,
   },
+
   createAccountText: {
     color: '#000',
-    fontSize: 16,
-    fontWeight: '600',
-    letterSpacing: 0.5,
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
+
   loginButton: {
-    backgroundColor: 'black',
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 25,
+    backgroundColor: 'transparent',
+    paddingVertical: 18,
+    width: '100%',
+
+    // ⭐ PILL SHAPE (ROUND)
+    borderRadius: 50,
+
     alignItems: 'center',
-    borderWidth: 6,
+    borderWidth: 3,
     borderColor: '#fff',
     marginBottom: 20,
   },
+
   loginText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
-  guestButton: {
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  guestText: {
-    color: '#fff',
-    fontSize: 14,
-    opacity: 0.8,
-    textDecorationLine: 'underline',
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
 });
+

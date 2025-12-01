@@ -133,7 +133,7 @@ export default function ShopScreen({ navigation }) {
 
   const clearSearch = () => {
     setSearchText("");
-    loadProducts();
+    // No need to call loadProducts() - useEffect will handle it
   };
 
   // NEW: Search products whenever searchText changes (with debounce)
@@ -190,7 +190,6 @@ export default function ShopScreen({ navigation }) {
 
   const renderProduct = (product) => {
     const isProductWishlisted = !!product.isWishlisted;
-
     // Get image source
     const getImageSource = () => {
       if (product.cloudinary_public_id) {
@@ -554,10 +553,16 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.grayBorder,
   },
 
+  productImage: {
+    width: "100%",
+    height: 150,
+    resizeMode: "cover",
+  },
   placeholderText: {
     color: Colors.mutedText,
     fontSize: 12,
   },
+
 
   productName: {
     fontSize: 14,
@@ -588,6 +593,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+  },
+
+  productsContainer: {
+    flex: 1,
+    paddingHorizontal: 16,
   },
 
   loadingContainer: {
