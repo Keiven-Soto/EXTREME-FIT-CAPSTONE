@@ -18,8 +18,9 @@ import { getCloudinaryImageUrl } from "../utils/cloudinary";
 import { useUser, useAuth } from "@clerk/clerk-expo";
 import ApiService, { setGlobalAuthToken } from "../services/api";
 import { useCurrentUser } from "../hooks/useAuthenticatedApi";
+import { useWishlist } from "../hooks/useWishlist";
 
-// dynamic adjustment to device screen width
+// Dynamic adjustment to device screen width
 const { width } = Dimensions.get("window");
 
 export default function CategoryProducts({ route, navigation }) {
@@ -28,24 +29,25 @@ export default function CategoryProducts({ route, navigation }) {
   const { getToken, isSignedIn } = useAuth();
   const { getCurrentUser } = useCurrentUser();
 
+  // Local state for user ID
   const [userId, setUserId] = useState(null);
-  const [tokenReady, setTokenReady] = useState(false);
 
+  // Products list state
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  // products will be annotated with `isWishlisted` after merging with wishlist
+  const { wishlist, add, remove } = useWishlist();
 
+  // Loading state while fetching products
+  const [loading, setLoading] = useState(true);
+
+  // Fetch and set user ID and auth token whenever auth state changes
   useEffect(() => {
     const fetchUserIdAndSetToken = async () => {
       if (clerkUser && isSignedIn) {
         try {
-          // Get and set the token
           const token = await getToken();
           console.log("[Category] Setting global token:", !!token);
           setGlobalAuthToken(token);
-          setTokenReady(true);
 
-          // Get user data
           const userData = await getCurrentUser();
           if (userData && userData.user_id) {
             setUserId(userData.user_id);
@@ -54,73 +56,42 @@ export default function CategoryProducts({ route, navigation }) {
             console.log("[Category] Could not get User ID");
           }
         } catch (error) {
-          console.error("[Category] Error fetching  User ID:", error);
+          console.error("[Category] Error fetching User ID:", error);
         }
       }
     };
     fetchUserIdAndSetToken();
   }, [clerkUser, isSignedIn]);
 
-  // Fetch products + wishlist when category_id or userId changes
+  // Load products once userId is available
   useEffect(() => {
-    let mounted = true;
+    if (userId !== null) {
+      loadProducts();
+    }
+  }, [userId]);
 
-    const loadProducts = async () => {
-      try {
-        setLoading(true);
-
-        // JavaScript
-        const results = await Promise.allSettled([
-          ApiService.products.getByCategory(category_id),
-          userId
-            ? ApiService.wishlist.get(userId)
-            : Promise.resolve({
-                status: "fulfilled",
-                value: { success: true, data: [] },
-              }),
-        ]);
-
-        const prodRes =
-          results[0].status === "fulfilled" ? results[0].value : null;
-        const wishRes =
-          results[1].status === "fulfilled"
-            ? results[1].value
-            : { success: true, data: [] };
-
-        const wishlistIds = new Set(
-          (wishRes?.data || [])
-            .map((i) => i.product_id ?? i.productId ?? i.product)
-            .filter((id) => id != null)
-            .map((id) => String(id))
-        );
-
-        if (prodRes && prodRes.success && mounted) {
-          const merged = (prodRes.data || []).map((p) => ({
-            ...p,
-            isWishlisted: wishlistIds.has(String(p.product_id)),
-          }));
-          setProducts(merged);
-        } else if (!prodRes || !prodRes.success) {
-          console.log("[Category] Failed to load products for category");
-          setProducts([]);
-        }
-      } catch (err) {
-        console.error("[Category] Failed to load products or wishlist:", err);
+  // Fetch products from API for this category
+  const loadProducts = async () => {
+    try {
+      setLoading(true);
+      const prodRes = await ApiService.products.getByCategory(category_id);
+      if (prodRes.success) {
+        setProducts(prodRes.data || []);
+      } else {
         setProducts([]);
-      } finally {
-        if (mounted) setLoading(false);
       }
-    };
+    } catch (err) {
+      console.error("[Category] loadProducts error:", err);
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    loadProducts();
-
-    return () => {
-      mounted = false;
-    };
-  }, [category_id, userId]);
-
+  // Render a single product card
   const renderProduct = (product) => {
-    const isProductWishlisted = !!product.isWishlisted;
+    const isWishlisted = wishlist.includes(product.product_id);
+
     const getImageSource = () => {
       if (product.cloudinary_public_id) {
         const imageUrl = getCloudinaryImageUrl(product.cloudinary_public_id, {
@@ -156,20 +127,15 @@ export default function CategoryProducts({ route, navigation }) {
         />
         {/* Product Info */}
         <View style={styles.productInfo}>
-          {/* Product Name & Price */}
           <Text style={styles.productName} numberOfLines={2}>
             {product.name}
           </Text>
 
-          {/* Product Info Footer */}
           <View style={styles.productInfoFooter}>
             <View style={{ flexDirection: "column", gap: 3 }}>
-              {/* Gender */}
               {product.gender && (
                 <Text style={styles.productGender}>{product.gender}</Text>
               )}
-
-              {/* Price */}
               <Text style={styles.productPrice}>
                 ${parseFloat(product.price).toFixed(2)}
               </Text>
@@ -181,9 +147,9 @@ export default function CategoryProducts({ route, navigation }) {
               onPress={() => handleWishlistToggle(product)}
             >
               <Ionicons
-                name={isProductWishlisted ? "heart" : "heart-outline"}
+                name={isWishlisted ? "heart" : "heart-outline"}
                 size={22}
-                color={isProductWishlisted ? Colors.mainColor : Colors.darkText}
+                color={isWishlisted ? Colors.mainColor : Colors.darkText}
               />
             </TouchableOpacity>
           </View>
@@ -192,79 +158,19 @@ export default function CategoryProducts({ route, navigation }) {
     );
   };
 
-  const addToWishlist = async (product) => {
-    try {
-      const wishlistRes = await ApiService.wishlist.add(
-        userId,
-        product.product_id
-      );
-
-      if (wishlistRes.success) {
-        Alert.alert("Added to Wishlist", `${product.name}`, [{ text: "OK" }]);
-        console.log("[Category] Successfully added to wishlist.");
-        // annotate product in products array
-        setProducts((prev) =>
-          prev.map((p) =>
-            p.product_id === product.product_id
-              ? { ...p, isWishlisted: true }
-              : p
-          )
-        );
-      } else {
-        Alert.alert("Error", wishlistRes.error || "Could not add to wishlist");
-        console.log("[Category] Failed to add to wishlist.");
-      }
-    } catch (err) {
-      Alert.alert("Error", "Failed to connect to server");
-      console.log("[Category] Error connecting to server for wishlist add.");
-    }
-  };
-
-  const removeFromWishlist = async (productId) => {
-    try {
-      const wishlistRes = await ApiService.wishlist.remove(userId, productId);
-      if (wishlistRes.success) {
-        console.log("[Category] Successfully removed from wishlist.");
-        setProducts((prev) =>
-          prev.map((p) =>
-            p.product_id === productId ? { ...p, isWishlisted: false } : p
-          )
-        );
-      } else {
-        console.log("[Category] Failed to remove from wishlist.");
-        // leave the set unchanged on failure
-      }
-    } catch (err) {
-      Alert.alert("Error", "Failed to connect to server");
-      console.log("[Category] Error connecting to server for wishlist remove.");
-    }
-  };
-
+  // Toggle wishlist state for a product
   const handleWishlistToggle = async (product) => {
     if (!userId) {
       Alert.alert("Sign In Required", "Please sign in to manage your wishlist");
       return;
     }
 
-    const productIsWishlisted = !!product.isWishlisted;
+    const isWishlisted = wishlist.includes(product.product_id);
 
-    if (!productIsWishlisted) {
-      addToWishlist(product);
+    if (isWishlisted) {
+      remove(product);
     } else {
-      Alert.alert(
-        "Remove from wishlist?",
-        `Are you sure you want to remove "${product.name}" from your wishlist?`,
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Remove",
-            style: "destructive",
-            onPress: async () => {
-              removeFromWishlist(product.product_id);
-            },
-          },
-        ]
-      );
+      add(product);
     }
   };
 
@@ -364,6 +270,7 @@ export default function CategoryProducts({ route, navigation }) {
   );
 }
 
+// Card width for 2-column layout
 const CARD_WIDTH = (width - 16 * 3) / 2;
 
 const styles = StyleSheet.create({
@@ -378,7 +285,6 @@ const styles = StyleSheet.create({
 
   header: {
     padding: 20,
-    paddingTop: 20,
     flexDirection: "row",
     justifyContent: "flex-start",
     alignItems: "center",
@@ -390,11 +296,6 @@ const styles = StyleSheet.create({
     color: Colors.darkText,
     marginBottom: 5,
     textTransform: "capitalize",
-  },
-
-  headerSubtitle: {
-    fontSize: 16,
-    color: Colors.mutedText,
   },
 
   backButton: {
