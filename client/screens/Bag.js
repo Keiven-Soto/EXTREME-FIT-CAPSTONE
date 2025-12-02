@@ -538,7 +538,7 @@ export default function BagScreen() {
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>🛒 My Cart</Text>
+          <Text style={styles.headerTitle}>My Cart</Text>
           <Text style={styles.headerSubtitle}>{totalItems} items</Text>
         </View>
 
@@ -588,44 +588,53 @@ export default function BagScreen() {
                   </View>
                 </View>
                 <View style={styles.productInfo}>
-                  <View style={styles.namePriceRow}>
+                  {/* Card Header: only product name */}
+                  <View style={styles.cardHeader}>
                     <Text style={styles.productName}>{item.name}</Text>
-                    <Text style={styles.productPrice}>
-                      ${Number(item.price).toFixed(2)}
-                    </Text>
-                  </View>
-                  <Text style={styles.productDetails}>
-                    {item.size ? `Size: ${item.size}` : ""}
-                    {item.color ? `  Color: ${item.color}` : ""}
-                  </Text>
-                  <View style={styles.quantityControlsRow}>
-                    <TouchableOpacity
-                      style={styles.quantityButton}
-                      onPress={() => decrementQuantity(item.id)}
-                    >
-                      <Ionicons
-                        name="remove"
-                        size={16}
-                        color={Colors.mainColor}
-                      />
-                    </TouchableOpacity>
-                    <Text style={styles.quantityText}>{item.quantity}</Text>
-                    <TouchableOpacity
-                      style={styles.quantityButton}
-                      onPress={() => incrementQuantity(item.id)}
-                    >
-                      <Ionicons name="add" size={16} color={Colors.mainColor} />
-                    </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.deleteButton}
                       onPress={() => removeItem(item.id)}
                     >
                       <Ionicons
-                        name="trash"
-                        size={18}
-                        color={Colors.errorColor || "black"}
+                        name="trash-outline"
+                        size={20}
+                        color={Colors.mutedText}
                       />
                     </TouchableOpacity>
+                  </View>
+
+                  {/* Body: removed product details */}
+                  <Text style={styles.productDetails}>
+                    {item.size ? `Size: ${item.size}` : ""}
+                    {item.color ? `  Color: ${item.color}` : ""}
+                  </Text>
+
+                  {/* Card Footer: price and quantity */}
+                  <View style={styles.cardFooter}>
+                    <Text style={styles.productPrice}>
+                      ${Number(item.price).toFixed(2)}
+                    </Text>
+                    <View style={styles.quantityControls}>
+                      <TouchableOpacity
+                        onPress={() => decrementQuantity(item.id)}
+                      >
+                        <Ionicons
+                          name="remove"
+                          size={16}
+                          color={Colors.mainColor}
+                        />
+                      </TouchableOpacity>
+                      <Text style={styles.quantityText}>{item.quantity}</Text>
+                      <TouchableOpacity
+                        onPress={() => incrementQuantity(item.id)}
+                      >
+                        <Ionicons
+                          name="add"
+                          size={16}
+                          color={Colors.mainColor}
+                        />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -634,6 +643,7 @@ export default function BagScreen() {
         </View>
 
         <View style={styles.summary}>
+          <Text style={styles.summaryTitle}>Order Summary</Text>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Subtotal:</Text>
             <Text style={styles.summaryValue}>${subtotal.toFixed(2)}</Text>
@@ -641,6 +651,10 @@ export default function BagScreen() {
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Shipping:</Text>
             <Text style={styles.summaryValue}>${SHIPPING_COST.toFixed(2)}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Tax</Text>
+            <Text style={styles.summaryValue}>Calculated at checkout</Text>
           </View>
           <View style={[styles.summaryRow, styles.totalRow]}>
             <Text style={styles.totalLabel}>Total:</Text>
@@ -700,7 +714,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: "bold",
-    textAlign: "center",
+    textAlign: "left",
     color: Colors.darkText,
     marginBottom: 5,
   },
@@ -711,11 +725,24 @@ const styles = StyleSheet.create({
   cartItems: {
     paddingHorizontal: 20,
   },
+  // cartItem: {
+  //   backgroundColor: Colors.whiteBackground,
+  //   borderRadius: 12,
+  //   padding: 10,
+  //   marginBottom: 15,
+  //   flexDirection: "row",
+  //   alignItems: "center",
+  //   shadowColor: Colors.shadowColor,
+  //   shadowOffset: { width: 0, height: 2 },
+  //   shadowOpacity: 0.1,
+  //   shadowRadius: 8,
+  //   elevation: 3,
+  // },
   cartItem: {
     backgroundColor: Colors.whiteBackground,
     borderRadius: 12,
-    padding: 15,
-    marginBottom: 15,
+    padding: 12, // slightly more padding for breathing room
+    marginBottom: 18,
     flexDirection: "row",
     alignItems: "center",
     shadowColor: Colors.shadowColor,
@@ -725,8 +752,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   productImageWrap: {
-    width: 90,
-    height: 90,
+    width: 120,
+    height: 120,
     borderRadius: 16,
     position: "relative",
     overflow: "visible",
@@ -748,14 +775,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  // productInfo: {
+  //   flex: 1,
+  // },
   productInfo: {
     flex: 1,
+    justifyContent: "space-between", // spreads header and footer
   },
+  // cardHeader: {
+  //   flex: 1,
+  //   flexDirection: "row",
+  //   justifyContent: "space-between",
+  //   alignItems: "center",
+  // },
   productName: {
+    flex: 1,
     fontSize: 16,
     fontWeight: "600",
     color: Colors.darkText,
-    marginBottom: 4,
+  },
+  deleteButton: {
+    padding: 8,
   },
   productDetails: {
     fontSize: 14,
@@ -763,26 +803,39 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   productPrice: {
+    flex: 1,
     fontSize: 16,
     fontWeight: "bold",
     color: Colors.mainColor,
   },
-  quantityControlsRow: {
+  // cardFooter: {
+  //   flexDirection: "row",
+  //   justifyContent: "space-between",
+  //   alignItems: "center",
+  // },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4, // small spacing below header
+  },
+  cardFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8, // small spacing from header
+  },
+  quantityControls: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
     gap: 10,
-    marginTop: 8,
-  },
-  deleteButton: {
-    backgroundColor: Colors.lightBackground,
-    width: 50,
-    height: 30,
+    padding: 6,
     borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
     borderWidth: 1,
-    borderColor: Colors.errorColor || "black",
-    margin: 10,
+    borderColor: Colors.lightBorder,
+    width: 90,
   },
   quantityButton: {
     backgroundColor: Colors.lightBackground,
@@ -817,13 +870,22 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 10,
   },
+  summaryTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: Colors.darkText,
+    marginBottom: 15,
+    borderBottomColor: Colors.lightBorder,
+    borderBottomWidth: 1,
+    paddingBottom: 5,
+  },
   summaryLabel: {
     fontSize: 16,
     color: Colors.mutedText,
   },
   summaryValue: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "medium",
     color: Colors.darkText,
   },
   totalRow: {
@@ -834,12 +896,12 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   totalLabel: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
     color: Colors.darkText,
   },
   totalValue: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
     color: Colors.mainColor,
   },
