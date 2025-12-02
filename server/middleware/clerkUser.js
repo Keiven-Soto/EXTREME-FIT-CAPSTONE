@@ -28,13 +28,15 @@ const getClerkUser = async (req, res, next) => {
       console.log('🔄 Auto-creating user in database...');
 
       try {
-        // Create user with minimal info (webhook will update later if needed)
+        const placeholderEmail = `pending-${clerkId}@clerk.sync`;
+
         await getDb().query(`
           INSERT INTO users (clerk_id, email, first_name, last_name, created_at)
           VALUES ($1, $2, $3, $4, NOW())
+          ON CONFLICT (clerk_id) DO NOTHING
         `, [
           clerkId,
-          'pending@clerk.sync',  // Placeholder email
+          placeholderEmail,      // Unique placeholder email
           'User',                 // Placeholder first name
           'Pending Sync',         // Placeholder last name
         ]);
@@ -48,6 +50,21 @@ const getClerkUser = async (req, res, next) => {
         console.log('✅ User auto-created:', result.rows[0]);
       } catch (createError) {
         console.error('❌ Failed to auto-create user:', createError);
+
+        // If it's a duplicate key error, try to fetch the existing user
+        if (createError.code === '23505') {
+          result = await getDb().query(
+            'SELECT * FROM users WHERE clerk_id = $1',
+            [clerkId]
+          );
+
+          if (result && result.rows.length > 0) {
+            console.log('✅ User already exists, using existing record');
+            req.user = result.rows[0];
+            return next();
+          }
+        }
+
         return res.status(500).json({ error: 'Could not create user in database' });
       }
     } else {
