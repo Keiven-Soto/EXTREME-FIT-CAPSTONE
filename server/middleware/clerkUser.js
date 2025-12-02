@@ -1,4 +1,5 @@
 const getDb = () => (global && global.__DB_MOCK__) ? global.__DB_MOCK__ : require('../config/database');
+const { clerkClient } = require('@clerk/clerk-sdk-node');
 
 /**
  * Middleware to get user from database using clerk_id from Clerk JWT
@@ -28,7 +29,21 @@ const getClerkUser = async (req, res, next) => {
       console.log('🔄 Auto-creating user in database...');
 
       try {
-        const placeholderEmail = `pending-${clerkId}@clerk.sync`;
+        // Fetch full user data from Clerk API
+        let clerkUser;
+        try {
+          clerkUser = await clerkClient.users.getUser(clerkId);
+        } catch (clerkErr) {
+          console.warn('⚠️ Could not fetch user from Clerk API:', clerkErr.message);
+          clerkUser = null;
+        }
+
+        // Extract user info from Clerk user object or fallback to defaults
+        const firstName = clerkUser?.firstName || 'User';
+        const lastName = clerkUser?.lastName || 'Pending Sync';
+        const email = clerkUser?.emailAddresses?.[0]?.emailAddress || `pending-${clerkId}@clerk.sync`;
+
+        console.log(`🔐 Creating user with: firstName="${firstName}", lastName="${lastName}", email="${email}"`);
 
         await getDb().query(`
           INSERT INTO users (clerk_id, email, first_name, last_name, created_at)
@@ -36,9 +51,9 @@ const getClerkUser = async (req, res, next) => {
           ON CONFLICT (clerk_id) DO NOTHING
         `, [
           clerkId,
-          placeholderEmail,      // Unique placeholder email
-          'User',                 // Placeholder first name
-          'Pending Sync',         // Placeholder last name
+          email,                 // Use Clerk email
+          firstName,             // Use Clerk first name
+          lastName,              // Use Clerk last name
         ]);
 
         // Fetch the newly created user

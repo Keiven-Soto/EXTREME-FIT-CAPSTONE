@@ -22,6 +22,7 @@
     "test:all:coverage": "jest test/backend_test/ --verbose --coverage"
   },
   "dependencies": {
+    "@clerk/clerk-sdk-node": "^4.13.23",
     "@clerk/express": "^1.7.37",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
@@ -39,8 +40,14 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "setupFiles": ["<rootDir>/test/setupRequireMocks.js"],
-    "setupFilesAfterEnv": ["<rootDir>/test/setupTests.js"],
-    "testMatch": ["<rootDir>/test/backend_tests/**/*.test.js"]
+    "setupFiles": [
+      "<rootDir>/test/setupRequireMocks.js"
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/test/setupTests.js"
+    ],
+    "testMatch": [
+      "<rootDir>/test/backend_tests/**/*.test.js"
+    ]
   }
 }
