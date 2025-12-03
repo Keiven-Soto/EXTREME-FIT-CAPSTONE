@@ -19,6 +19,7 @@ import ApiService from "../services/api";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getCloudinaryImageUrl } from "../utils/cloudinary";
 import Carousel, { Pagination } from "react-native-x-carousel";
+import CornerLogo from "../components/CornerLogo";
 
 // dynamic adjustment to device screen width
 const { width } = Dimensions.get("window");
@@ -213,8 +214,7 @@ export default function HomeScreen({ navigation }) {
           id="dealImage"
           source={imageSource}
           style={styles.dealImage}
-        >
-        </Image>
+        ></Image>
         <View id="dealCaption" style={styles.dealCaption}>
           <Text style={styles.dealName}>{deal.name}</Text>
         </View>
@@ -312,6 +312,11 @@ export default function HomeScreen({ navigation }) {
             ListEmptyComponent={<Text>No running deals</Text>}
             renderItem={({ item }) => renderDeal(item)}
           />
+        </View>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <CornerLogo />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -538,6 +543,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.mutedText,
     fontStyle: "italic",
+    paddingVertical: 20,
+  },
+
+  footer: {
+    alignItems: "center",
     paddingVertical: 20,
   },
 });

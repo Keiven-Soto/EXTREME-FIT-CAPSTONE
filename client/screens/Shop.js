@@ -192,8 +192,10 @@ export default function ShopScreen({ navigation }) {
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Shop</Text>
-          <CornerLogo />
           <Text style={styles.headerSubtitle}>Find your athletic gear</Text>
+        </View>
+        <View style={{ position: "absolute", top: 20, right: 20 }}>
+          <CornerLogo/>
         </View>
 
         <View style={styles.searchContainer}>

@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import ApiService from '../../services/api';
 import { getCloudinaryImageUrl } from '../../utils/cloudinary';
+import Colors from "../../colors";
 
 /* ========= Helpers para las secciones de info ========= */
 function InfoSection({ title, children }) {
@@ -306,105 +307,163 @@ function Row({ label, value }) {
 
 /* =================== Estilos =================== */
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#fff' },
-  container: { flex: 1, backgroundColor: '#fff' },
+  safe: { flex: 1, backgroundColor: "#fff" },
+  container: {
+    flex: 1,
+    backgroundColor: Colors.lightBackground,
+  },
 
   header: {
     height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#eee',
+    borderBottomColor: "#eee",
   },
   iconBtn: { padding: 6, borderRadius: 999 },
-  headerTitle: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '700', color: '#111' },
-  cartWrap: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  badge: {
-    position: 'absolute', top: -2, right: -2,
-    backgroundColor: '#e11d48', minWidth: 18, height: 18, borderRadius: 9,
-    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4,
+  headerTitle: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111",
   },
-  badgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  cartWrap: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badge: {
+    position: "absolute",
+    top: -2,
+    right: -2,
+    backgroundColor: "#e11d48",
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+  },
+  badgeText: { color: "#fff", fontSize: 11, fontWeight: "700" },
 
   scroll: { padding: 16, paddingBottom: 64 },
 
   itemRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 12,
   },
-  thumbWrap: { width: 64, height: 64, borderRadius: 12, position: 'relative', overflow: 'visible', backgroundColor: '#f4f4f5' },
-  innerThumb: { flex: 1, borderRadius: 12, overflow: 'hidden', backgroundColor: '#f4f4f5' },
-  thumb: { width: '100%', height: '100%' },
-  thumbPlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  thumbWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 12,
+    position: "relative",
+    overflow: "visible",
+    backgroundColor: "#f4f4f5",
+  },
+  innerThumb: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#f4f4f5",
+  },
+  thumb: { width: "100%", height: "100%" },
+  thumbPlaceholder: { flex: 1, alignItems: "center", justifyContent: "center" },
   qtyBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: -6,
     right: -6,
     width: 26,
     height: 26,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#fff',
-    backgroundColor: '#111',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: "#fff",
+    backgroundColor: "#111",
+    alignItems: "center",
+    justifyContent: "center",
     zIndex: 3,
 
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.15,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
   },
-  qtyText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  qtyText: { color: "#fff", fontSize: 12, fontWeight: "700" },
 
   itemInfo: { flex: 1 },
-  itemTitle: { fontWeight: '600', color: '#111' },
-  itemSub: { color: '#6b7280', marginTop: 2 },
-  itemPrice: { fontWeight: '600', color: '#111' },
+  itemTitle: { fontWeight: "600", color: "#111" },
+  itemSub: { color: "#6b7280", marginTop: 2 },
+  itemPrice: { fontWeight: "600", color: "#111" },
 
-  divider: { height: 1, backgroundColor: '#eee', marginVertical: 8 },
+  divider: { height: 1, backgroundColor: "#eee", marginVertical: 8 },
 
   summary: { gap: 8, marginTop: 4 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  rowLabel: { fontSize: 15, color: '#111' },
-  rowValue: { fontSize: 15, color: '#111' },
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  rowLabel: { fontSize: 15, color: "#111" },
+  rowValue: { fontSize: 15, color: "#111" },
 
   totalRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end',
-    marginTop: 8, paddingTop: 8,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    marginTop: 8,
+    paddingTop: 8,
   },
-  totalLeft: { fontSize: 18, fontWeight: '800', color: '#111' },
-  currencyText: { color: '#6b7280', fontSize: 12, marginBottom: -2 },
-  totalText: { fontSize: 28, fontWeight: '800', letterSpacing: 0.3, color: '#111' },
+  totalLeft: { fontSize: 18, fontWeight: "800", color: "#111" },
+  currencyText: { color: "#6b7280", fontSize: 12, marginBottom: -2 },
+  totalText: {
+    fontSize: 28,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+    color: "#111",
+  },
 
-  footerCard: { marginTop: 16, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#eee' },
-  orderId: { fontSize: 20, fontWeight: '900', letterSpacing: 0.3, color: '#111' },
-  muted: { color: '#6b7280', marginTop: 6 },
+  footerCard: {
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#eee",
+  },
+  orderId: {
+    fontSize: 20,
+    fontWeight: "900",
+    letterSpacing: 0.3,
+    color: "#111",
+  },
+  muted: { color: "#6b7280", marginTop: 6 },
 
   /* ======= NUEVOS estilos del panel de información ======= */
   infoCard: {
     marginTop: 16,
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: "#eee",
   },
   infoSection: { marginBottom: 18 },
   infoTitle: {
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: "900",
     letterSpacing: 0.3,
-    color: '#111',
+    color: "#111",
     marginBottom: 8,
   },
-  infoText: { fontSize: 14, color: '#111' },
+  infoText: { fontSize: 14, color: "#111" },
   skeleton: {
     height: 14,
     borderRadius: 8,
-    backgroundColor: '#ececec',
-    width: '70%',
+    backgroundColor: "#ececec",
+    width: "70%",
   },
 
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
 });

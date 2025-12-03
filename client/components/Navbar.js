@@ -9,7 +9,7 @@ import { useCurrentUser } from '../hooks/useAuthenticatedApi';
 // Importar las pantallas
 import HomeScreen from '../screens/Home';
 import ShopScreen from '../screens/Shop';
-import BagScreen, { cartEvents } from '../screens/Bag';
+import BagScreen from '../screens/Bag';
 import WishlistScreen from '../screens/Wishlist';
 import ProfileScreen from '../screens/Profile';
 
@@ -44,36 +44,28 @@ export default function Navbar() {
   }, [isSignedIn]);
 
   // Fetch cart count
-  const fetchCartCount = async () => {
-    if (!userId || !tokenReady) return;
+  useEffect(() => {
+    const fetchCartCount = async () => {
+      if (!userId || !tokenReady) return;
 
-    try {
-      const result = await ApiService.cart.get(userId);
-      if (result.success && Array.isArray(result.data)) {
-        const totalItems = result.data.reduce((sum, item) => sum + item.quantity, 0);
-        setCartCount(totalItems);
-      } else {
+      try {
+        const result = await ApiService.cart.get(userId);
+        if (result.success && Array.isArray(result.data)) {
+          const totalItems = result.data.reduce((sum, item) => sum + item.quantity, 0);
+          setCartCount(totalItems);
+        } else {
+          setCartCount(0);
+        }
+      } catch (error) {
+        console.error('Error fetching cart count:', error);
         setCartCount(0);
       }
-    } catch (error) {
-      console.error('Error fetching cart count:', error);
-      setCartCount(0);
-    }
-  };
-
-  useEffect(() => {
-    fetchCartCount();
-  }, [userId, tokenReady]);
-
-  // Listen for cart updates
-  useEffect(() => {
-    const subscription = cartEvents.addListener('cartUpdated', () => {
-      fetchCartCount();
-    });
-
-    return () => {
-      subscription.remove();
     };
+
+    fetchCartCount();
+    // TODO: FIX BAG COUNT UPDATING ISSUE
+    // No polling: fetch once when `userId` or `tokenReady` change.
+    // Cleanup is not needed since we don't set an interval.
   }, [userId, tokenReady]);
   return (
     <Tab.Navigator

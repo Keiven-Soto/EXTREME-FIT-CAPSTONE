@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@clerk/clerk-expo';
 import ApiService, { setGlobalAuthToken } from '../../services/api';
+import Colors from "../../colors";
 
 /* ------------------------------ MAIN SCREEN ------------------------------ */
 
@@ -454,7 +455,7 @@ const getStatesForCountry = (country) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F3F4F6", // light gray background (Shopify)
+    backgroundColor: Colors.lightBackground,
   },
 
   /* HEADER */

@@ -236,6 +236,15 @@ export default function WishlistScreen({ navigation }) {
         selectedColor
       );
 
+      console.log('confirmAddToCart: payload ->', {
+        userId,
+        product_id: selectedProduct?.product_id,
+        quantity: 1,
+        size: selectedSize,
+        color: selectedColor,
+      });
+      console.log('confirmAddToCart: cartResult ->', cartResult);
+
       if (cartResult.success) {
         // Remove from wishlist
         const wishlistResult = await ApiService.wishlist.remove(userId, selectedProduct.product_id);
@@ -247,7 +256,10 @@ export default function WishlistScreen({ navigation }) {
           await fetchWishlist();
         }
       } else {
-        Alert.alert('Error', cartResult.error || 'Could not add to cart');
+        console.error('confirmAddToCart failed:', cartResult);
+        // show more detailed error when available
+        const serverMessage = cartResult && (cartResult.error || cartResult.message || JSON.stringify(cartResult));
+        Alert.alert('Error', serverMessage || 'Could not add to cart');
       }
     } catch (error) {
       console.error('Error adding to cart:', error);
