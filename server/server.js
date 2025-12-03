@@ -69,7 +69,7 @@ console.log('📍 Registering /api/orders (protected)');
 app.use('/api/orders', ordersRoute);
 
 console.log('📍 Registering /api/cart (protected)');
-app.use('/api', cartItemsRoute);
+app.use('/api/cart', cartItemsRoute);
 
 console.log('📍 Registering /api/wishlist (protected)');
 app.use('/api/wishlist', wishlistRoute);

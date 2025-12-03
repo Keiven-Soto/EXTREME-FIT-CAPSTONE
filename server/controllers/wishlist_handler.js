@@ -123,8 +123,8 @@ const deleteWishlistItem = async (req, res) => {
 
 const addWishlistItem = async (req, res) => {
   try {
-    user_id = req.body.userId;
-    product_id = req.body.productId;
+    const user_id = req.body.userId;
+    const product_id = req.body.productId;
 
     if (isNaN(user_id) || isNaN(product_id)) {
       return res.status(400).json({

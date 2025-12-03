@@ -358,7 +358,10 @@ export default function WishlistScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Wishlist</Text>
+        <View style={styles.headerIconRow}>
+          <Text style={styles.headerTitle} >My Wishlist</Text>
+          <Ionicons name="heart-sharp" size={28} color="black" />
+        </View>
         <Text style={styles.headerSubtitle}>
           {wishlistItems.length} {wishlistItems.length === 1 ? "item" : "items"}
         </Text>
@@ -549,17 +552,23 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 20,
-    paddingTop: 60,
+    paddingTop: 20,
     backgroundColor: Colors.whiteBackground || "#fff",
     borderBottomWidth: 1,
     borderBottomColor: Colors.lightBorder || "#e5e5e5",
+  },
+  headerIconRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 5,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: "bold",
     textAlign: "center",
     color: Colors.darkText || "#000",
-    marginBottom: 5,
   },
   headerSubtitle: {
     fontSize: 16,
