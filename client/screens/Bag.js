@@ -69,7 +69,7 @@ export default function BagScreen() {
       // 2. Create order in backend with shipping_address_id
       const orderPayload = {
         user_id: userId,
-        total_amount: subtotal + SHIPPING_COST,
+        total_amount: subtotal + SHIPPING_COST + taxes,
         shipping_cost: SHIPPING_COST,
         payment_method: "simulated",
         payment_status: "paid",
@@ -210,7 +210,7 @@ export default function BagScreen() {
       // 2. Create order in backend with pending status
       const orderPayload = {
         user_id: userId,
-        total_amount: subtotal + SHIPPING_COST,
+        total_amount: subtotal + SHIPPING_COST + taxes,
         shipping_cost: SHIPPING_COST,
         payment_method: "stripe",
         payment_status: "pending",
@@ -248,9 +248,39 @@ export default function BagScreen() {
         return;
       }
 
-      // 4. Navigate to Checkout screen with orderId
-      console.log("Navigating to Checkout screen with order:", orderId);
-      navigation.navigate("Checkout", { orderId });
+      // 4. Create Stripe Checkout Session
+      console.log('Creating Stripe checkout session for order:', orderId);
+      const checkoutResult = await ApiService.payments.createCheckoutSession(
+        orderId,
+        'extremefit://order-success',
+        'extremefit://checkout'
+      );
+
+      if (!checkoutResult.success || !checkoutResult.data.url) {
+        Alert.alert('Error', checkoutResult.error || 'Failed to create checkout session');
+        return;
+      }
+
+      console.log('Stripe checkout URL:', checkoutResult.data.url);
+
+      // 5. Open Stripe Checkout in browser
+      const stripeUrl = checkoutResult.data.url;
+      const canOpen = await Linking.canOpenURL(stripeUrl);
+
+      if (canOpen) {
+        await Linking.openURL(stripeUrl);
+
+        // 6. Clear cart after opening Stripe (will be cleared in backend after payment)
+        setCartItems([]);
+
+        // 7. Navigate to success screen (user will return here after payment)
+        setTimeout(() => {
+          navigation.navigate('OrderSuccess', { orderId });
+        }, 1000);
+      } else {
+        Alert.alert('Error', 'Unable to open Stripe checkout page');
+      }
+
     } catch (err) {
       console.error("Error in handleStripeCheckout:", err);
       Alert.alert("Error", "There was a problem creating the order.");
