@@ -261,6 +261,7 @@ export default function BagScreen() {
   const navigation = require("@react-navigation/native").useNavigation();
   const useFocusEffect = require("@react-navigation/native").useFocusEffect;
   const SHIPPING_COST = 15.0; // TODO: Adjust shipping cost as needed
+  const TAX_RATE = 0.115; // 11.5% IVU-like tax rate
 
   const [cartItems, setCartItems] = useState([]);
   const [loadingItems, setLoadingItems] = useState(false);
@@ -532,16 +533,24 @@ export default function BagScreen() {
     return { subtotal: sub, totalItems: count };
   }, [cartItems]);
 
-  const total = subtotal + SHIPPING_COST;
+  const taxes = +(subtotal * TAX_RATE).toFixed(2);
+  const total = subtotal + SHIPPING_COST + taxes;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>My Cart</Text>
+          <View style={styles.headerIconRow}>
+            <Ionicons name="cart" size={30} color="black" />
+            <Text style={styles.headerTitle}>My Cart</Text>
+          </View>
+
           <Text style={styles.headerSubtitle}>{totalItems} items</Text>
         </View>
-
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingTop: 40 }}  // separación debajo del header
+      >
         <View style={styles.cartItems}>
           {loadingItems ? (
             <View style={styles.loadingItemsContainer}>
@@ -597,8 +606,8 @@ export default function BagScreen() {
                     >
                       <Ionicons
                         name="trash-outline"
-                        size={20}
-                        color={Colors.mutedText}
+                        size={22}
+                        color={Colors.whiteText}
                       />
                     </TouchableOpacity>
                   </View>
@@ -620,8 +629,8 @@ export default function BagScreen() {
                       >
                         <Ionicons
                           name="remove"
-                          size={16}
-                          color={Colors.mainColor}
+                          size={20}
+                          color={Colors.whiteText}
                         />
                       </TouchableOpacity>
                       <Text style={styles.quantityText}>{item.quantity}</Text>
@@ -630,8 +639,8 @@ export default function BagScreen() {
                       >
                         <Ionicons
                           name="add"
-                          size={16}
-                          color={Colors.mainColor}
+                          size={20}
+                          color={Colors.whiteText}
                         />
                       </TouchableOpacity>
                     </View>
@@ -654,7 +663,7 @@ export default function BagScreen() {
           </View>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Tax</Text>
-            <Text style={styles.summaryValue}>Calculated at checkout</Text>
+            <Text style={styles.summaryValue}>${taxes.toFixed(2)}</Text>
           </View>
           <View style={[styles.summaryRow, styles.totalRow]}>
             <Text style={styles.totalLabel}>Total:</Text>
@@ -708,8 +717,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.lightBackground,
   },
   header: {
-    padding: 20,
-    paddingTop: 60,
+    padding: 10,
+    paddingTop: 20,
+    alignItems: "center",     
+    justifyContent: "center",  
+  },
+  headerIconRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
   },
   headerTitle: {
     fontSize: 28,
@@ -795,7 +812,15 @@ const styles = StyleSheet.create({
     color: Colors.darkText,
   },
   deleteButton: {
-    padding: 8,
+    // padding: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "black",      // ← solid black
+    marginLeft: "auto",
+
   },
   productDetails: {
     fontSize: 14,
@@ -834,7 +859,8 @@ const styles = StyleSheet.create({
     padding: 6,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: Colors.lightBorder,
+    borderColor: Colors.mainColor,
+    backgroundColor: Colors.mainColor,
     width: 90,
   },
   quantityButton: {
@@ -849,8 +875,8 @@ const styles = StyleSheet.create({
   },
   quantityText: {
     fontSize: 16,
-    fontWeight: "600",
-    color: Colors.darkText,
+    fontWeight: "bold",
+    color: Colors.whiteText,
     minWidth: 20,
     textAlign: "center",
   },
@@ -908,9 +934,10 @@ const styles = StyleSheet.create({
   checkoutButton: {
     backgroundColor: Colors.checkoutButton,
     marginHorizontal: 20,
-    marginBottom: 20,
+    marginTop: 10,
+    marginBottom: 12,
     padding: 18,
-    borderRadius: 100,
+    borderRadius: 50,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
