@@ -1,497 +1,179 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Platform, Image, ActivityIndicator, Linking } from 'react-native';
-import { getCloudinaryImageUrl } from '../utils/cloudinary';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '@clerk/clerk-expo';
-import Colors from '../colors';
-import CornerLogo from '../components/CornerLogo';
-import ApiService, { setGlobalAuthToken } from '../services/api';
-import { useCurrentUser } from '../hooks/useAuthenticatedApi';
+// BagScreen.js
+import React, { useState, useMemo, useEffect } from "react";
+import {
+  StyleSheet,
+  Text,
+  View,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  Platform,
+  Image,
+  ActivityIndicator,
+} from "react-native";
 
-let PayPal = null;
-if (Platform.OS !== 'web') {
-  try {
-    PayPal = require('react-native-paypal').PayPal;
-  } catch (error) {
-    console.log('PayPal not available on this platform');
-  }
-}
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "@clerk/clerk-expo";
+import Colors from "../colors";
+import ApiService, { setGlobalAuthToken } from "../services/api";
+import { useCurrentUser } from "../hooks/useAuthenticatedApi";
+import { getCloudinaryImageUrl } from "../utils/cloudinary";
+
+// React-Native safe EventEmitter
+import { EventEmitter } from "fbemitter";
+export const cartEvents = new EventEmitter();
 
 export default function BagScreen() {
   const { getToken, isSignedIn } = useAuth();
   const { getCurrentUser } = useCurrentUser();
+  const navigation = require("@react-navigation/native").useNavigation();
+  const useFocusEffect = require("@react-navigation/native").useFocusEffect;
+
   const [userId, setUserId] = useState(null);
-
-  // Simulated payment
-  const handleSimulatedPayment = async () => {
-    if (!cartItems || cartItems.length === 0) {
-      Alert.alert('Error', 'Your cart is empty. Add products before checking out.');
-      return;
-    }
-
-    try {
-      // 1. Find user's default address
-      const addressResult = await ApiService.addresses.getByUser(userId);
-      let defaultAddress = null;
-      if (addressResult.success && Array.isArray(addressResult.data)) {
-        defaultAddress = addressResult.data.find(addr => addr.is_default);
-      }
-      if (!defaultAddress) {
-        Alert.alert(
-          'OH NO!',
-          'You don\'t have a default shipping address. Please add one in your profile.',
-          [
-            { text: 'Ok', style: 'cancel' },
-            { text: 'Add Address', onPress: () => navigation.navigate('EditAddress') },
-          ]
-        );
-        return;
-      }
-
-      // 2. Create order in backend with shipping_address_id
-      const orderPayload = {
-        user_id: userId,
-        total_amount: subtotal + SHIPPING_COST,
-        shipping_cost: SHIPPING_COST,
-        payment_method: 'simulated',
-        payment_status: 'paid',
-        order_status: 'confirmed',
-        shipping_address_id: defaultAddress.address_id,
-      };
-      const orderResult = await ApiService.orders.create(orderPayload);
-      if (!orderResult || !orderResult.order_id) {
-        Alert.alert('Error', 'Could not create order.');
-        return;
-      }
-      const orderId = orderResult.order_id;
-      // 3. For each cart item: decrement stock by size, then create order item.
-      //    If any stock adjustment or order item creation fails we rollback previous
-      //    stock adjustments (increment back) and abort.
-      const adjusted = []; // keep track of successful adjustments to rollback if needed
-      let allItemsOk = true;
-      for (const item of cartItems) {
-        // attempt to decrement stock for this product/size
-        try {
-          const adjustRes = await ApiService.products.adjustStock(item.id, {
-            size: item.size || '',
-            quantity: item.quantity,
-            operation: 'decrement',
-          });
-
-          if (!adjustRes || !adjustRes.success) {
-            // adjustment failed (e.g. insufficient stock)
-            allItemsOk = false;
-            const message = (adjustRes && adjustRes.error) ? adjustRes.error : 'Failed to adjust stock';
-            Alert.alert('Error', message);
-            break;
-          }
-
-          // record successful adjustment for potential rollback
-          adjusted.push({ productId: item.id, size: item.size || '', quantity: item.quantity });
-        } catch (err) {
-          allItemsOk = false;
-          Alert.alert('Error', 'Failed to adjust stock for a product.');
-          break;
-        }
-
-        // create the order item after stock was reserved
-        const itemPayload = {
-          product_id: item.id,
-          quantity: item.quantity,
-          unit_price: item.price,
-          size: item.size || '',
-          color: item.color || '',
-        };
-        const itemResult = await ApiService.orders.addOrderItem(orderId, itemPayload);
-        if (!itemResult || !itemResult.order_item_id) {
-          allItemsOk = false;
-          Alert.alert('Error', 'Could not save a product in the order.');
-          break;
-        }
-      }
-
-      if (!allItemsOk) {
-        // rollback any successful adjustments by incrementing back
-        for (const a of adjusted) {
-          try {
-            await ApiService.products.adjustStock(a.productId, {
-              size: a.size,
-              quantity: a.quantity,
-              operation: 'increment',
-            });
-          } catch (e) {
-            console.error('Rollback failed for', a, e);
-          }
-        }
-        return;
-      }
-
-      // 4. Clear cart in backend and frontend ALWAYS after payment
-      await ApiService.cart.clear(userId);
-      setCartItems([]);
-      Alert.alert(
-        'Payment Successful',
-        'Simulated payment completed successfully!',
-        [
-          {
-            text: 'View Order',
-            onPress: () => {
-              navigation.navigate('OrderDetails', { orderId });
-            }
-          }
-        ]
-      );
-    } catch (err) {
-      console.error('Error in handleSimulatedPayment:', err);
-      Alert.alert('Error', 'There was a problem processing the order.');
-    }
-  };
-  
-  // Stripe Checkout flow
-  const handleStripeCheckout = async () => {
-    if (!cartItems || cartItems.length === 0) {
-      Alert.alert('Error', 'Your cart is empty. Add products before checking out.');
-      return;
-    }
-
-    try {
-      // 1. Find user's default address
-      const addressResult = await ApiService.addresses.getByUser(userId);
-      let defaultAddress = null;
-      if (addressResult.success && Array.isArray(addressResult.data)) {
-        defaultAddress = addressResult.data.find(addr => addr.is_default);
-      }
-      if (!defaultAddress) {
-        Alert.alert(
-          'OH NO!',
-          'You don\'t have a default shipping address. Please add one in your profile.',
-          [
-            { text: 'Ok', style: 'cancel' },
-            { text: 'Add Address', onPress: () => navigation.navigate('EditAddress') },
-          ]
-        );
-        return;
-      }
-
-      // 2. Create order in backend with pending status
-      const orderPayload = {
-        user_id: userId,
-        total_amount: subtotal + SHIPPING_COST,
-        shipping_cost: SHIPPING_COST,
-        payment_method: 'stripe',
-        payment_status: 'pending',
-        order_status: 'processing',
-        shipping_address_id: defaultAddress.address_id,
-      };
-      const orderResult = await ApiService.orders.create(orderPayload);
-      if (!orderResult || !orderResult.order_id) {
-        Alert.alert('Error', 'Could not create order.');
-        return;
-      }
-      const orderId = orderResult.order_id;
-
-      // 3. Create order items
-      let allItemsOk = true;
-      for (const item of cartItems) {
-        const itemPayload = {
-          product_id: item.id,
-          quantity: item.quantity,
-          unit_price: item.price,
-          size: item.size || '',
-          color: item.color || '',
-        };
-        const itemResult = await ApiService.orders.addOrderItem(orderId, itemPayload);
-        if (!itemResult || !itemResult.order_item_id) {
-          allItemsOk = false;
-          break;
-        }
-      }
-      if (!allItemsOk) {
-        Alert.alert('Error', 'Could not save all products in the order.');
-        return;
-      }
-
-      // 4. Navigate to Checkout screen with orderId
-      console.log('Navigating to Checkout screen with order:', orderId);
-      navigation.navigate('Checkout', { orderId });
-
-    } catch (err) {
-      console.error('Error in handleStripeCheckout:', err);
-      Alert.alert('Error', 'There was a problem creating the order.');
-    }
-  };
-
-  // Import useNavigation and useFocusEffect
-  const navigation = require('@react-navigation/native').useNavigation();
-  const useFocusEffect = require('@react-navigation/native').useFocusEffect;
-  const SHIPPING_COST = 15.00; // TODO: Adjust shipping cost as needed
-
+  const [tokenReady, setTokenReady] = useState(false);
   const [cartItems, setCartItems] = useState([]);
   const [loadingItems, setLoadingItems] = useState(false);
-  const [tokenReady, setTokenReady] = useState(false);
 
-  // Fetch authenticated user's database ID AND set the global token
+  const SHIPPING_COST = 15.0;
+
+  // -----------------------------
+  //  AUTH + TOKEN SETUP
+  // -----------------------------
   useEffect(() => {
-    const fetchUserIdAndSetToken = async () => {
-      if (isSignedIn) {
-        try {
-          // CRITICAL: Get and set the token FIRST
-          const token = await getToken();
-          console.log('🎫 Setting global token in BagScreen:', !!token);
-          setGlobalAuthToken(token);
-          setTokenReady(true);
-          
-          // Then get user data
-          const userData = await getCurrentUser();
-          if (userData && userData.user_id) {
-            console.log('User ID obtained:', userData.user_id);
-            setUserId(userData.user_id);
-          } else {
-            console.log('Could not get user_id');
-          }
-        } catch (error) {
-          console.error("Error fetching user ID:", error);
-        }
-      }
+    const init = async () => {
+      if (!isSignedIn) return;
+
+      const token = await getToken();
+      setGlobalAuthToken(token);
+      setTokenReady(true);
+
+      const user = await getCurrentUser();
+      setUserId(user?.user_id);
     };
-    fetchUserIdAndSetToken();
+    init();
   }, [isSignedIn]);
 
-  // Function to get cart from backend
+  // -----------------------------
+  //  FETCH CART ITEMS
+  // -----------------------------
   const fetchCart = async () => {
-    // Validate prerequisites
-    if (!userId) {
-      console.log('⏸️ No userId available, skipping cart fetch');
-      return;
-    }
+    if (!userId || !tokenReady) return;
 
-    if (!tokenReady) {
-      console.log('⏸️ Token not ready yet, skipping cart fetch');
-      return;
-    }
-
-    console.log('🔄 fetchCart: Starting to fetch cart for userId:', userId);
     setLoadingItems(true);
-
     try {
       const result = await ApiService.cart.get(userId);
-      console.log('📦 fetchCart: Received result:', result);
 
-      // Validate result exists
-      if (!result) {
-        console.error('❌ fetchCart: No result returned from API');
-        Alert.alert('Error', 'Failed to load cart - no response from server');
-        setLoadingItems(false);
-        setCartItems([]);
-        return;
-      }
-
-      if (result.success) {
-        // Validate data is an array
-        if (!Array.isArray(result.data)) {
-          console.error('❌ fetchCart: Invalid data format (not an array):', result.data);
-          Alert.alert('Error', 'Invalid cart data received from server');
-          setLoadingItems(false);
-          setCartItems([]);
-          return;
-        }
-
-        console.log(`✅ fetchCart: Successfully loaded ${result.data.length} cart items`);
-
-        // Map the data to frontend format
-        const mappedItems = result.data.map(item => ({
+      if (result?.success && Array.isArray(result.data)) {
+        const mapped = result.data.map((item) => ({
           id: item.product_id,
           name: item.name,
-          price: item.price,
-          quantity: item.quantity,
+          price: Number(item.price),
+          quantity: Number(item.quantity),
           size: item.size,
           color: item.color,
-          image_url: item.cloudinary_public_id ? getCloudinaryImageUrl(item.cloudinary_public_id) : null,
+          image_url: item.cloudinary_public_id
+            ? getCloudinaryImageUrl(item.cloudinary_public_id)
+            : null,
         }));
 
-        setCartItems(mappedItems);
-        setLoadingItems(false);
+        setCartItems(mapped);
       } else {
-        // Handle authentication errors specifically
-        if (result.status === 401) {
-          console.error('❌ fetchCart: Authentication error');
-          Alert.alert('Session Expired', 'Please sign in again to view your cart');
-          setLoadingItems(false);
-          setCartItems([]);
-          return;
-        }
-
-        // Other errors
-        const errorMessage = result.error || 'Could not load cart';
-        console.error('❌ fetchCart: API returned error:', errorMessage);
-
-        // Don't show alert for empty cart (valid state)
-        if (!errorMessage.includes('empty') && !errorMessage.includes('no items')) {
-          Alert.alert('Error', errorMessage);
-        }
-
-        setLoadingItems(false);
         setCartItems([]);
       }
-    } catch (error) {
-      console.error('❌ fetchCart: Exception occurred:', error);
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        userId,
-      });
-
-      // Provide more specific error messages
-      let errorMessage = 'Could not load cart. Check your connection.';
-      if (error.message) {
-        errorMessage = error.message;
-      }
-
-      Alert.alert('Error', errorMessage);
-      setLoadingItems(false);
-      setCartItems([]);
-    } finally {
-      console.log('🏁 fetchCart: Completed');
+    } catch (e) {
+      console.log("Cart fetch failed:", e);
     }
+    setLoadingItems(false);
   };
 
-
-  // Refresh cart every time the screen receives focus
+  // Refresh cart when screen focused
   useFocusEffect(
     React.useCallback(() => {
       if (userId && tokenReady) {
         fetchCart();
+        cartEvents.emit("cartUpdated");
       }
     }, [userId, tokenReady])
   );
 
-  // Update quantity in backend and refresh cart
+  // -----------------------------
+  //  QUANTITY CONTROLS
+  // -----------------------------
   const incrementQuantity = async (id) => {
-    const item = cartItems.find(i => i.id === id);
+    const item = cartItems.find((i) => i.id === id);
     if (!item) return;
+
     const newQty = item.quantity + 1;
+
     const result = await ApiService.cart.updateQuantity(userId, id, newQty);
     if (result.success) {
-      await fetchCart();
-    } else {
-      Alert.alert('Error', result.error || 'Could not update quantity');
+      setCartItems((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, quantity: newQty } : p))
+      );
+      cartEvents.emit("cartUpdated");
+      fetchCart();
     }
   };
 
   const decrementQuantity = async (id) => {
-    const item = cartItems.find(i => i.id === id);
+    const item = cartItems.find((i) => i.id === id);
     if (!item || item.quantity <= 1) return;
+
     const newQty = item.quantity - 1;
+
     const result = await ApiService.cart.updateQuantity(userId, id, newQty);
     if (result.success) {
-      await fetchCart();
-    } else {
-      Alert.alert('Error', result.error || 'Could not update quantity');
+      setCartItems((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, quantity: newQty } : p))
+      );
+      cartEvents.emit("cartUpdated");
+      fetchCart();
     }
   };
 
-  // Remove product from cart and refresh
   const removeItem = async (id) => {
-    const item = cartItems.find(i => i.id === id);
-    if (!item) return;
     const result = await ApiService.cart.removeItem(userId, id);
     if (result.success) {
-      await fetchCart();
-    } else {
-      Alert.alert('Error', result.error || 'Could not remove product');
+      fetchCart();
+      cartEvents.emit("cartUpdated");
     }
   };
 
-  // Navigate to product details from bag
   const goToProduct = (productId) => {
-    navigation.navigate('ProductDetails', {
-      productId,
-      isFromCart: true,
-    });
+    navigation.navigate("ProductDetails", { productId, isFromCart: true });
   };
 
-  // PayPal payment handler
-  const handlePayPalPayment = () => {
-    if (Platform.OS === 'web') {
-      // For web platform, show a demo success message
-      Alert.alert(
-        'Demo Mode',
-        'PayPal payment simulation completed successfully!\n\nNote: PayPal integration works on mobile devices. This is a demo for web.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Clear cart after successful payment
-              setCartItems([]);
-            }
-          }
-        ]
-      );
-      return;
-    }
-
-    if (!PayPal) {
-      Alert.alert(
-        'PayPal Unavailable',
-        'PayPal payment is not available on this platform.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    const paymentData = {
-      amount: total.toFixed(2),
-      currency: 'USD',
-      description: `Extreme Fit - ${totalItems} items`,
-      clientId: 'AX5LCRqe63mpn5Iuk5dD6Z6E32Qn6skf2MdRRGmtDDPQwvKMdx76rqjSbYgISFz8L5fuR_sFGHmFy7fh',
-      environment: 'sandbox' // Use 'production' for live payments
-    };
-
-    PayPal.payWithPayPal(paymentData)
-      .then((response) => {
-        console.log('Payment successful:', response);
-        Alert.alert(
-          'Payment Successful!',
-          `Transaction ID: ${response.response.id}`,
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                // Clear cart after successful payment
-                setCartItems([]);
-              }
-            }
-          ]
-        );
-      })
-      .catch((error) => {
-        console.log('Payment error:', error);
-        Alert.alert(
-          'Payment Failed',
-          'There was an error processing your payment. Please try again.',
-          [{ text: 'OK' }]
-        );
-      });
-  };
-
+  // -----------------------------
+  //  TOTALS
+  // -----------------------------
   const { subtotal, totalItems } = useMemo(() => {
-    const sub = cartItems.reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
-    const count = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+    const sub = cartItems.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
+    const count = cartItems.reduce((s, i) => s + i.quantity, 0);
     return { subtotal: sub, totalItems: count };
   }, [cartItems]);
 
   const total = subtotal + SHIPPING_COST;
 
+  // -----------------------------
+  //  RENDER UI
+  // -----------------------------
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <ScrollView showsVerticalScrollIndicator={false}>
+        {/* HEADER */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>🛒 My Cart</Text>
-          <CornerLogo></CornerLogo>
+          <View style={styles.headerIconRow}>
+            <Ionicons name="cart" size={30} color="black" />
+            <Text style={styles.headerTitle}>My Cart</Text>
+          </View>
           <Text style={styles.headerSubtitle}>{totalItems} items</Text>
         </View>
 
+        {/* CART ITEMS */}
         <View style={styles.cartItems}>
           {loadingItems ? (
             <View style={styles.loadingItemsContainer}>
@@ -499,60 +181,75 @@ export default function BagScreen() {
               <Text style={styles.loadingText}>Loading cart...</Text>
             </View>
           ) : cartItems.length === 0 ? (
-            <View style={{ padding: 40, alignItems: 'center' }}>
-              <Ionicons name="cart-outline" size={64} color={Colors.mutedText} />
-              <Text style={{ fontSize: 18, color: Colors.mutedText, marginTop: 16 }}>
-                Your cart is empty
+            <View style={styles.emptyContainer}>
+              <Ionicons name="cart-outline" size={80} color="#9ca3af" />
+              <Text style={styles.emptyTitle}>Your Cart is Empty</Text>
+              <Text style={styles.emptySubtitle}>
+                Add items to get started
               </Text>
+
+              <TouchableOpacity
+                style={styles.startShoppingButton}
+                onPress={() => navigation.navigate("Home")}
+              >
+                <Text style={styles.startShoppingText}>Start Shopping</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             cartItems.map((item) => (
               <TouchableOpacity
                 key={item.id}
                 style={styles.cartItem}
-                activeOpacity={0.8}
                 onPress={() => goToProduct(item.id)}
               >
                 <View style={styles.productImageWrap}>
-                  <View style={styles.productImageInner}>
-                    {item.image_url ? (
-                      <Image source={{ uri: item.image_url }} style={styles.productImageReal} />
-                    ) : (
-                      <View style={styles.productImagePlaceholder}>
-                        <Ionicons name="image-outline" size={20} color="#9ca3af" />
-                      </View>
-                    )}
-                  </View>
+                  {item.image_url ? (
+                    <Image
+                      source={{ uri: item.image_url }}
+                      style={styles.productImageReal}
+                    />
+                  ) : (
+                    <View style={styles.productImagePlaceholder}>
+                      <Ionicons name="image-outline" size={20} color="#9ca3af" />
+                    </View>
+                  )}
                 </View>
+
                 <View style={styles.productInfo}>
-                  <View style={styles.namePriceRow}>
-                    <Text style={styles.productName}>{item.name}</Text>
-                    <Text style={styles.productPrice}>${Number(item.price).toFixed(2)}</Text>
-                  </View>
-                  <Text style={styles.productDetails}>
-                    {item.size ? `Size: ${item.size}` : ''}
-                    {item.color ? `  Color: ${item.color}` : ''}
+                  <Text style={styles.productName}>{item.name}</Text>
+                  <Text style={styles.productPrice}>
+                    ${item.price.toFixed(2)}
                   </Text>
+
+                  <Text style={styles.productDetails}>
+                    {item.size ? `Size: ${item.size}  ` : ""}
+                    {item.color ? `Color: ${item.color}` : ""}
+                  </Text>
+
                   <View style={styles.quantityControlsRow}>
-                    <TouchableOpacity 
-                      style={styles.quantityButton}
+                    <TouchableOpacity
+                      style={styles.qtyButton}
                       onPress={() => decrementQuantity(item.id)}
                     >
-                      <Ionicons name="remove" size={16} color={Colors.mainColor} />
+                      <Ionicons name="remove" size={24} color="white" />
                     </TouchableOpacity>
-                    <Text style={styles.quantityText}>{item.quantity}</Text>
-                    <TouchableOpacity 
-                      style={styles.quantityButton}
+
+                    <Text style={styles.quantityValue}>{item.quantity}</Text>
+
+                    <TouchableOpacity
+                      style={styles.qtyButton}
                       onPress={() => incrementQuantity(item.id)}
                     >
-                      <Ionicons name="add" size={16} color={Colors.mainColor} />
+                      <Ionicons name="add" size={24} color="white" />
                     </TouchableOpacity>
+
                     <TouchableOpacity
                       style={styles.deleteButton}
                       onPress={() => removeItem(item.id)}
                     >
-                      <Ionicons name="trash" size={18} color={Colors.errorColor || 'black'} />
+                      <Ionicons name="trash-outline" size={24} color="white" />
                     </TouchableOpacity>
+
                   </View>
                 </View>
               </TouchableOpacity>
@@ -560,231 +257,282 @@ export default function BagScreen() {
           )}
         </View>
 
-        <View style={styles.summary}>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Subtotal:</Text>
-            <Text style={styles.summaryValue}>${subtotal.toFixed(2)}</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Shipping:</Text>
-            <Text style={styles.summaryValue}>${SHIPPING_COST.toFixed(2)}</Text>
-          </View>
-          <View style={[styles.summaryRow, styles.totalRow]}>
-            <Text style={styles.totalLabel}>Total:</Text>
-            <Text style={styles.totalValue}>${total.toFixed(2)}</Text>
-          </View>
-        </View>
+        {/* SUMMARY */}
+        {cartItems.length > 0 && (
+          <>
+            <View style={styles.summary}>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Subtotal:</Text>
+                <Text style={styles.summaryValue}>${subtotal.toFixed(2)}</Text>
+              </View>
 
-        <TouchableOpacity style={styles.checkoutButton} onPress={handleStripeCheckout}>
-          <Text style={styles.checkoutButtonText}>Checkout with Stripe</Text>
-          <Ionicons name="card-outline" size={20} color={Colors.whiteText} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.testingcheckoutButton} onPress={handleSimulatedPayment}>
-          <Text style={styles.checkoutButtonText}>Pay Now</Text>
-          <Ionicons name="card-outline" size={20} color={Colors.whiteText} />
-        </TouchableOpacity>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Shipping:</Text>
+                <Text style={styles.summaryValue}>
+                  ${SHIPPING_COST.toFixed(2)}
+                </Text>
+              </View>
+
+              <View style={[styles.summaryRow, styles.totalRow]}>
+                <Text style={styles.totalLabel}>Total:</Text>
+                <Text style={styles.totalValue}>${total.toFixed(2)}</Text>
+              </View>
+            </View>
+
+            {/* CHECKOUT BUTTONS */}
+            <TouchableOpacity
+              style={styles.checkoutButton}
+              onPress={() => navigation.navigate("Checkout", { total })}
+            >
+              <Text style={styles.checkoutButtonText}>
+                Checkout with Stripe
+              </Text>
+              <Ionicons name="card-outline" size={20} color="white" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.testingcheckoutButton}
+              onPress={() => Alert.alert("Simulated Payment")}
+            >
+              <Text style={styles.checkoutButtonText}>Pay Now</Text>
+              <Ionicons name="card-outline" size={20} color="white" />
+            </TouchableOpacity>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+/* ---------------------------
+   CLEAN, MODERN STYLING
+--------------------------- */
 const styles = StyleSheet.create({
-  namePriceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  loadingItemsContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: Colors.mutedText,
-  },
   container: {
     flex: 1,
-    backgroundColor: Colors.lightBackground,
+    backgroundColor: "#f6f6f6",
   },
+
   header: {
-    padding: 20,
-    paddingTop: 60,
+    paddingTop: 20,
+    paddingBottom: 25,
+    backgroundColor: "white",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e5e5e5",
+  },
+  headerIconRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    color: Colors.darkText,
-    marginBottom: 5,
+    fontWeight: "700",
+    color: "black",
   },
   headerSubtitle: {
-    fontSize: 16,
-    color: Colors.mutedText,
+    marginTop: 5,
+    textAlign: "center",
+    fontSize: 15,
+    color: "#7d7d7d",
   },
+
   cartItems: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
+    paddingTop: 10,
   },
+
   cartItem: {
-    backgroundColor: Colors.whiteBackground,
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 15,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: Colors.shadowColor,
+    backgroundColor: "white",
+    borderRadius: 14,
+    padding: 20,
+    marginBottom: 22,
+    flexDirection: "row",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
   },
+
   productImageWrap: {
-    width: 90,
-    height: 90,
-    borderRadius: 16,
-    position: 'relative',
-    overflow: 'visible',
-    backgroundColor: Colors.lightBackground,
+    width: 95,
+    height: 95,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#f0f0f0",
     marginRight: 18,
   },
-  productImageInner: {
-    flex: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: Colors.lightBackground,
-  },
   productImageReal: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   productImagePlaceholder: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
+
   productInfo: {
     flex: 1,
   },
+
   productName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: Colors.darkText,
-    marginBottom: 4,
-  },
-  productDetails: {
-    fontSize: 14,
-    color: Colors.mutedText,
-    marginBottom: 4,
+    fontWeight: "600",
+    color: "black",
   },
   productPrice: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: Colors.mainColor,
+    marginTop: 4,
+    fontSize: 18,
+    fontWeight: "700",
   },
+  productDetails: {
+    marginTop: 4,
+    fontSize: 14,
+    color: "#7d7d7d",
+  },
+
   quantityControlsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 16,
+    gap: 16,
   },
+
+  qtyButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "black",      // ← solid black
+  },
+
+  quantityValue: {
+    fontSize: 17,
+    fontWeight: "700",
+    minWidth: 26,
+    textAlign: "center",
+    color: "black",
+  },
+
   deleteButton: {
-    backgroundColor: Colors.lightBackground,
-    width: 50,
-    height: 30,
+    width: 40,
+    height: 40,
     borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.errorColor || 'black',
-    margin: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "black",      // ← solid black
+    marginLeft: "auto",
   },
-  quantityButton: {
-    backgroundColor: Colors.lightBackground,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.mainColor,
-  },
-  quantityText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.darkText,
-    minWidth: 20,
-    textAlign: 'center',
-  },
+
   summary: {
-    backgroundColor: Colors.whiteBackground,
-    margin: 20,
-    padding: 20,
-    borderRadius: 12,
-    shadowColor: Colors.shadowColor,
+    backgroundColor: "white",
+    marginHorizontal: 18,
+    marginVertical: 28,
+    padding: 22,
+    borderRadius: 14,
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
   },
+
   summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 12,
   },
   summaryLabel: {
     fontSize: 16,
-    color: Colors.mutedText,
+    color: "#7d7d7d",
   },
   summaryValue: {
     fontSize: 16,
-    fontWeight: '600',
-    color: Colors.darkText,
+    fontWeight: "600",
+    color: "black",
   },
   totalRow: {
     borderTopWidth: 1,
-    borderTopColor: Colors.lightBorder,
-    paddingTop: 10,
-    marginTop: 10,
-    marginBottom: 0,
+    borderTopColor: "#e5e5e5",
+    paddingTop: 14,
+    marginTop: 12,
   },
   totalLabel: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: Colors.darkText,
+    fontWeight: "700",
   },
   totalValue: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: Colors.mainColor,
-  },
-  checkoutButton: {
-    backgroundColor: Colors.checkoutButton,
-    marginHorizontal: 20,
-    marginBottom: 20,
-    padding: 18,
-    borderRadius: 100,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 10,
-  },
-  testingcheckoutButton: {
-    backgroundColor: 'black',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    padding: 18,
-    borderRadius: 100,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 10,
-  },
-  checkoutButtonText: {
-    color: Colors.whiteText,
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "700",
+    color: "black",
   },
 
+  checkoutButton: {
+    backgroundColor: "black",
+    marginHorizontal: 20,
+    paddingVertical: 18,
+    borderRadius: 50,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 10,
+  },
+  testingcheckoutButton: {
+    backgroundColor: "black",
+    marginHorizontal: 20,
+    paddingVertical: 18,
+    borderRadius: 50,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 40,
+  },
+
+  checkoutButtonText: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "white",
+  },
+
+  emptyContainer: {
+    padding: 80,
+    alignItems: "center",
+  },
+  emptyTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    marginTop: 20,
+  },
+  emptySubtitle: {
+    fontSize: 15,
+    color: "#7d7d7d",
+    marginTop: 6,
+  },
+  startShoppingButton: {
+    backgroundColor: "black",
+    marginTop: 25,
+    paddingHorizontal: 30,
+    paddingVertical: 14,
+    borderRadius: 30,
+  },
+  startShoppingText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "white",
+  },
+
+  loadingItemsContainer: {
+    padding: 40,
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: "#7d7d7d",
+  },
 });
