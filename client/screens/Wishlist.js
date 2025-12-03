@@ -236,6 +236,15 @@ export default function WishlistScreen({ navigation }) {
         selectedColor
       );
 
+      console.log('confirmAddToCart: payload ->', {
+        userId,
+        product_id: selectedProduct?.product_id,
+        quantity: 1,
+        size: selectedSize,
+        color: selectedColor,
+      });
+      console.log('confirmAddToCart: cartResult ->', cartResult);
+
       if (cartResult.success) {
         // Remove from wishlist
         const wishlistResult = await ApiService.wishlist.remove(userId, selectedProduct.product_id);
@@ -247,7 +256,10 @@ export default function WishlistScreen({ navigation }) {
           await fetchWishlist();
         }
       } else {
-        Alert.alert('Error', cartResult.error || 'Could not add to cart');
+        console.error('confirmAddToCart failed:', cartResult);
+        // show more detailed error when available
+        const serverMessage = cartResult && (cartResult.error || cartResult.message || JSON.stringify(cartResult));
+        Alert.alert('Error', serverMessage || 'Could not add to cart');
       }
     } catch (error) {
       console.error('Error adding to cart:', error);
@@ -358,7 +370,10 @@ export default function WishlistScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Wishlist</Text>
+        <View style={styles.headerIconRow}>
+          <Text style={styles.headerTitle} >My Wishlist</Text>
+          <Ionicons name="heart-sharp" size={28} color="black" />
+        </View>
         <Text style={styles.headerSubtitle}>
           {wishlistItems.length} {wishlistItems.length === 1 ? "item" : "items"}
         </Text>
@@ -549,17 +564,23 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 20,
-    paddingTop: 60,
+    paddingTop: 20,
     backgroundColor: Colors.whiteBackground || "#fff",
     borderBottomWidth: 1,
     borderBottomColor: Colors.lightBorder || "#e5e5e5",
+  },
+  headerIconRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 5,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: "bold",
     textAlign: "center",
     color: Colors.darkText || "#000",
-    marginBottom: 5,
   },
   headerSubtitle: {
     fontSize: 16,
