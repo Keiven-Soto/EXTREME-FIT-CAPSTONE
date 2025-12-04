@@ -128,6 +128,26 @@ exports.createCheckoutSession = async (req, res) => {
         quantity: 1,
       });
     }
+    // Calculate tax dynamically from order items (11.5% tax rate)
+    const TAX_RATE = 0.115;
+    const subtotal = itemsResult.rows.reduce((sum, item) => {
+      return sum + (parseFloat(item.unit_price) * item.quantity);
+    }, 0);
+    const taxAmount = subtotal * TAX_RATE;
+
+    if (taxAmount > 0) {
+      line_items.push({
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: 'Tax (11.5%)',
+            description: 'Sales tax',
+          },
+          unit_amount: Math.round(taxAmount * 100),
+        },
+        quantity: 1,
+      });
+    }
 
     // Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
