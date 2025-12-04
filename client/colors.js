@@ -23,6 +23,9 @@ const Colors = {
 
   //Checkout button
   checkoutButton: '#000',
+
+  //Header gradient
+  header: '#EBEBEB',
 };
 
 export default Colors;
