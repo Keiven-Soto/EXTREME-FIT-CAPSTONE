@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@clerk/clerk-expo';
 import Colors from '../colors';
+import CornerLogo from '../components/CornerLogo';
 import {ProductDetailScreen} from '../screens/productDetails';
 import ApiService, { setGlobalAuthToken } from '../services/api';
 import { useCurrentUser } from '../hooks/useAuthenticatedApi';
@@ -409,6 +410,11 @@ export default function WishlistScreen({ navigation }) {
         />
       )}
 
+              {/* Footer */}
+              <View style={styles.footer}>
+                <CornerLogo />
+              </View>
+
       {/* Size and Color Selection Modal */}
       <Modal
         visible={showSizeModal}
@@ -565,9 +571,9 @@ const styles = StyleSheet.create({
   header: {
     padding: 20,
     paddingTop: 20,
-    backgroundColor: Colors.whiteBackground || "#fff",
+    backgroundColor: Colors.lightBackground || "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: Colors.lightBorder || "#e5e5e5",
+    borderBottomColor: Colors.lightBackground || "#e5e5e5",
   },
   headerIconRow: {
     flexDirection: "row",
@@ -860,5 +866,9 @@ const styles = StyleSheet.create({
     color: Colors.whiteText || "#fff",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  footer: {
+    alignItems: "center",
+    paddingVertical: 20,
   },
 });
