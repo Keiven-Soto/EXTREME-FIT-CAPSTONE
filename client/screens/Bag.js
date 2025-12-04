@@ -248,7 +248,57 @@ export default function BagScreen() {
         return;
       }
 
-      // 4. Create Stripe Checkout Session
+      // 4. Adjust stock for each cart item (decrement inventory)
+      const adjusted = [];
+      let stockAdjustmentOk = true;
+      for (const item of cartItems) {
+        try {
+          const adjustRes = await ApiService.products.adjustStock(item.id, {
+            size: item.size || "",
+            quantity: item.quantity,
+            operation: "decrement",
+          });
+
+          if (!adjustRes || !adjustRes.success) {
+            stockAdjustmentOk = false;
+            const message =
+              adjustRes && adjustRes.error
+                ? adjustRes.error
+                : "Failed to adjust stock";
+            Alert.alert("Error", message);
+            break;
+          }
+
+          adjusted.push({
+            productId: item.id,
+            size: item.size || "",
+            quantity: item.quantity,
+          });
+        } catch (err) {
+          stockAdjustmentOk = false;
+          Alert.alert("Error", "Failed to adjust stock for a product.");
+          break;
+        }
+      }
+
+      if (!stockAdjustmentOk) {
+        // Rollback any successful stock adjustments
+        for (const a of adjusted) {
+          try {
+            await ApiService.products.adjustStock(a.productId, {
+              size: a.size,
+              quantity: a.quantity,
+              operation: "increment",
+            });
+          } catch (e) {
+            console.error("Rollback failed for", a, e);
+          }
+        }
+        Alert.alert("Error", "Could not reserve inventory. Please try again.");
+        return;
+      }
+
+      // 5. Create Stripe Checkout Session
       console.log('Creating Stripe checkout session for order:', orderId);
       const checkoutResult = await ApiService.payments.createCheckoutSession(
         orderId,
@@ -258,27 +308,51 @@ export default function BagScreen() {
 
       if (!checkoutResult.success || !checkoutResult.data.url) {
         Alert.alert('Error', checkoutResult.error || 'Failed to create checkout session');
+        // Rollback stock adjustments if Stripe session creation fails
+        for (const a of adjusted) {
+          try {
+            await ApiService.products.adjustStock(a.productId, {
+              size: a.size,
+              quantity: a.quantity,
+              operation: "increment",
+            });
+          } catch (e) {
+            console.error("Rollback failed for", a, e);
+          }
+        }
         return;
       }
 
       console.log('Stripe checkout URL:', checkoutResult.data.url);
 
-      // 5. Open Stripe Checkout in browser
+      // 6. Open Stripe Checkout in browser
       const stripeUrl = checkoutResult.data.url;
       const canOpen = await Linking.canOpenURL(stripeUrl);
 
       if (canOpen) {
         await Linking.openURL(stripeUrl);
 
-        // 6. Clear cart after opening Stripe (will be cleared in backend after payment)
+        // 7. Clear cart after opening Stripe (will be cleared in backend after payment)
         setCartItems([]);
 
-        // 7. Navigate to success screen (user will return here after payment)
+        // 8. Navigate to success screen (user will return here after payment)
         setTimeout(() => {
           navigation.navigate('OrderSuccess', { orderId });
         }, 1000);
       } else {
         Alert.alert('Error', 'Unable to open Stripe checkout page');
+        // Rollback stock adjustments if unable to open Stripe
+        for (const a of adjusted) {
+          try {
+            await ApiService.products.adjustStock(a.productId, {
+              size: a.size,
+              quantity: a.quantity,
+              operation: "increment",
+            });
+          } catch (e) {
+            console.error("Rollback failed for", a, e);
+          }
+        }
       }
 
     } catch (err) {
