@@ -59,15 +59,10 @@ export default function ShopScreen({ navigation }) {
     fetchUserIdAndSetToken();
   }, [clerkUser, isSignedIn]);
 
-  // Load products when userId changes
+  // Load products when userId changes or search text changes (with debounce)
   useEffect(() => {
-    if (userId) {
-      loadProducts();
-    }
-  }, [userId]);
+    if (!userId) return;
 
-  // Search with debounce
-  useEffect(() => {
     const timeoutId = setTimeout(() => {
       const q = searchText.trim();
       loadProducts(q);

@@ -5,6 +5,7 @@ import Colors from '../colors';
 import { useAuth } from '@clerk/clerk-expo';
 import ApiService, { setGlobalAuthToken } from '../services/api';
 import { useCurrentUser } from '../hooks/useAuthenticatedApi';
+import emitter, { CART_UPDATED } from '../utils/events';
 
 // Importar las pantallas
 import HomeScreen from '../screens/Home';
@@ -44,28 +45,39 @@ export default function Navbar() {
   }, [isSignedIn]);
 
   // Fetch cart count
-  useEffect(() => {
-    const fetchCartCount = async () => {
-      if (!userId || !tokenReady) return;
+  const fetchCartCount = async () => {
+    if (!userId || !tokenReady) return;
 
-      try {
-        const result = await ApiService.cart.get(userId);
-        if (result.success && Array.isArray(result.data)) {
-          const totalItems = result.data.reduce((sum, item) => sum + item.quantity, 0);
-          setCartCount(totalItems);
-        } else {
-          setCartCount(0);
-        }
-      } catch (error) {
-        console.error('Error fetching cart count:', error);
+    try {
+      const result = await ApiService.cart.get(userId);
+      if (result.success && Array.isArray(result.data)) {
+        const totalItems = result.data.reduce((sum, item) => sum + item.quantity, 0);
+        setCartCount(totalItems);
+      } else {
         setCartCount(0);
       }
+    } catch (error) {
+      console.error('Error fetching cart count:', error);
+      setCartCount(0);
+    }
+  };
+
+  useEffect(() => {
+    fetchCartCount();
+  }, [userId, tokenReady]);
+
+  // Listen for cart update events
+  useEffect(() => {
+    const handleCartUpdate = () => {
+      console.log('🔔 Cart updated event received in Navbar');
+      fetchCartCount();
     };
 
-    fetchCartCount();
-    // TODO: FIX BAG COUNT UPDATING ISSUE
-    // No polling: fetch once when `userId` or `tokenReady` change.
-    // Cleanup is not needed since we don't set an interval.
+    emitter.on(CART_UPDATED, handleCartUpdate);
+
+    return () => {
+      emitter.off(CART_UPDATED, handleCartUpdate);
+    };
   }, [userId, tokenReady]);
   return (
     <Tab.Navigator

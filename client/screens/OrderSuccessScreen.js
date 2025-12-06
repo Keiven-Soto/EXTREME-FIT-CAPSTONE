@@ -13,6 +13,7 @@ import Colors from '../colors';
 import ApiService from '../services/api';
 import { useCurrentUser } from '../hooks/useAuthenticatedApi';
 import { color } from '@cloudinary/url-gen/qualifiers/background';
+import emitter, { CART_UPDATED } from '../utils/events';
 
 export default function OrderSuccessScreen({ route, navigation }) {
   const { orderId } = route.params || {};
@@ -84,7 +85,9 @@ export default function OrderSuccessScreen({ route, navigation }) {
       const userId = user?.user_id;
       if (userId) {
         const result = await ApiService.cart.clear(userId);
-        if (!result.success) {
+        if (result.success) {
+          emitter.emit(CART_UPDATED);
+        } else {
           console.error('Failed to clear cart:', result.error);
         }
       }
@@ -105,7 +108,9 @@ export default function OrderSuccessScreen({ route, navigation }) {
       const userId = user?.user_id;
       if (userId) {
         const result = await ApiService.cart.clear(userId);
-        if (!result.success) {
+        if (result.success) {
+          emitter.emit(CART_UPDATED);
+        } else {
           console.error('Failed to clear cart:', result.error);
         }
       }

@@ -16,7 +16,7 @@ import Colors from "../colors";
 import { getCloudinaryImageUrl } from "../utils/cloudinary";
 import ApiService from "../services/api";
 import { useCurrentUser } from "../hooks/useAuthenticatedApi";
-import emitter, { WISHLIST_UPDATED } from "../utils/events";
+import emitter, { WISHLIST_UPDATED, CART_UPDATED } from "../utils/events";
 import { useWishlist } from "../hooks/useWishlist";
 
 export default function ProductDetailScreen({ route, navigation }) {
@@ -122,6 +122,7 @@ export default function ProductDetailScreen({ route, navigation }) {
       if (result.success) {
         // Fetch cart to update local data after adding item
         await ApiService.cart.get(userId);
+        emitter.emit(CART_UPDATED);
         Alert.alert(
           "Added to Cart",
           `${product.name}\nSize: ${selectedSize}\nColor: ${selectedColor}\nQuantity: ${quantity}`,

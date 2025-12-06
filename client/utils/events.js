@@ -4,5 +4,6 @@ import EventEmitter from "eventemitter3";
 const emitter = new EventEmitter();
 
 export const WISHLIST_UPDATED = "wishlistUpdated";
+export const CART_UPDATED = "cartUpdated";
 
 export default emitter;

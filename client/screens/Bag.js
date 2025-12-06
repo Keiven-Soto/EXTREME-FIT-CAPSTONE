@@ -19,6 +19,7 @@ import Colors from "../colors";
 import CornerLogo from "../components/CornerLogo";
 import ApiService, { setGlobalAuthToken } from "../services/api";
 import { useCurrentUser } from "../hooks/useAuthenticatedApi";
+import emitter, { CART_UPDATED } from "../utils/events";
 
 let PayPal = null;
 if (Platform.OS !== "web") {
@@ -527,6 +528,7 @@ export default function BagScreen() {
     const result = await ApiService.cart.updateQuantity(userId, id, newQty);
     if (result.success) {
       await fetchCart();
+      emitter.emit(CART_UPDATED);
     } else {
       Alert.alert("Error", result.error || "Could not update quantity");
     }
@@ -539,6 +541,7 @@ export default function BagScreen() {
     const result = await ApiService.cart.updateQuantity(userId, id, newQty);
     if (result.success) {
       await fetchCart();
+      emitter.emit(CART_UPDATED);
     } else {
       Alert.alert("Error", result.error || "Could not update quantity");
     }
@@ -551,6 +554,7 @@ export default function BagScreen() {
     const result = await ApiService.cart.removeItem(userId, id);
     if (result.success) {
       await fetchCart();
+      emitter.emit(CART_UPDATED);
     } else {
       Alert.alert("Error", result.error || "Could not remove product");
     }
