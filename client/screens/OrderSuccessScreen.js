@@ -11,12 +11,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../colors';
 import ApiService from '../services/api';
+import { useCurrentUser } from '../hooks/useAuthenticatedApi';
 import { color } from '@cloudinary/url-gen/qualifiers/background';
 
 export default function OrderSuccessScreen({ route, navigation }) {
   const { orderId } = route.params || {};
   const [loading, setLoading] = useState(true);
   const [order, setOrder] = useState(null);
+  const { getCurrentUser } = useCurrentUser();
 
   useEffect(() => {
     if (orderId) {
@@ -75,14 +77,36 @@ export default function OrderSuccessScreen({ route, navigation }) {
     }
   };
 
-  const handleContinueShopping = () => {
+  const handleContinueShopping = async () => {
+    // Clear cart before navigating back to main screen
+    try {
+      const user = await getCurrentUser();
+      const userId = user?.user_id;
+      if (userId) {
+        ApiService.cart.clear(userId).catch((err) => console.error('Failed to clear cart (continue):', err));
+      }
+    } catch (err) {
+      console.error('Failed to get current user before clear:', err);
+    }
+
     navigation.reset({
       index: 0,
       routes: [{ name: 'Main' }],
     });
   };
 
-  const handleViewOrder = () => {
+  const handleViewOrder = async () => {
+    // Clear cart before navigating to order details
+    try {
+      const user = await getCurrentUser();
+      const userId = user?.user_id;
+      if (userId) {
+        ApiService.cart.clear(userId).catch((err) => console.error('Failed to clear cart (view order):', err));
+      }
+    } catch (err) {
+      console.error('Failed to get current user before clear:', err);
+    }
+
     navigation.navigate('OrderDetails', { orderId });
   };
 
