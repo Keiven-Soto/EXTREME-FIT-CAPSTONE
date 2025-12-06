@@ -83,10 +83,13 @@ export default function OrderSuccessScreen({ route, navigation }) {
       const user = await getCurrentUser();
       const userId = user?.user_id;
       if (userId) {
-        ApiService.cart.clear(userId).catch((err) => console.error('Failed to clear cart (continue):', err));
+        const result = await ApiService.cart.clear(userId);
+        if (!result.success) {
+          console.error('Failed to clear cart:', result.error);
+        }
       }
     } catch (err) {
-      console.error('Failed to get current user before clear:', err);
+      console.error('Failed to clear cart:', err);
     }
 
     navigation.reset({
@@ -101,10 +104,13 @@ export default function OrderSuccessScreen({ route, navigation }) {
       const user = await getCurrentUser();
       const userId = user?.user_id;
       if (userId) {
-        ApiService.cart.clear(userId).catch((err) => console.error('Failed to clear cart (view order):', err));
+        const result = await ApiService.cart.clear(userId);
+        if (!result.success) {
+          console.error('Failed to clear cart:', result.error);
+        }
       }
     } catch (err) {
-      console.error('Failed to get current user before clear:', err);
+      console.error('Failed to clear cart:', err);
     }
 
     navigation.navigate('OrderDetails', { orderId });
