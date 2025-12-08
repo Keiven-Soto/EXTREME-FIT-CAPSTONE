@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const { getUsers, getUserById, postUser, updateUser, deleteUser } = require('../controllers/handlers');
 const { getClerkUser } = require('../middleware/clerkUser');
+const { clerkClient } = require('@clerk/clerk-sdk-node');
 
 // Test database connection endpoint (public)
 router.get('/test-db', async (req, res) => {
@@ -49,6 +50,69 @@ router.get("/users/:id", getUserById);
 
 // POST a new user
 router.post("/users", postUser);
+
+// TESTING BULK CREATE USERS - NEW ENDPOINT (No auth required)
+router.post("/users/bulk", async (req, res) => {
+  console.log('📦 Bulk user creation endpoint hit');
+  const { users } = req.body;
+  
+  if (!users || !Array.isArray(users)) {
+    return res.status(400).json({ error: 'Users array is required' });
+  }
+
+  try {
+    const results = [];
+    const errors = [];
+
+    for (const userData of users) {
+      try {
+        console.log(`Creating user: ${userData.email}`);
+        
+        // Create user in Clerk
+        const clerkUser = await clerkClient.users.createUser({
+          emailAddress: [userData.email],
+          password: userData.password,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+        });
+
+        console.log(`✅ Clerk user created: ${clerkUser.id}`);
+
+        // Create user in your database
+        const dbUser = await db.query(
+          'INSERT INTO users (clerk_id, email, first_name, last_name) VALUES ($1, $2, $3, $4) RETURNING *',
+          [clerkUser.id, userData.email, userData.firstName, userData.lastName]
+        );
+
+        console.log(`✅ Database user created for: ${userData.email}`);
+
+        results.push({
+          success: true,
+          email: userData.email,
+          clerkId: clerkUser.id,
+          dbUser: dbUser.rows[0]
+        });
+      } catch (error) {
+        console.error(`❌ Error creating user ${userData.email}:`, error.message);
+        errors.push({
+          email: userData.email,
+          error: error.message
+        });
+      }
+    }
+
+    res.json({
+      message: 'Bulk user creation completed',
+      created: results.length,
+      failed: errors.length,
+      results,
+      errors
+    });
+  } catch (error) {
+    console.error('❌ Bulk user creation error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // UPDATE a user by ID
 router.put("/users/:id", updateUser);

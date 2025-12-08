@@ -45,32 +45,54 @@ export default function Navbar() {
   }, [isSignedIn]);
 
   // Fetch cart count
-  const fetchCartCount = async () => {
-    if (!userId || !tokenReady) return;
+  useEffect(() => {
+    const fetchCartCount = async () => {
+      if (!userId || !tokenReady) {
+        console.log('⏸️ Navbar: Cannot fetch cart count - userId or token not ready');
+        return;
+      }
 
-    try {
-      const result = await ApiService.cart.get(userId);
-      if (result.success && Array.isArray(result.data)) {
-        const totalItems = result.data.reduce((sum, item) => sum + item.quantity, 0);
-        setCartCount(totalItems);
-      } else {
+      try {
+        const result = await ApiService.cart.get(userId);
+        if (result.success && Array.isArray(result.data)) {
+          const totalItems = result.data.reduce((sum, item) => sum + item.quantity, 0);
+          setCartCount(totalItems);
+          console.log('✅ Navbar: Cart count updated:', totalItems);
+        } else {
+          setCartCount(0);
+        }
+      } catch (error) {
+        console.error('❌ Navbar: Error fetching cart count:', error);
         setCartCount(0);
       }
-    } catch (error) {
-      console.error('Error fetching cart count:', error);
-      setCartCount(0);
-    }
-  };
+    };
 
-  useEffect(() => {
     fetchCartCount();
   }, [userId, tokenReady]);
 
   // Listen for cart update events
   useEffect(() => {
-    const handleCartUpdate = () => {
+    if (!userId || !tokenReady) {
+      console.log('⏸️ Navbar: Not setting up CART_UPDATED listener - userId or token not ready');
+      return;
+    }
+
+    const handleCartUpdate = async () => {
       console.log('🔔 Cart updated event received in Navbar');
-      fetchCartCount();
+
+      try {
+        const result = await ApiService.cart.get(userId);
+        if (result.success && Array.isArray(result.data)) {
+          const totalItems = result.data.reduce((sum, item) => sum + item.quantity, 0);
+          setCartCount(totalItems);
+          console.log('✅ Navbar: Cart count updated after event:', totalItems);
+        } else {
+          setCartCount(0);
+        }
+      } catch (error) {
+        console.error('❌ Navbar: Error fetching cart count after event:', error);
+        setCartCount(0);
+      }
     };
 
     emitter.on(CART_UPDATED, handleCartUpdate);
