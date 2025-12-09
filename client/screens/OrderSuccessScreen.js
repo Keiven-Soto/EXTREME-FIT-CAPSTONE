@@ -84,12 +84,13 @@ export default function OrderSuccessScreen({ route, navigation }) {
       const user = await getCurrentUser();
       const userId = user?.user_id;
       if (userId) {
-        const result = await ApiService.cart.clear(userId);
-        if (result.success) {
-          emitter.emit(CART_UPDATED);
-        } else {
-          console.error('Failed to clear cart:', result.error);
-        }
+        emitter.emit(CART_UPDATED);
+        // const result = await ApiService.cart.clear(userId);
+        // if (result.success) {
+        //   emitter.emit(CART_UPDATED);
+        // } else {
+        //   console.error('Failed to clear cart:', result.error);
+        // }
       }
     } catch (err) {
       console.error('Failed to clear cart:', err);
@@ -107,12 +108,13 @@ export default function OrderSuccessScreen({ route, navigation }) {
       const user = await getCurrentUser();
       const userId = user?.user_id;
       if (userId) {
-        const result = await ApiService.cart.clear(userId);
-        if (result.success) {
-          emitter.emit(CART_UPDATED);
-        } else {
-          console.error('Failed to clear cart:', result.error);
-        }
+        emitter.emit(CART_UPDATED);
+        // const result = await ApiService.cart.clear(userId);
+        // if (result.success) {
+        //   emitter.emit(CART_UPDATED);
+        // } else {
+        //   console.error('Failed to clear cart:', result.error);
+        // }
       }
     } catch (err) {
       console.error('Failed to clear cart:', err);

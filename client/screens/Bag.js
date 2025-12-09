@@ -334,8 +334,8 @@ export default function BagScreen() {
         await Linking.openURL(stripeUrl);
         // It was implemented in OrderSuccessScreen.js to handle post-payment actions
         // 7. Clear cart after opening Stripe (will be cleared in backend after payment)
-        // ApiService.cart.clear(userId).catch((err) => console.error('Failed to clear cart (stripe):', err));
-        // setCartItems([]);
+        ApiService.cart.clear(userId).catch((err) => console.error('Failed to clear cart (stripe):', err));
+        setCartItems([]);
 
         // 8. Navigate to success screen (user will return here after payment)
         setTimeout(() => {

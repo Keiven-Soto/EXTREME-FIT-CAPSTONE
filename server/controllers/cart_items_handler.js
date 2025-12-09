@@ -20,7 +20,7 @@ const getCart = async (req, res) => {
         res.json({ success: true, data: result.rows });
     } catch (error) {
         console.error('❌ Error in getCart:', error.message);
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ success: false, error: error.message || 'Failed to retrieve cart' });
     }
 };
 
@@ -48,7 +48,7 @@ const addItemToCart = async (req, res) => {
         );
         res.json({ success: true, message: 'Producto agregado al carrito' });
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ success: false, error: error.message || 'Failed to add item to cart' });
     }
 };
 
@@ -62,7 +62,7 @@ const removeItemFromCart = async (req, res) => {
 		);
 		res.json({ success: true, message: 'Producto eliminado del carrito' });
 	} catch (error) {
-		res.status(500).json({ success: false, error: error.message });
+		res.status(500).json({ success: false, error: error.message || 'Failed to remove item from cart' });
 	}
 };
 
@@ -76,7 +76,7 @@ const updateCartItemQuantity = async (req, res) => {
 		);
 		res.json({ success: true, message: 'Cantidad actualizada' });
 	} catch (error) {
-		res.status(500).json({ success: false, error: error.message });
+		res.status(500).json({ success: false, error: error.message || 'Failed to update quantity' });
 	}
 };
 
@@ -88,7 +88,7 @@ const clearCart = async (req, res) => {
     await getDb().query('DELETE FROM cart WHERE user_id = $1', [userId]);
         res.json({ success: true, message: 'Carrito vaciado correctamente' });
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        res.status(500).json({ success: false, error: error.message || 'Failed to clear cart' });
     }
 };
 

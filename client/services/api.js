@@ -37,29 +37,45 @@ const getApiUrl = () => {
   return "https://extreme-fit-capstone-backend.vercel.app";
 };
 
-const API_BASE_URL = getApiUrl();
+// Make base URL overridable at runtime (useful when ngrok URL changes)
+let API_BASE_URL = getApiUrl();
+export const setApiBaseUrl = (url) => {
+  API_BASE_URL = url;
+  console.log('🔁 API base URL overridden:', url);
+};
 console.log("API Base URL:", API_BASE_URL);
 
 // Generic API request function with JWT authentication
 const apiRequest = async (endpoint, options = {}) => {
-  const url = `${API_BASE_URL}${endpoint}`;
+  const base = options.baseUrl || API_BASE_URL;
+  const url = `${base}${endpoint}`;
+  console.log(`📡 API Request: ${options.method || 'GET'} ${url}`);
 
-  // Use the globally set token
-  const token = globalToken;
+  // Token resolution order: options.token > options.headers.Authorization > globalToken
+  const resolvedToken =
+    options.token ||
+    (options.headers && (options.headers.Authorization || options.headers.authorization)) ||
+    globalToken;
+
+  // Normalize headers and inject Authorization only if not already present
+  const headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
+    ...options.headers,
+  };
+  if (resolvedToken && !headers.Authorization && !headers.authorization) {
+    headers.Authorization = `Bearer ${resolvedToken}`;
+  }
 
   const config = {
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'ngrok-skip-browser-warning': 'true',
-      ...(token && { 'Authorization': `Bearer ${token}` }),
-      ...options.headers,
-    },
+    headers,
     timeout: 10000, // 10 second timeout
     ...options,
   };
 
-  if (config.body && typeof config.body === "object") {
+  // Only stringify plain objects (avoid double-stringify)
+  if (config.body && typeof config.body === "object" && !(config.body instanceof String)) {
     config.body = JSON.stringify(config.body);
   }
 
@@ -95,13 +111,21 @@ const apiRequest = async (endpoint, options = {}) => {
       console.error(`❌ API Error (${response.status}):`, data.error || data);
       return {
         success: false,
-        error: data.error || `HTTP error! status: ${response.status}`,
+        error: data.error || data.message || `HTTP error! status: ${response.status}`,
         status: response.status,
         originalResponse: responseText,
       };
     }
 
     // Backend returns {success: true, data: ...}, so just return it as-is
+    // Ensure data has expected properties to avoid undefined errors
+    if (!data || typeof data !== 'object') {
+      console.warn('⚠️ Unexpected response format from API:', data);
+      return {
+        success: true,
+        data: data,
+      };
+    }
     return data;
   } catch (error) {
     console.error(`❌ API Error for ${endpoint}:`, error.message);

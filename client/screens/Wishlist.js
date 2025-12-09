@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   StyleSheet,
   Text,
@@ -26,6 +26,8 @@ export default function WishlistScreen({ navigation }) {
   const { getCurrentUser } = useCurrentUser();
   const useFocusEffect = require("@react-navigation/native").useFocusEffect;
   
+  console.log("🎬 WishlistScreen mounted/rendered");
+  
   const [userId, setUserId] = useState(null);
   const [wishlistItems, setWishlistItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -36,6 +38,8 @@ export default function WishlistScreen({ navigation }) {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedColor, setSelectedColor] = useState("");
+
+  const lastFetchRef = useRef(0);
 
   // Fetch authenticated user's database ID AND set the global token
   useEffect(() => {
@@ -76,7 +80,16 @@ export default function WishlistScreen({ navigation }) {
       return;
     }
 
+    // Prevent duplicate/rapid consecutive fetches (e.g., useEffect + useFocusEffect)
+    const now = Date.now();
+    if (now - (lastFetchRef.current || 0) < 3000) {
+      console.log('Skipping duplicate wishlist fetch (throttled)');
+      return;
+    }
+    lastFetchRef.current = now;
+
     console.log("🛍️ Fetching wishlist for userId:", userId);
+    console.log("📍 Stack:", new Error().stack?.split('\n').slice(0, 5).join('\n'));
     setLoading(true);
 
     try {
@@ -136,7 +149,8 @@ export default function WishlistScreen({ navigation }) {
         console.log("🛍️ Wishlist items loaded:", validItems.length);
         setWishlistItems(validItems);
       } else {
-        console.error("❌ Error loading wishlist:", result.error);
+        const errorMsg = result.error || result.message || 'Unknown error loading wishlist';
+        console.error("❌ Error loading wishlist:", errorMsg);
 
         // Handle authentication errors specifically
         if (result.status === 401) {
@@ -144,6 +158,9 @@ export default function WishlistScreen({ navigation }) {
             "Session Expired",
             "Please sign in again to view your wishlist"
           );
+        } else if (errorMsg !== 'Unknown error loading wishlist') {
+          // Only show alert for real errors (not empty wishlist)
+          Alert.alert("Error", errorMsg);
         }
         setWishlistItems([]);
       }
@@ -158,6 +175,7 @@ export default function WishlistScreen({ navigation }) {
 
   // Only fetch wishlist when BOTH userId AND token are ready
   useEffect(() => {
+    console.log(`📋 useEffect triggered: userId=${userId}, tokenReady=${tokenReady}`);
     if (userId && tokenReady) {
       fetchWishlist();
     }
@@ -166,6 +184,7 @@ export default function WishlistScreen({ navigation }) {
   // Refresh wishlist when screen receives focus
   useFocusEffect(
     React.useCallback(() => {
+      console.log(`📱 useFocusEffect triggered: userId=${userId}, tokenReady=${tokenReady}`);
       if (userId && tokenReady) {
         fetchWishlist();
       }

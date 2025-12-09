@@ -35,7 +35,7 @@ const getWishlistItem = async (req, res) => {
     console.error("❌ Error fetching wishlist items:", error);
     res.status(500).json({
       success: false,
-      error: error.message,
+      error: error.message || 'Internal server error',
     });
   }
 };
@@ -75,7 +75,7 @@ const getWishlistItemById = async (req, res) => {
     console.error("❌ Error fetching wishlist item:", error);
     res.status(500).json({
       success: false,
-      error: error.message,
+      error: error.message || 'Internal server error',
     });
   }
 };
@@ -116,7 +116,7 @@ const deleteWishlistItem = async (req, res) => {
     console.error("Error deleting product:", error);
     res.status(500).json({
       success: false,
-      error: error.message,
+      error: error.message || 'Internal server error',
     });
   }
 };
@@ -146,13 +146,10 @@ const addWishlistItem = async (req, res) => {
     console.log("✅ Added to wishlist.");
   } catch (error) {
     console.error("Error adding to wishlist:", error);
-
     res.status(500).json({
       success: false,
-      error: error.message,
+      error: error.message || 'Internal server error',
     });
-
-    console.log("❌ Failed to add to wishlist.");
   }
 };
 
