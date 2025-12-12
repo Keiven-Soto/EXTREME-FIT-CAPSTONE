@@ -776,7 +776,68 @@ body {
   }
 }
 
+/* === Demo Video Section === */
+.demo-video {
+  text-align: center;
+  padding: 80px 10%;
+  background-color: #f5f5f5;
+}
 
+.demo-video h2 {
+  font-size: 2.4rem;
+  margin-bottom: 18px;
+  color: #111;
+}
+
+.demo-video p {
+  font-size: 1.1rem;
+  color: #555;
+  margin-bottom: 40px;
+}
+
+/* Video Links */
+.video-links {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.video-links a {
+  display: block;
+  padding: 18px 30px;
+  background: linear-gradient(135deg, #ff4757 0%, #ff6348 100%);
+  color: white;
+  text-decoration: none;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
+}
+
+.video-links a:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 25px rgba(255, 71, 87, 0.4);
+  background: linear-gradient(135deg, #ff6348 0%, #ff4757 100%);
+}
+
+.video-links a:active {
+  transform: translateY(-1px);
+}
+
+@media (min-width: 768px) {
+  .video-links {
+    flex-direction: row;
+    justify-content: center;
+    max-width: 100%;
+  }
+
+  .video-links a {
+    min-width: 250px;
+  }
+}
 
 /* === TEAM SECTION === */
 .team {
